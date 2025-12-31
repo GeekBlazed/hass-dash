@@ -13,7 +13,7 @@ A sleek, modern Progressive Web Application (PWA) that serves as an intuitive vi
 
 ---
 
-## 🌟 Vision
+## Vision
 
 While Home Assistant excels at managing services and resources behind the scenes, **hass-dash** focuses purely on end-user experience. It transforms complex home automation into an intuitive, glanceable interface where residents can:
 
@@ -28,7 +28,7 @@ All presented in a **minimalistic, color-coded interface** that makes sense at a
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 ### 2D Spatial Interface
 
@@ -41,10 +41,10 @@ All presented in a **minimalistic, color-coded interface** that makes sense at a
 
 Toggle information layers on/off to minimize visual clutter:
 
-- 🌡️ **Climate** - Temperature heat maps, humidity, HVAC status
-- 📹 **Surveillance** - Cameras, motion sensors, door/window sensors, presence detection
-- 🎵 **Audio/Visual** - Speakers, microphones, displays, multi-room audio
-- 🌐 **Networking** - WiFi APs, ethernet drops, network topology
+- **Climate** - Temperature heat maps, humidity, HVAC status
+- **Surveillance** - Cameras, motion sensors, door/window sensors, presence detection
+- **Audio/Visual** - Speakers, microphones, displays, multi-room audio
+- **Networking** - WiFi APs, ethernet drops, network topology
 
 ### Smart Home Integration
 
@@ -57,11 +57,11 @@ Toggle information layers on/off to minimize visual clutter:
 
 ### Progressive Web App
 
-- 📱 Install on desktop and mobile
-- 🔌 Offline functionality with Last Known Good (LKG) values
-- 🚀 Fast, native-like performance
-- 🌓 Light, dark, and system color modes
-- ♿ WCAG 2.2 Level AA accessibility
+- Install on desktop and mobile
+- Offline functionality with Last Known Good (LKG) values
+- Fast, native-like performance
+- Light, dark, and system color modes
+- WCAG 2.2 Level AA accessibility
 
 ### Role-Based Access
 
@@ -72,7 +72,7 @@ Toggle information layers on/off to minimize visual clutter:
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 This project is built with modern web technologies and strict architectural principles:
 
@@ -90,9 +90,9 @@ See [TECHNOLOGY-STACK.md](TECHNOLOGY-STACK.md) for detailed rationale and config
 
 ---
 
-## 📋 Project Status
+## Project Status
 
-**Current Phase:** Requirements & Planning ✅
+**Current Phase:** Requirements & Planning
 
 - [x] Requirements documentation
 - [x] Technology stack selection
@@ -107,7 +107,7 @@ See [TECHNOLOGY-STACK.md](TECHNOLOGY-STACK.md) for detailed rationale and config
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -167,7 +167,7 @@ pnpm preview
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 - [**REQUIREMENTS.md**](REQUIREMENTS.md) - Comprehensive project requirements and design decisions
 - [**DEVELOPMENT-STANDARDS.md**](DEVELOPMENT-STANDARDS.md) - Web standards, accessibility, security, performance guidelines
@@ -176,7 +176,7 @@ pnpm preview
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! This project strictly enforces:
 
@@ -191,7 +191,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 🏗️ Architecture Principles
+## Architecture Principles
 
 This project follows strict architectural patterns:
 
@@ -243,7 +243,7 @@ class MyService {
 
 ---
 
-## 🔒 Security
+## Security
 
 This project handles sensitive home automation data. Security is paramount:
 
@@ -260,7 +260,7 @@ This project handles sensitive home automation data. Security is paramount:
 
 ---
 
-## ♿ Accessibility
+## Accessibility
 
 WCAG 2.2 Level AA compliance is **required** for all features:
 
@@ -272,7 +272,7 @@ WCAG 2.2 Level AA compliance is **required** for all features:
 
 ---
 
-## 📊 Performance Targets
+## Performance Targets
 
 - **Initial Load:** < 3 seconds on 3G
 - **Time to Interactive:** < 5 seconds
@@ -282,7 +282,7 @@ WCAG 2.2 Level AA compliance is **required** for all features:
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
@@ -290,14 +290,14 @@ The MIT License provides maximum flexibility for community contributions and ado
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Home Assistant** - The amazing home automation platform this app connects to
 - **Open Source Community** - For the incredible tools and libraries we build upon
 
 ---
 
-## 📞 Support & Community
+## Support & Community
 
 - **Issues:** [GitHub Issues](https://github.com/GeekBlazed/hass-dash/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/GeekBlazed/hass-dash/discussions)
@@ -305,7 +305,7 @@ The MIT License provides maximum flexibility for community contributions and ado
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 ### Phase 1: Foundation (Current)
 
@@ -344,7 +344,7 @@ The MIT License provides maximum flexibility for community contributions and ado
 
 ---
 
-## ⭐ Star History
+## Star History
 
 If you find this project useful, please consider giving it a star! ⭐
 
