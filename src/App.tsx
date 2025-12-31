@@ -1,5 +1,11 @@
+import { container } from './core/di-container';
+import { TYPES } from './core/types';
+import type { IConfigService } from './interfaces/IConfigService';
+
 function App() {
-  const version = import.meta.env.VITE_APP_VERSION || '0.1.0';
+  // Get the ConfigService from the DI container
+  const configService = container.get<IConfigService>(TYPES.IConfigService);
+  const version = configService.getAppVersion();
 
   return (
     <div className="from-surface-light flex min-h-screen items-center justify-center bg-gradient-to-br to-gray-100 dark:from-gray-900 dark:to-gray-800">
