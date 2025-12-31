@@ -50,6 +50,103 @@ While Home Assistant is the tool for managing services and resources behind the 
 - Location data (geolocation, altitude)
 - Building layout/floor plan data
 
+### 2.4 Feature Flags
+
+**Requirement:** The application must support feature flags to enable continuous delivery of incomplete features.
+
+#### 2.4.1 Purpose
+
+Feature flags allow:
+
+- **Continuous Integration:** Merge code before features are complete
+- **Gradual Rollout:** Enable features for specific users or environments
+- **A/B Testing:** Compare different implementations
+- **Emergency Shutoff:** Disable problematic features without deployment
+- **Development Safety:** Keep experimental code isolated
+
+#### 2.4.2 Implementation Requirements
+
+**Environment-Based Flags (Phase 1):**
+
+- Flags defined in environment variables (`VITE_FEATURE_*`)
+- Boolean on/off states
+- Compile-time evaluation for production builds
+- Runtime evaluation in development
+
+**Feature Flag Service:**
+
+```typescript
+interface IFeatureFlagService {
+  isEnabled(flag: string): boolean;
+  getAll(): Record<string, boolean>;
+  // Development only:
+  enable(flag: string): void;
+  disable(flag: string): void;
+}
+```
+
+**React Integration:**
+
+```typescript
+// Hook-based
+const { isEnabled } = useFeatureFlag('FLOOR_PLAN');
+
+// Component wrapper
+<FeatureFlag name="CLIMATE_OVERLAY">
+  <ClimateOverlay />
+</FeatureFlag>
+```
+
+#### 2.4.3 Standard Feature Flags
+
+**Core Features:**
+
+- `FEATURE_FLOOR_PLAN` - 2D layout rendering
+- `FEATURE_HA_CONNECTION` - Home Assistant integration
+- `FEATURE_OVERLAYS` - Overlay system
+- `FEATURE_ONBOARDING` - First-time user wizard
+- `FEATURE_DEBUG_PANEL` - Development tools
+
+**Overlay Flags:**
+
+- `OVERLAY_LIGHTING` - Light control overlay
+- `OVERLAY_CLIMATE` - Temperature/HVAC overlay
+- `OVERLAY_SURVEILLANCE` - Camera/sensor overlay
+- `OVERLAY_AV` - Audio/visual device overlay
+- `OVERLAY_NETWORK` - Network topology overlay
+
+**User Role Flags:**
+
+- `ROLE_OWNER` - Full administrative access
+- `ROLE_RESIDENT` - Standard user features
+- `ROLE_VISITOR` - Limited guest access
+- `ROLE_CHILD` - Restricted child access
+
+#### 2.4.4 Flag Lifecycle
+
+1. **Creation:** Add to `.env.example` with default `false`
+2. **Development:** Test with flag enabled locally
+3. **Beta:** Enable for test users via remote config (future)
+4. **Launch:** Set default to `true` in production
+5. **Removal:** After stable (typically 2-4 weeks), remove flag and conditional code
+
+#### 2.4.5 Advanced Feature Flags (Future Phase)
+
+**Remote Configuration Service:**
+
+- LaunchDarkly, Firebase Remote Config, or custom API
+- User/group targeting
+- Percentage rollouts
+- Real-time flag updates without deployment
+- Analytics integration
+
+**Requirements for Remote Flags:**
+
+- Graceful degradation if flag service unavailable
+- Local flag overrides for development
+- Audit logging of flag changes
+- Performance: < 50ms flag evaluation
+
 ---
 
 ## 3. Core Functional Requirements

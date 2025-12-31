@@ -1,0 +1,172 @@
+{
+  "React Functional Component with TypeScript": {
+    "prefix": "rfc",
+    "body": [
+      "interface ${1:ComponentName}Props {",
+      "  $2",
+      "}",
+      "",
+      "export function ${1:ComponentName}({ $3 }: ${1:ComponentName}Props) {",
+      "  return (",
+      "    <div>",
+      "      $0",
+      "    </div>",
+      "  );",
+      "}"
+    ],
+    "description": "React Functional Component with TypeScript"
+  },
+  "Service Interface": {
+    "prefix": "iservice",
+    "body": [
+      "export interface I${1:Service}Service {",
+      "  ${2:methodName}(${3:params}): ${4:Promise<void>};",
+      "  $0",
+      "}"
+    ],
+    "description": "Service interface following SOLID principles"
+  },
+  "Service Implementation": {
+    "prefix": "service",
+    "body": [
+      "import { injectable } from 'inversify';",
+      "import { I${1:Service}Service } from '@/interfaces/I${1:Service}Service';",
+      "",
+      "@injectable()",
+      "export class ${1:Service}Service implements I${1:Service}Service {",
+      "  async ${2:methodName}(${3:params}): ${4:Promise<void>} {",
+      "    $0",
+      "  }",
+      "}"
+    ],
+    "description": "Service implementation with InversifyJS"
+  },
+  "Zustand Store": {
+    "prefix": "zustand",
+    "body": [
+      "import { create } from 'zustand';",
+      "import { immer } from 'zustand/middleware/immer';",
+      "",
+      "interface ${1:Store}State {",
+      "  ${2:property}: ${3:type};",
+      "  ${4:action}: (${5:params}) => void;",
+      "}",
+      "",
+      "export const use${1:Store}Store = create<${1:Store}State>()(",
+      "  immer((set) => ({",
+      "    ${2:property}: ${6:initialValue},",
+      "    ${4:action}: (${5:params}) => {",
+      "      set((state) => {",
+      "        $0",
+      "      });",
+      "    },",
+      "  }))",
+      ");"
+    ],
+    "description": "Zustand store with Immer middleware"
+  },
+  "Feature Flag Check": {
+    "prefix": "feature-flag",
+    "body": [
+      "const { isEnabled } = useFeatureFlag('${1:FEATURE_NAME}');",
+      "",
+      "if (!isEnabled) {",
+      "  return null;",
+      "}",
+      "",
+      "$0"
+    ],
+    "description": "Feature flag check pattern"
+  },
+  "Vitest Unit Test": {
+    "prefix": "vitest",
+    "body": [
+      "import { describe, it, expect, beforeEach } from 'vitest';",
+      "import { ${1:ComponentOrService} } from './${1:ComponentOrService}';",
+      "",
+      "describe('${1:ComponentOrService}', () => {",
+      "  beforeEach(() => {",
+      "    $2",
+      "  });",
+      "",
+      "  it('should ${3:description}', () => {",
+      "    $0",
+      "    expect().toBe();",
+      "  });",
+      "});"
+    ],
+    "description": "Vitest test suite template"
+  },
+  "React Testing Library Component Test": {
+    "prefix": "rtl-test",
+    "body": [
+      "import { describe, it, expect } from 'vitest';",
+      "import { render, screen } from '@testing-library/react';",
+      "import { ${1:Component} } from './${1:Component}';",
+      "",
+      "describe('${1:Component}', () => {",
+      "  it('should render ${2:description}', () => {",
+      "    render(<${1:Component} $3 />);",
+      "    ",
+      "    $0",
+      "    expect(screen.getByText('${4:text}')).toBeInTheDocument();",
+      "  });",
+      "});"
+    ],
+    "description": "React Testing Library component test"
+  },
+  "Konva Shape Component": {
+    "prefix": "konva-shape",
+    "body": [
+      "import { Rect, Text, Group } from 'react-konva';",
+      "",
+      "interface ${1:Shape}Props {",
+      "  x: number;",
+      "  y: number;",
+      "  width: number;",
+      "  height: number;",
+      "  $2",
+      "}",
+      "",
+      "export function ${1:Shape}({ x, y, width, height, $3 }: ${1:Shape}Props) {",
+      "  return (",
+      "    <Group x={x} y={y}>",
+      "      <Rect",
+      "        width={width}",
+      "        height={height}",
+      "        fill=\"${4:#ffffff}\"",
+      "        stroke=\"${5:#000000}\"",
+      "        strokeWidth={${6:1}}",
+      "      />",
+      "      $0",
+      "    </Group>",
+      "  );",
+      "}"
+    ],
+    "description": "Konva shape component template"
+  },
+  "DI Container Binding": {
+    "prefix": "di-bind",
+    "body": [
+      "container.bind<I${1:Service}Service>(TYPES.I${1:Service}Service).to(${1:Service}Service).inSingletonScope();"
+    ],
+    "description": "InversifyJS container binding"
+  },
+  "Custom Hook": {
+    "prefix": "use-hook",
+    "body": [
+      "import { useState, useEffect } from 'react';",
+      "",
+      "export function use${1:HookName}(${2:params}) {",
+      "  const [${3:state}, set${3/(.*)/${1:/capitalize}/}] = useState(${4:initialValue});",
+      "",
+      "  useEffect(() => {",
+      "    $0",
+      "  }, [${5:dependencies}]);",
+      "",
+      "  return { ${3:state}, set${3/(.*)/${1:/capitalize}/} };",
+      "}"
+    ],
+    "description": "Custom React hook template"
+  }
+}
