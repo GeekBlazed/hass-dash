@@ -1,33 +1,5 @@
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
-
-# Package manager
-.yarn/
-.pnpm-debug.log*
-pnpm-lock.yaml
-
-# Testing
-coverage/
-*.lcov
-.nyc_output/
-
-# Production build
-dist/
-dist-ssr/
-build/
-*.local
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
 # Logs
-logs/
+logs
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -35,78 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+node_modules
+dist
+dist-ssr
+*.local
+
 # Editor directories and files
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
 !.vscode/extensions.json
-!.vscode/*.code-snippets
-.idea/
+.idea
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-*.swp
-*~
-
-# OS files
-Thumbs.db
-Desktop.ini
-
-# TypeScript
-*.tsbuildinfo
-*.d.ts.map
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# Service Worker
-sw.js
-workbox-*.js
-
-# PWA
-public/sw.js
-public/workbox-*.js
-
-# Vitest
-.vitest/
-
-# Playwright
-playwright-report/
-test-results/
-playwright/.cache/
-
-# Lighthouse
-lighthouse-report/
-*.lighthouse.html
-
-# Bundle analysis
-stats.html
-bundle-report.html
-
-# Debug
-debug/
-.debugger/
-
-# Cache
-.cache/
-.parcel-cache/
-.eslintcache
-.stylelintcache
-
-# Documentation builds
-docs/.vitepress/dist/
-docs/.vitepress/cache/
-
-# Local development
-.local/
-*.dev.js
-
-# Backup files
-*.bak
-*.backup
