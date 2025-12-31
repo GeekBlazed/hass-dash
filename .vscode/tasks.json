@@ -1,0 +1,97 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "dev",
+      "label": "pnpm: dev",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^([^\\s].*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Local:",
+          "endsPattern": "ready in"
+        }
+      }
+    },
+    {
+      "type": "npm",
+      "script": "build",
+      "label": "pnpm: build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "type": "npm",
+      "script": "test",
+      "label": "pnpm: test",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "test:coverage",
+      "label": "pnpm: test:coverage",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "test:e2e",
+      "label": "pnpm: test:e2e",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "lint",
+      "label": "pnpm: lint",
+      "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "type": "npm",
+      "script": "format",
+      "label": "pnpm: format",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "type-check",
+      "label": "pnpm: type-check",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Clean and Install",
+      "type": "shell",
+      "command": "Remove-Item -Recurse -Force node_modules, dist -ErrorAction SilentlyContinue; pnpm install",
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Preview Production Build",
+      "type": "shell",
+      "command": "pnpm build && pnpm preview",
+      "group": "none",
+      "problemMatcher": []
+    }
+  ]
+}
