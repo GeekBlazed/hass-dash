@@ -5,9 +5,9 @@
 **Project:** Home Assistant Dashboard (hass-dash)  
 **Type:** Progressive Web Application (PWA)  
 **Tech Stack:** React 19.2, TypeScript (strict), Vite 7.2, Tailwind CSS 4  
-**Architecture:** SOLID principles with InversifyJS for dependency injection (to be added)  
+**Architecture:** SOLID principles with InversifyJS for dependency injection  
 **License:** MIT  
-**Current Status:** Iteration 0.2 Complete - Testing Infrastructure ✅
+**Current Status:** Iteration 0.4 Complete - Dependency Injection Setup ✅
 
 This is a visual, user-friendly front-end companion to Home Assistant. The application will provide a 2D spatial interface for monitoring and controlling smart home devices through various overlay systems (lighting, climate, surveillance, AV, networking).
 
@@ -21,10 +21,12 @@ This is a visual, user-friendly front-end companion to Home Assistant. The appli
 - ✅ Vitest testing framework with React Testing Library
 - ✅ Coverage reporting with 80% thresholds
 - ✅ GitHub Actions CI workflow
+- ✅ InversifyJS DI container with example service (ConfigService)
+- ✅ TypeScript decorators enabled for DI
 
 **Not Yet Implemented:**
 
-- ⏳ InversifyJS DI container (Iteration 0.4)
+- ⏳ Feature flag service (Iteration 0.5)
 - ⏳ State management with Zustand (Phase 1)
 - ⏳ Konva.js floor plans (Phase 3)
 - ⏳ Home Assistant integration (Phase 2)
@@ -33,7 +35,7 @@ See [IMPLEMENTATION-PLAN.md](../IMPLEMENTATION-PLAN.md) for detailed roadmap.
 
 ---
 
-## Working with Iteration 0.2
+## Working with Iteration 0.4
 
 **Current Codebase State:**
 
@@ -45,8 +47,89 @@ See [IMPLEMENTATION-PLAN.md](../IMPLEMENTATION-PLAN.md) for detailed roadmap.
 - **Vitest testing framework** with React Testing Library
 - **Test coverage reporting** with 80% minimum thresholds
 - **GitHub Actions CI** running tests, linting, and builds
-- No dependency injection yet
-- No state management library yet
+- **InversifyJS DI container** ([di-container.ts](../src/core/di-container.ts)) with type identifiers ([types.ts](../src/core/types.ts))
+- **Example service implementation:** ConfigService with interface and comprehensive tests
+- **TypeScript decorators enabled** in tsconfig.app.json
+- No state management library yet (Zustand coming in Phase 1)
+
+**DI Container Setup:**
+
+The project now has a fully functional dependency injection system using InversifyJS:
+
+```typescript
+// src/core/types.ts - Define type identifiers
+export const TYPES = {
+  IConfigService: Symbol.for('IConfigService'),
+};
+
+// src/interfaces/IConfigService.ts - Define interface
+export interface IConfigService {
+  getAppVersion(): string;
+  isFeatureEnabled(flag: string): boolean;
+  getConfig(key: string): string | undefined;
+}
+
+// src/services/ConfigService.ts - Implement service
+import { injectable } from 'inversify';
+import type { IConfigService } from '../interfaces/IConfigService';
+
+@injectable()
+export class ConfigService implements IConfigService {
+  getAppVersion(): string {
+    return import.meta.env.VITE_APP_VERSION || '0.1.0';
+  }
+
+  isFeatureEnabled(flag: string): boolean {
+    const key = `VITE_FEATURE_${flag.toUpperCase()}`;
+    return import.meta.env[key] === 'true';
+  }
+
+  getConfig(key: string): string | undefined {
+    const prefixedKey = key.startsWith('VITE_') ? key : `VITE_${key}`;
+    return import.meta.env[prefixedKey];
+  }
+}
+
+// src/core/di-container.ts - Configure container
+import 'reflect-metadata';
+import { Container } from 'inversify';
+import { TYPES } from './types';
+import type { IConfigService } from '../interfaces/IConfigService';
+import { ConfigService } from '../services/ConfigService';
+
+const container = new Container();
+
+container.bind<IConfigService>(TYPES.IConfigService).to(ConfigService).inSingletonScope();
+
+export { container };
+
+// src/App.tsx - Use in component
+import { container } from './core/di-container';
+import { TYPES } from './core/types';
+import type { IConfigService } from './interfaces/IConfigService';
+
+function App() {
+  const configService = container.get<IConfigService>(TYPES.IConfigService);
+  const version = configService.getAppVersion();
+  // ... rest of component
+}
+```
+
+**Important Notes:**
+
+- `reflect-metadata` must be imported in `main.tsx` BEFORE any decorated classes are loaded
+- TypeScript decorators require `experimentalDecorators: true` and `emitDecoratorMetadata: true` in tsconfig.app.json
+- All services should be registered as singletons using `.inSingletonScope()`
+- Type identifiers use `Symbol.for()` for better debugging
+
+**Before Adding New Services:**
+
+1. Define interface in `src/interfaces/I*.ts`
+2. Add type identifier to `src/core/types.ts`
+3. Implement service with `@injectable()` decorator
+4. Register in `src/core/di-container.ts`
+5. Write comprehensive tests (unit tests for service, integration tests for container)
+6. Use `container.get<IServiceName>(TYPES.IServiceName)` in consumers
 
 **Before Adding New Features:**
 
