@@ -4,11 +4,130 @@
 
 **Project:** Home Assistant Dashboard (hass-dash)  
 **Type:** Progressive Web Application (PWA)  
-**Tech Stack:** React 18+, TypeScript (strict), Vite 5+, Tailwind CSS, Konva.js  
-**Architecture:** SOLID principles with InversifyJS for dependency injection  
-**License:** MIT
+**Tech Stack:** React 19.2, TypeScript (strict), Vite 7.2, Tailwind CSS 4  
+**Architecture:** SOLID principles with InversifyJS for dependency injection (to be added)  
+**License:** MIT  
+**Current Status:** Iteration 0.2 Complete - Testing Infrastructure ✅
 
-This is a visual, user-friendly front-end companion to Home Assistant. The application provides a 2D spatial interface for monitoring and controlling smart home devices through various overlay systems (lighting, climate, surveillance, AV, networking).
+This is a visual, user-friendly front-end companion to Home Assistant. The application will provide a 2D spatial interface for monitoring and controlling smart home devices through various overlay systems (lighting, climate, surveillance, AV, networking).
+
+**What's Implemented:**
+
+- ✅ Vite + React + TypeScript setup with strict mode
+- ✅ Tailwind CSS 4 with dark mode support
+- ✅ ESLint + Prettier configuration
+- ✅ Welcome screen (see [App.tsx](../src/App.tsx))
+- ✅ Environment variable support
+- ✅ Vitest testing framework with React Testing Library
+- ✅ Coverage reporting with 80% thresholds
+- ✅ GitHub Actions CI workflow
+
+**Not Yet Implemented:**
+
+- ⏳ InversifyJS DI container (Iteration 0.4)
+- ⏳ State management with Zustand (Phase 1)
+- ⏳ Konva.js floor plans (Phase 3)
+- ⏳ Home Assistant integration (Phase 2)
+
+See [IMPLEMENTATION-PLAN.md](../IMPLEMENTATION-PLAN.md) for detailed roadmap.
+
+---
+
+## Working with Iteration 0.2
+
+**Current Codebase State:**
+
+- Basic Vite + React scaffold with TypeScript strict mode
+- Welcome screen ([App.tsx](../src/App.tsx)) showing project info and links
+- Tailwind CSS 4 configured with custom theme colors (see [tailwind.config.js](../tailwind.config.js))
+- Environment variables in `.env.example` (all features disabled)
+- ESLint with flat config using typescript-eslint
+- **Vitest testing framework** with React Testing Library
+- **Test coverage reporting** with 80% minimum thresholds
+- **GitHub Actions CI** running tests, linting, and builds
+- No dependency injection yet
+- No state management library yet
+
+**Before Adding New Features:**
+
+1. Check [IMPLEMENTATION-PLAN.md](../IMPLEMENTATION-PLAN.md) for planned iteration
+2. Ensure feature has a corresponding feature flag
+3. **Write tests first or alongside implementation** - 80% coverage is mandatory
+4. Follow SOLID principles even before DI container exists
+
+**Dependencies to Add in Future Iterations:**
+
+- `inversify` + `reflect-metadata` (Iteration 0.4)
+- `zustand` + `immer` (Phase 1)
+- `konva` + `react-konva` (Phase 3)
+- `axios` (Phase 2)
+- `@playwright/test` (Phase 5)
+
+---
+
+## Current Implementation Details
+
+### Tailwind CSS 4 Configuration
+
+**Custom Theme Colors (defined in [tailwind.config.js](../tailwind.config.js)):**
+
+```javascript
+colors: {
+  primary: {
+    light: '#5c6bc0',
+    DEFAULT: '#3f51b5',
+    dark: '#303f9f',
+  },
+  surface: {
+    light: '#ffffff',
+    DEFAULT: '#f5f5f5',
+    dark: '#121212',
+  },
+}
+```
+
+**Usage Examples from Welcome Screen:**
+
+- `text-primary` - Uses #3f51b5
+- `dark:text-primary-light` - Uses #5c6bc0 in dark mode
+- `bg-primary hover:bg-primary-dark` - Button states
+- `from-surface-light to-gray-100` - Gradient backgrounds
+
+**Dark Mode:**
+
+- Class-based: `darkMode: 'class'`
+- Toggle by adding/removing `dark` class on root element
+- All components should support both light and dark modes
+
+### Environment Variables
+
+All environment variables must be prefixed with `VITE_` to be exposed to the client.
+
+**Current Variables ([.env.example](../.env.example)):**
+
+```bash
+VITE_APP_VERSION=0.1.0          # Shown in welcome screen
+VITE_FEATURE_FLOOR_PLAN=false   # All features currently disabled
+VITE_HA_BASE_URL=               # Not configured yet
+```
+
+**Access in Code:**
+
+```typescript
+const version = import.meta.env.VITE_APP_VERSION || '0.1.0';
+```
+
+### TypeScript Configuration
+
+**Strict Mode Enabled** ([tsconfig.app.json](../tsconfig.app.json)):
+
+- `strict: true` - All strict checks enabled
+- `noUnusedLocals: true` - Warn on unused variables
+- `noUnusedParameters: true` - Warn on unused parameters
+- `noFallthroughCasesInSwitch: true` - Prevent switch fallthrough bugs
+- `noUncheckedSideEffectImports: true` - Catch side-effect imports
+
+**Target:** ES2022 with modern browser support
 
 ---
 
@@ -26,18 +145,23 @@ interface IWeatherService {
 
 @injectable()
 class WeatherService implements IWeatherService {
-  async getCurrentWeather(): Promise<Weather> { /* ... */ }
+  async getCurrentWeather(): Promise<Weather> {
+    /* ... */
+  }
 }
 
 // ❌ INCORRECT
 class WeatherService {
-  async getCurrentWeather() { /* ... */ }
+  async getCurrentWeather() {
+    /* ... */
+  }
 }
 ```
 
 **Interface naming convention:** `IServiceName`
 
 **Dependency injection is mandatory:**
+
 - Use InversifyJS `@injectable()` decorator
 - Constructor injection only
 - No service locator pattern
@@ -46,6 +170,7 @@ class WeatherService {
 ### 2. TypeScript Strict Mode
 
 **All code must pass TypeScript strict mode:**
+
 - No implicit `any` types
 - Explicit return types on functions
 - Null/undefined checks required
@@ -54,12 +179,12 @@ class WeatherService {
 ```typescript
 // ✅ CORRECT
 function calculateTemperature(celsius: number): number {
-  return (celsius * 9/5) + 32;
+  return (celsius * 9) / 5 + 32;
 }
 
 // ❌ INCORRECT
 function calculateTemperature(celsius) {
-  return (celsius * 9/5) + 32;
+  return (celsius * 9) / 5 + 32;
 }
 ```
 
@@ -69,7 +194,7 @@ function calculateTemperature(celsius) {
 
 ```typescript
 // Environment variable
-VITE_FEATURE_CLIMATE_OVERLAY=false
+VITE_FEATURE_CLIMATE_OVERLAY = false;
 
 // Usage
 const { isEnabled } = useFeatureFlag('CLIMATE_OVERLAY');
@@ -77,6 +202,7 @@ if (!isEnabled) return null;
 ```
 
 **Standard flags:**
+
 - `FEATURE_FLOOR_PLAN` - 2D layout
 - `FEATURE_HA_CONNECTION` - Home Assistant integration
 - `FEATURE_OVERLAYS` - Overlay system
@@ -89,6 +215,7 @@ if (!isEnabled) return null;
 ### 4. Testing Requirements
 
 **80% code coverage minimum:**
+
 - Unit tests for all services
 - Component tests with React Testing Library
 - E2E tests for critical user flows
@@ -96,15 +223,16 @@ if (!isEnabled) return null;
 
 ```typescript
 // Test file naming
-MyComponent.tsx
-MyComponent.test.tsx  // Component tests
-MyService.ts
-MyService.test.ts     // Service tests
+MyComponent.tsx;
+MyComponent.test.tsx; // Component tests
+MyService.ts;
+MyService.test.ts; // Service tests
 ```
 
 ### 5. Accessibility (WCAG 2.2 AA)
 
 **Required for all components:**
+
 - Semantic HTML elements
 - ARIA labels where needed
 - Keyboard navigation support
@@ -130,14 +258,22 @@ MyService.test.ts     // Service tests
 
 ### Import Organization
 
+**IMPORTANT:** Path aliases (`@/`) are NOT YET configured. Use relative imports until Iteration 0.4.
+
 ```typescript
+// Current (Iteration 0.1): Use relative imports
+import { useState, useEffect } from 'react';
+import App from './App';
+import './index.css';
+
+// Future (Iteration 0.4+): After DI setup
 // 1. External dependencies
 import { injectable, inject } from 'inversify';
 import { useState, useEffect } from 'react';
 
 // 2. Internal interfaces (alphabetically)
-import { IHomeAssistantClient } from '@/interfaces/IHomeAssistantClient';
-import { IWeatherService } from '@/interfaces/IWeatherService';
+import type { IHomeAssistantClient } from '@/interfaces/IHomeAssistantClient';
+import type { IWeatherService } from '@/interfaces/IWeatherService';
 
 // 3. Internal implementations
 import { TYPES } from '@/core/types';
@@ -151,6 +287,18 @@ import './MyComponent.css';
 ```
 
 ### File Structure
+
+**Current (Iteration 0.1):**
+
+```
+src/
+├── App.tsx           # Main app component (welcome screen)
+├── main.tsx          # Entry point
+├── index.css         # Global styles (Tailwind imports)
+└── assets/           # Static assets
+```
+
+**Future (Phase 1+):**
 
 ```
 src/
@@ -182,23 +330,23 @@ export function MyComponent({ title, onAction }: MyComponentProps) {
   // 3a. Hooks
   const { isEnabled } = useFeatureFlag('FEATURE_NAME');
   const store = useAppStore();
-  
+
   // 3b. State
   const [loading, setLoading] = useState(false);
-  
+
   // 3c. Effects
   useEffect(() => {
     // ...
   }, []);
-  
+
   // 3d. Handlers
   const handleClick = () => {
     // ...
   };
-  
+
   // 3e. Early returns
   if (!isEnabled) return null;
-  
+
   // 3f. Render
   return (
     <div>
@@ -218,10 +366,8 @@ import { TYPES } from '@/core/types';
 
 @injectable()
 export class MyService implements IMyService {
-  constructor(
-    @inject(TYPES.IHttpClient) private httpClient: IHttpClient
-  ) {}
-  
+  constructor(@inject(TYPES.IHttpClient) private httpClient: IHttpClient) {}
+
   async myMethod(param: string): Promise<Result> {
     // Implementation
   }
@@ -269,7 +415,7 @@ export class WebSocketService implements IWebSocketService {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  
+
   async connect(): Promise<void> {
     // Implement with exponential backoff
   }
@@ -314,7 +460,9 @@ export function FloorPlan({ rooms }: FloorPlanProps) {
 ```typescript
 // BAD
 export class WeatherService {
-  async getWeather() { /* ... */ }
+  async getWeather() {
+    /* ... */
+  }
 }
 ```
 
@@ -322,7 +470,9 @@ export class WeatherService {
 
 ```typescript
 // BAD
-function process(data) { /* ... */ }
+function process(data) {
+  /* ... */
+}
 ```
 
 ### ❌ Direct Service Instantiation
@@ -360,7 +510,7 @@ function MyComponent() {
 ```typescript
 /**
  * Fetches the current weather conditions from Home Assistant.
- * 
+ *
  * @param location - The location identifier from HA
  * @returns Promise resolving to current weather data
  * @throws {ApiError} If the weather service is unavailable
@@ -373,6 +523,7 @@ async getCurrentWeather(location: string): Promise<Weather> {
 ### README Updates
 
 When adding new features, update:
+
 - Feature list in README.md
 - Architecture examples if applicable
 - Environment variables in .env.example
@@ -470,11 +621,7 @@ interface EntityState {
 
 ```typescript
 interface IHomeAssistantClient {
-  callService(
-    domain: string,
-    service: string,
-    data?: Record<string, unknown>
-  ): Promise<void>;
+  callService(domain: string, service: string, data?: Record<string, unknown>): Promise<void>;
 }
 
 // Usage
@@ -491,6 +638,7 @@ await haClient.callService('light', 'turn_on', {
 ### Pre-commit Checks
 
 Every commit should pass:
+
 - `pnpm lint` - ESLint checks
 - `pnpm type-check` - TypeScript compilation
 - `pnpm test` - Unit tests
@@ -521,19 +669,20 @@ Every commit should pass:
 ```bash
 # Development
 pnpm dev              # Start dev server
-pnpm build           # Production build
+pnpm build           # Production build (tsc + vite build)
 pnpm preview         # Preview production build
 
 # Testing
-pnpm test            # Run unit tests
-pnpm test:watch      # Watch mode
-pnpm test:coverage   # Coverage report
-pnpm test:e2e        # Playwright E2E tests
+pnpm test            # Run tests in watch mode
+pnpm test:run        # Run tests once
+pnpm test:ui         # Open Vitest UI
+pnpm test:coverage   # Run tests with coverage report
 
 # Code Quality
 pnpm lint            # ESLint
-pnpm format          # Prettier
-pnpm type-check      # TypeScript
+pnpm format          # Prettier (write)
+pnpm format:check    # Prettier (check only)
+pnpm type-check      # TypeScript (no emit)
 ```
 
 ---
