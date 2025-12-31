@@ -7,7 +7,7 @@
 **Tech Stack:** React 19.2, TypeScript (strict), Vite 7.2, Tailwind CSS 4  
 **Architecture:** SOLID principles with InversifyJS for dependency injection  
 **License:** MIT  
-**Current Status:** Iteration 0.4 Complete - Dependency Injection Setup ✅
+**Current Status:** Iteration 0.5 Complete - Feature Flag System ✅
 
 This is a visual, user-friendly front-end companion to Home Assistant. The application will provide a 2D spatial interface for monitoring and controlling smart home devices through various overlay systems (lighting, climate, surveillance, AV, networking).
 
@@ -19,14 +19,16 @@ This is a visual, user-friendly front-end companion to Home Assistant. The appli
 - ✅ Welcome screen (see [App.tsx](../src/App.tsx))
 - ✅ Environment variable support
 - ✅ Vitest testing framework with React Testing Library
-- ✅ Coverage reporting with 80% thresholds
+- ✅ Coverage reporting with 96%+ actual coverage
 - ✅ GitHub Actions CI workflow
-- ✅ InversifyJS DI container with example service (ConfigService)
+- ✅ InversifyJS DI container with services (ConfigService, FeatureFlagService)
 - ✅ TypeScript decorators enabled for DI
+- ✅ Feature flag system with runtime overrides
+- ✅ Custom React hooks (useFeatureFlag, useFeatureFlags)
+- ✅ Debug panel component for feature flag management
 
 **Not Yet Implemented:**
 
-- ⏳ Feature flag service (Iteration 0.5)
 - ⏳ State management with Zustand (Phase 1)
 - ⏳ Konva.js floor plans (Phase 3)
 - ⏳ Home Assistant integration (Phase 2)
@@ -35,21 +37,24 @@ See [IMPLEMENTATION-PLAN.md](../IMPLEMENTATION-PLAN.md) for detailed roadmap.
 
 ---
 
-## Working with Iteration 0.4
+## Working with Iteration 0.5
 
 **Current Codebase State:**
 
 - Basic Vite + React scaffold with TypeScript strict mode
 - Welcome screen ([App.tsx](../src/App.tsx)) showing project info and links
 - Tailwind CSS 4 configured with custom theme colors (see [tailwind.config.js](../tailwind.config.js))
-- Environment variables in `.env.example` (all features disabled)
+- Environment variables in `.env.example` with feature flags
 - ESLint with flat config using typescript-eslint
 - **Vitest testing framework** with React Testing Library
-- **Test coverage reporting** with 80% minimum thresholds
+- **Test coverage reporting** with 96%+ actual coverage
 - **GitHub Actions CI** running tests, linting, and builds
 - **InversifyJS DI container** ([di-container.ts](../src/core/di-container.ts)) with type identifiers ([types.ts](../src/core/types.ts))
-- **Example service implementation:** ConfigService with interface and comprehensive tests
+- **Service implementations:** ConfigService and FeatureFlagService with interfaces and comprehensive tests
 - **TypeScript decorators enabled** in tsconfig.app.json
+- **Feature flag system** with sessionStorage overrides for dev mode
+- **Custom React hooks** for feature flag consumption (useFeatureFlag, useFeatureFlags)
+- **DebugPanel component** for visualizing and toggling feature flags
 - No state management library yet (Zustand coming in Phase 1)
 
 **DI Container Setup:**
@@ -121,6 +126,49 @@ function App() {
 - TypeScript decorators require `experimentalDecorators: true` and `emitDecoratorMetadata: true` in tsconfig.app.json
 - All services should be registered as singletons using `.inSingletonScope()`
 - Type identifiers use `Symbol.for()` for better debugging
+
+**Feature Flag System:**
+
+The project now has a complete feature flag infrastructure for continuous delivery:
+
+```typescript
+// Check if a feature is enabled in any component
+import { useFeatureFlag } from './hooks/useFeatureFlag';
+
+function MyComponent() {
+  const { isEnabled } = useFeatureFlag('FLOOR_PLAN');
+  
+  if (!isEnabled) return null;
+  
+  return <FloorPlan />;
+}
+
+// Get all flags (useful for debug/admin UIs)
+import { useFeatureFlags } from './hooks/useFeatureFlag';
+
+function AdminPanel() {
+  const { flags, service } = useFeatureFlags();
+  
+  return Object.entries(flags).map(([name, enabled]) => (
+    <div key={name}>
+      {name}: {enabled ? 'ON' : 'OFF'}
+    </div>
+  ));
+}
+
+// Toggle flags programmatically (dev mode only)
+const { service } = useFeatureFlag('SOME_FEATURE');
+service.enable('FLOOR_PLAN');  // Stored in sessionStorage
+service.disable('FLOOR_PLAN');
+```
+
+**Feature Flag Properties:**
+
+- Defined in environment variables with `VITE_FEATURE_` prefix
+- Runtime overrides stored in sessionStorage (dev mode only)
+- Production mode blocks toggle operations
+- DebugPanel component visualizes all flags (enabled with `DEBUG_PANEL` flag)
+- Flag names normalized (case-insensitive, prefix optional)
 
 **Before Adding New Services:**
 

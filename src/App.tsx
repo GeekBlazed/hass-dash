@@ -1,11 +1,16 @@
 import { container } from './core/di-container';
 import { TYPES } from './core/types';
 import type { IConfigService } from './interfaces/IConfigService';
+import { useFeatureFlag } from './hooks/useFeatureFlag';
+import { DebugPanel } from './components/DebugPanel';
 
 function App() {
   // Get the ConfigService from the DI container
   const configService = container.get<IConfigService>(TYPES.IConfigService);
   const version = configService.getAppVersion();
+
+  // Check if debug panel should be shown
+  const { isEnabled: showDebugPanel } = useFeatureFlag('DEBUG_PANEL');
 
   return (
     <div className="from-surface-light flex min-h-screen items-center justify-center bg-gradient-to-br to-gray-100 dark:from-gray-900 dark:to-gray-800">
@@ -60,6 +65,9 @@ function App() {
           </kbd>{' '}
           to open developer tools
         </p>
+
+        {/* Debug Panel (feature-flagged) */}
+        {showDebugPanel && <DebugPanel />}
       </div>
     </div>
   );

@@ -1,7 +1,9 @@
 import { Container } from 'inversify';
 import 'reflect-metadata';
 import type { IConfigService } from '../interfaces/IConfigService';
+import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
 import { ConfigService } from '../services/ConfigService';
+import { FeatureFlagService } from '../services/FeatureFlagService';
 import { TYPES } from './types';
 
 /**
@@ -25,6 +27,7 @@ const container = new Container();
 // Bind services to their interfaces
 // All bindings use singleton scope to ensure single instances throughout the app
 container.bind<IConfigService>(TYPES.IConfigService).to(ConfigService).inSingletonScope();
+container.bind<IFeatureFlagService>(TYPES.IFeatureFlagService).to(FeatureFlagService).inSingletonScope();
 
 // Export the configured container
 export { container };
