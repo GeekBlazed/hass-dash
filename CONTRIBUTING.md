@@ -10,6 +10,7 @@ Thank you for your interest in contributing to **hass-dash**! This document prov
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
 - [Development Workflow](#development-workflow)
+- [Continuous Integration & Delivery](#continuous-integration--delivery)
 - [Branch Protection & Pull Requests](#branch-protection--pull-requests)
 - [Code Quality Standards](#code-quality-standards)
 - [Testing Requirements](#testing-requirements)
@@ -116,6 +117,94 @@ git commit -m "feat(overlay): add climate heat map visualization"
 # Push to your fork
 git push origin feature/my-awesome-feature
 ```
+
+---
+
+## Continuous Integration & Delivery
+
+### Ship-It-Today Philosophy
+
+This project follows a **continuous integration and continuous delivery (CI/CD)** model:
+
+**Core Principles:**
+
+- **Main is Always Deployable** - Every commit on main goes to production
+- **Small, Incremental Changes** - PRs should be focused and reviewable in < 30 minutes
+- **Feature Flags** - Hide incomplete features behind flags (see [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md))
+- **Test Before Merge** - All changes must have appropriate test coverage
+- **Fail Fast** - Automated checks catch issues immediately
+
+### Micro-Releases
+
+Each merged PR is a **micro-release**:
+
+- Automatically deployed to production
+- Tagged with semantic version
+- Documented in changelog
+- Monitored for errors
+
+**Benefits:**
+
+- Faster feedback from real users
+- Easier to identify and roll back issues
+- Lower risk per deployment
+- Continuous value delivery
+
+### Working with Feature Flags
+
+For features that take multiple PRs, use **feature flags**:
+
+```typescript
+// Add flag to .env
+VITE_FEATURE_CLIMATE_OVERLAY=false
+
+// Use in code
+if (featureFlags.isEnabled('CLIMATE_OVERLAY')) {
+  return <ClimateOverlay />;
+}
+```
+
+**Flag Guidelines:**
+
+- Add new flags to `.env.example`
+- Default to `false` until feature is complete
+- Document flag purpose in code comments
+- Remove flags promptly after feature launches
+- Set quarterly reminders to audit stale flags
+
+### CI Pipeline
+
+Every PR triggers automated checks:
+
+**✅ Required Checks:**
+
+1. **Lint** - Code style compliance (ESLint + Prettier)
+2. **Type Check** - TypeScript strict mode
+3. **Unit Tests** - All tests pass, coverage ≥ 80%
+4. **Build** - Production build succeeds
+5. **Bundle Size** - Must be < 250KB gzipped
+
+**📊 Optional Reports:**
+
+- Code coverage trends
+- Bundle size comparison
+- Lighthouse performance scores
+
+### CD Pipeline
+
+On merge to `main`, automatic deployment:
+
+1. **Build** production assets
+2. **Deploy** to hosting (GitHub Pages/Netlify)
+3. **Tag** with version number
+4. **Notify** team in chat/email
+5. **Monitor** for errors
+
+**Rollback Strategy:**
+
+- Revert commit and push immediately
+- OR redeploy previous tag
+- Post-mortem to prevent recurrence
 
 ---
 

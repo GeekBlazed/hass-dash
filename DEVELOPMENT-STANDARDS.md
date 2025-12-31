@@ -75,7 +75,170 @@ Powers interactivity and application logic.
 
 ---
 
-## 3. Accessibility Standards
+## 3. Continuous Integration & Delivery (CI/CD)
+
+### Philosophy
+
+This project follows a **"ship-it-today"** continuous delivery model where every merge to `main` is automatically deployed to production.
+
+### CI/CD Principles
+
+**✅ Always Deployable:**
+
+- Main branch is production-ready at all times
+- No "integration hell" - merge frequently
+- Feature flags hide incomplete work
+
+**✅ Automated Testing:**
+
+- Unit tests run on every commit
+- Integration tests run on every PR
+- E2E tests run before deployment
+- Coverage must be ≥ 80%
+
+**✅ Automated Deployment:**
+
+- Merge to main triggers build
+- Build artifacts deployed automatically
+- Rollback available via git revert
+
+**✅ Small Batch Sizes:**
+
+- PRs should be < 400 lines changed
+- Focused on single feature/fix
+- Reviewable in < 30 minutes
+
+### CI Pipeline (GitHub Actions)
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on: [pull_request, push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm type-check
+      - run: pnpm test:coverage
+      - run: pnpm build
+      - name: Check bundle size
+        run: pnpm bundlesize
+```
+
+### CD Pipeline
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+```
+
+### Feature Flags
+
+**Purpose:** Enable continuous integration of incomplete features.
+
+```typescript
+// Define in .env
+VITE_FEATURE_CLIMATE_OVERLAY=false
+
+// Service implementation
+class FeatureFlagService implements IFeatureFlagService {
+  isEnabled(flag: string): boolean {
+    const envVar = `VITE_FEATURE_${flag.toUpperCase()}`;
+    return import.meta.env[envVar] === 'true';
+  }
+}
+
+// Usage in components
+function Dashboard() {
+  const flags = useFeatureFlags();
+  
+  return (
+    <>
+      <FloorPlan />
+      {flags.isEnabled('CLIMATE_OVERLAY') && <ClimateOverlay />}
+    </>
+  );
+}
+```
+
+**Flag Best Practices:**
+
+- Default flags to `false` until feature complete
+- Remove flags 2-4 weeks after launch
+- Set quarterly reminders to audit stale flags
+- Document flag purpose in code comments
+
+### Release Strategy
+
+**Micro-Releases:**
+
+- Every PR merge = new version deployed
+- Semantic versioning: `v0.1.0`, `v0.1.1`, etc.
+- Automated changelog generation
+
+**Monthly Milestones:**
+
+- Group features into themed releases
+- Marketing announcements
+- Blog posts and demos
+- Community engagement
+
+### Monitoring & Rollback
+
+**Post-Deployment Monitoring:**
+
+- Error tracking (Sentry, LogRocket)
+- Performance monitoring (Web Vitals)
+- User feedback channels
+
+**Rollback Procedure:**
+
+```bash
+# Identify bad commit
+git log --oneline
+
+# Revert and push
+git revert <commit-hash>
+git push origin main
+
+# CI/CD automatically deploys reverted version
+```
+
+**Post-Mortem:**
+
+- Document what went wrong
+- Identify prevention measures
+- Update tests to catch similar issues
+- Share learnings with team
+
+---
+
+## 4. Accessibility Standards
 
 **Accessibility is not optional — it is required by law in many regions.**
 
@@ -109,7 +272,7 @@ Powers interactivity and application logic.
 
 ---
 
-## 4. Security & Privacy Standards
+## 5. Security & Privacy Standards
 
 ### HTTPS / TLS
 
@@ -154,7 +317,7 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' '
 
 ---
 
-## 5. Performance Standards
+## 6. Performance Standards
 
 ### Core Web Vitals
 
@@ -190,7 +353,7 @@ Measures real-world UX:
 
 ---
 
-## 6. Progressive Web App (PWA) Standards
+## 7. Progressive Web App (PWA) Standards
 
 ### Service Workers
 
@@ -254,7 +417,7 @@ Controls installation and "app-like" behavior.
 
 ---
 
-## 7. IEEE Standards Relevant to Modern Web Applications
+## 8. IEEE Standards Relevant to Modern Web Applications
 
 IEEE doesn't define browser standards, but it defines protocols that the web depends on.
 
@@ -276,7 +439,7 @@ A new global standard defining:
 
 ---
 
-## 8. Developer Quick Commands & Snippets
+## 9. Developer Quick Commands & Snippets
 
 ### HTML5 Boilerplate
 
@@ -445,7 +608,7 @@ class WebSocketManager {
 
 ---
 
-## 9. Summary Table (At a Glance)
+## 10. Summary Table (At a Glance)
 
 | Category | Key Standards |
 |----------|---------------|
@@ -462,7 +625,7 @@ class WebSocketManager {
 
 ---
 
-## 10. Testing Standards
+## 11. Testing Standards
 
 ### Browser Compatibility Testing
 
@@ -495,7 +658,7 @@ class WebSocketManager {
 
 ---
 
-## 11. Additional Resources
+## 12. Additional Resources
 
 ### Official Documentation
 
