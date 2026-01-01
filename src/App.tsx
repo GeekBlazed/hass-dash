@@ -18,7 +18,7 @@ function App() {
     <>
       <Dashboard />
       {showDebugPanel && (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div className="fixed right-4 bottom-4 z-50">
           <DebugPanel />
         </div>
       )}

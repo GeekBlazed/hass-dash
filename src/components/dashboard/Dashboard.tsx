@@ -5,7 +5,14 @@ import { WeatherDisplay } from './WeatherDisplay';
 
 function HomeIcon() {
   return (
-    <svg width="48" height="48" viewBox="0 0 68 52" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="48"
+      height="48"
+      viewBox="0 0 68 52"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <path d="M10,26 L34,10 L58,26" />
       <rect x="18" y="26" width="32" height="26" rx="2" />
       <rect x="30" y="34" width="8" height="10" rx="1" />
@@ -44,18 +51,14 @@ export function Dashboard() {
     setActiveAction(actionId);
     // Apply action to all rooms
     if (actionId === 'all-off') {
-      setRooms((prev) =>
-        prev.map((r) => (r.status ? { ...r, status: 'off' as const } : r))
-      );
+      setRooms((prev) => prev.map((r) => (r.status ? { ...r, status: 'off' as const } : r)));
     } else if (actionId === 'bright') {
-      setRooms((prev) =>
-        prev.map((r) => (r.status ? { ...r, status: 'on' as const } : r))
-      );
+      setRooms((prev) => prev.map((r) => (r.status ? { ...r, status: 'on' as const } : r)));
     }
   };
 
   return (
-    <div className="min-h-screen bg-warm-gradient">
+    <div className="bg-warm-gradient min-h-screen">
       <div className="mx-auto flex min-h-screen max-w-7xl">
         {/* Left Sidebar */}
         <aside className="flex w-72 flex-col px-8 py-10">
@@ -64,11 +67,11 @@ export function Dashboard() {
             <div className="text-text-primary">
               <HomeIcon />
             </div>
-            <h1 className="text-2xl font-semibold text-text-primary">Home</h1>
+            <h1 className="text-text-primary text-2xl font-semibold">Home</h1>
           </div>
 
           {/* Divider */}
-          <div className="mb-6 h-px bg-panel-border" />
+          <div className="bg-panel-border mb-6 h-px" />
 
           {/* Quick Actions */}
           <QuickActions onAction={handleAction} />
@@ -77,7 +80,7 @@ export function Dashboard() {
           <div className="flex-1" />
 
           {/* Bottom info */}
-          <div className="space-y-2 text-sm text-text-muted">
+          <div className="text-text-muted space-y-2 text-sm">
             <div>Sat, Dec 31</div>
             <div>HassDash v0.1.0</div>
           </div>
@@ -88,20 +91,14 @@ export function Dashboard() {
           {/* Header with Weather */}
           <div className="mb-8 flex items-start justify-between">
             <div>
-              <h2 className="text-lg text-text-secondary">Welcome back</h2>
-              <p className="mt-1 text-2xl font-semibold text-text-primary">
-                Your home at a glance
-              </p>
+              <h2 className="text-text-secondary text-lg">Welcome back</h2>
+              <p className="text-text-primary mt-1 text-2xl font-semibold">Your home at a glance</p>
             </div>
-            <WeatherDisplay
-              temperature={4.8}
-              condition="Breezy and foggy"
-              humidity={47}
-            />
+            <WeatherDisplay temperature={4.8} condition="Breezy and foggy" humidity={47} />
           </div>
 
           {/* Divider */}
-          <div className="mb-8 h-px bg-panel-border" />
+          <div className="bg-panel-border mb-8 h-px" />
 
           {/* Room Grid */}
           <div className="grid flex-1 grid-cols-3 gap-4">
@@ -111,7 +108,7 @@ export function Dashboard() {
           </div>
 
           {/* Bottom Stats */}
-          <div className="mt-8 flex items-center justify-between text-sm text-text-muted">
+          <div className="text-text-muted mt-8 flex items-center justify-between text-sm">
             <span>6 rooms</span>
             <span>•</span>
             <span>12 devices</span>
