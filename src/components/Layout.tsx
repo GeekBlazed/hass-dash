@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Header } from './Header';
 import { Footer } from './Footer';
+import { Header } from './Header';
 
 interface LayoutProps {
   children: ReactNode;
@@ -13,7 +13,7 @@ interface LayoutProps {
  */
 export function Layout({ children }: LayoutProps): React.ReactElement {
   return (
-    <div className="flex min-h-screen flex-col bg-surface-light dark:bg-surface-dark">
+    <div className="bg-surface-light dark:bg-surface-dark flex min-h-screen flex-col">
       {/* Header with branding and theme toggle */}
       <header className="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
