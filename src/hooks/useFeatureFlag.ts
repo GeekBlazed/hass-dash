@@ -5,20 +5,20 @@ import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
 
 /**
  * Custom React hook for feature flags
- * 
+ *
  * Provides a simple interface to check if features are enabled.
  * The service is retrieved from the DI container as a singleton.
- * 
+ *
  * @param flag - The feature flag name (e.g., 'FLOOR_PLAN', 'HA_CONNECTION')
  * @returns Object containing isEnabled boolean and the flag service
- * 
+ *
  * @example
  * ```tsx
  * function MyComponent() {
  *   const { isEnabled } = useFeatureFlag('FLOOR_PLAN');
- *   
+ *
  *   if (!isEnabled) return null;
- *   
+ *
  *   return <FloorPlan />;
  * }
  * ```
@@ -42,17 +42,17 @@ export function useFeatureFlag(flag: string) {
 
 /**
  * Custom React hook to get all feature flags
- * 
+ *
  * Returns all feature flags and their current states.
  * Useful for debug panels and feature flag management UI.
- * 
+ *
  * @returns Object containing all flags and the flag service
- * 
+ *
  * @example
  * ```tsx
  * function DebugPanel() {
  *   const { flags, service } = useFeatureFlags();
- *   
+ *
  *   return (
  *     <div>
  *       {Object.entries(flags).map(([name, enabled]) => (

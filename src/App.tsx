@@ -1,16 +1,18 @@
+import { DebugPanel } from './components/DebugPanel';
+import { TestFeature } from './components/TestFeature';
 import { container } from './core/di-container';
 import { TYPES } from './core/types';
-import type { IConfigService } from './interfaces/IConfigService';
 import { useFeatureFlag } from './hooks/useFeatureFlag';
-import { DebugPanel } from './components/DebugPanel';
+import type { IConfigService } from './interfaces/IConfigService';
 
 function App() {
   // Get the ConfigService from the DI container
   const configService = container.get<IConfigService>(TYPES.IConfigService);
   const version = configService.getAppVersion();
 
-  // Check if debug panel should be shown
+  // Check feature flags
   const { isEnabled: showDebugPanel } = useFeatureFlag('DEBUG_PANEL');
+  const { isEnabled: showTestFeature } = useFeatureFlag('FLOOR_PLAN');
 
   return (
     <div className="from-surface-light flex min-h-screen items-center justify-center bg-gradient-to-br to-gray-100 dark:from-gray-900 dark:to-gray-800">
@@ -65,6 +67,9 @@ function App() {
           </kbd>{' '}
           to open developer tools
         </p>
+
+        {/* Test Feature (feature-flagged) */}
+        {showTestFeature && <TestFeature />}
 
         {/* Debug Panel (feature-flagged) */}
         {showDebugPanel && <DebugPanel />}

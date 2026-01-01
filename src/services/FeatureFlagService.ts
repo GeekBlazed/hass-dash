@@ -3,7 +3,7 @@ import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
 
 /**
  * Feature Flag Service Implementation
- * 
+ *
  * Manages feature flags for the application. Flags are read from environment
  * variables prefixed with VITE_FEATURE_. Runtime overrides are stored in
  * sessionStorage for development purposes.
@@ -18,7 +18,7 @@ export class FeatureFlagService implements IFeatureFlagService {
    */
   private getOverrides(): Record<string, boolean> {
     if (typeof window === 'undefined') return {};
-    
+
     const stored = sessionStorage.getItem(this.STORAGE_KEY);
     return stored ? JSON.parse(stored) : {};
   }
@@ -37,7 +37,7 @@ export class FeatureFlagService implements IFeatureFlagService {
    */
   isEnabled(flag: string): boolean {
     const normalizedFlag = flag.toUpperCase().replace(/^VITE_FEATURE_/, '');
-    
+
     // Check runtime overrides first
     const overrides = this.getOverrides();
     if (normalizedFlag in overrides) {

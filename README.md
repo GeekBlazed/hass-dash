@@ -67,7 +67,13 @@ npm install -g pnpm
    cp .env.example .env
    ```
 
-   Edit `.env` if needed (default values work for development).
+   The default `.env` has all features disabled. To test features locally:
+
+   ```bash
+   cp .env.local.example .env.local
+   ```
+
+   `.env.local` overrides `.env` and is git-ignored for local testing.
 
 4. **Start the development server:**
 

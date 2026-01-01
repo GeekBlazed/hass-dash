@@ -1,6 +1,6 @@
 /**
  * Feature Flag Service Interface
- * 
+ *
  * Provides access to feature flags for controlling application features.
  * Flags are read from environment variables prefixed with VITE_FEATURE_.
  */

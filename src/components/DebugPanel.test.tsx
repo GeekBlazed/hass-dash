@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { DebugPanel } from './DebugPanel';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useFeatureFlags } from '../hooks/useFeatureFlag';
+import { DebugPanel } from './DebugPanel';
 
 // Mock the useFeatureFlags hook
 vi.mock('../hooks/useFeatureFlag', () => ({
@@ -52,7 +52,7 @@ describe('DebugPanel', () => {
     // Check indicators are present (we can't easily test role="listitem" since divs don't have that)
     const container = screen.getByText('FLOOR_PLAN').closest('div');
     expect(container).toHaveTextContent('❌');
-    
+
     const haContainer = screen.getByText('HA_CONNECTION').closest('div');
     expect(haContainer).toHaveTextContent('✅');
   });
@@ -180,7 +180,7 @@ describe('DebugPanel', () => {
 
     // Check heading exists
     expect(screen.getByText('Feature Flags')).toBeInTheDocument();
-    
+
     // Check all three flags are displayed
     expect(screen.getByText('FLOOR_PLAN')).toBeInTheDocument();
     expect(screen.getByText('HA_CONNECTION')).toBeInTheDocument();

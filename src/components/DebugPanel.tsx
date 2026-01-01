@@ -2,7 +2,7 @@ import { useFeatureFlags } from '../hooks/useFeatureFlag';
 
 /**
  * Debug Panel Component
- * 
+ *
  * Displays all feature flags and their current states.
  * Only shown when VITE_FEATURE_DEBUG_PANEL is enabled.
  * Allows toggling flags in development mode.
@@ -40,13 +40,13 @@ export function DebugPanel() {
             >
               <div className="flex items-center gap-2">
                 <span className="text-lg">{enabled ? '✅' : '❌'}</span>
-                <code className="text-sm font-mono text-gray-700 dark:text-gray-300">{name}</code>
+                <code className="font-mono text-sm text-gray-700 dark:text-gray-300">{name}</code>
               </div>
 
               {isDevelopment && (
                 <button
                   onClick={() => handleToggle(name, enabled)}
-                  className="rounded bg-blue-500 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="rounded bg-blue-500 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
                   aria-label={`Toggle ${name} flag`}
                 >
                   Toggle

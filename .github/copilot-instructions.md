@@ -137,9 +137,9 @@ import { useFeatureFlag } from './hooks/useFeatureFlag';
 
 function MyComponent() {
   const { isEnabled } = useFeatureFlag('FLOOR_PLAN');
-  
+
   if (!isEnabled) return null;
-  
+
   return <FloorPlan />;
 }
 
@@ -148,7 +148,7 @@ import { useFeatureFlags } from './hooks/useFeatureFlag';
 
 function AdminPanel() {
   const { flags, service } = useFeatureFlags();
-  
+
   return Object.entries(flags).map(([name, enabled]) => (
     <div key={name}>
       {name}: {enabled ? 'ON' : 'OFF'}
