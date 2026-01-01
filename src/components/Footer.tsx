@@ -23,7 +23,7 @@ export function Footer(): React.ReactElement {
           href="https://github.com/GeekBlazed/hass-dash"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:text-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded text-sm font-medium"
+          className="text-primary hover:text-primary-dark focus:ring-primary rounded text-sm font-medium transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none"
         >
           GitHub
         </a>
@@ -32,7 +32,7 @@ export function Footer(): React.ReactElement {
           href="https://github.com/GeekBlazed/hass-dash/blob/main/README.md"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:text-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded text-sm font-medium"
+          className="text-primary hover:text-primary-dark focus:ring-primary rounded text-sm font-medium transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none"
         >
           Documentation
         </a>

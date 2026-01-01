@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Header } from './Header';
 import { userEvent } from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
+import { Header } from './Header';
 
 describe('Header', () => {
   it('should render app title', () => {
@@ -25,10 +25,10 @@ describe('Header', () => {
   it('should toggle theme when button clicked', async () => {
     const user = userEvent.setup();
     render(<Header />);
-    
+
     const button = screen.getByRole('button', { name: /switch to/i });
     await user.click(button);
-    
+
     // Verify localStorage.setItem was called
     expect(localStorage.setItem).toHaveBeenCalled();
   });
@@ -36,14 +36,14 @@ describe('Header', () => {
   it('should render menu button when onMenuClick provided', () => {
     const handleMenuClick = () => {};
     render(<Header onMenuClick={handleMenuClick} />);
-    
+
     const menuButton = screen.getByLabelText('Open menu');
     expect(menuButton).toBeInTheDocument();
   });
 
   it('should not render menu button when onMenuClick not provided', () => {
     render(<Header />);
-    
+
     const menuButton = screen.queryByLabelText('Open menu');
     expect(menuButton).not.toBeInTheDocument();
   });
@@ -51,13 +51,15 @@ describe('Header', () => {
   it('should call onMenuClick when menu button clicked', async () => {
     const user = userEvent.setup();
     let clicked = false;
-    const handleMenuClick = () => { clicked = true; };
-    
+    const handleMenuClick = () => {
+      clicked = true;
+    };
+
     render(<Header onMenuClick={handleMenuClick} />);
-    
+
     const menuButton = screen.getByLabelText('Open menu');
     await user.click(menuButton);
-    
+
     expect(clicked).toBe(true);
   });
 
@@ -76,7 +78,7 @@ describe('Header', () => {
     });
 
     render(<Header />);
-    
+
     // Should render sun icon (for switching to light mode)
     const button = screen.getByLabelText('Switch to light mode');
     expect(button).toBeInTheDocument();
@@ -84,12 +86,12 @@ describe('Header', () => {
 
   it('should load theme from localStorage if available', () => {
     localStorage.setItem('theme', 'dark');
-    
+
     render(<Header />);
-    
+
     const button = screen.getByLabelText('Switch to light mode');
     expect(button).toBeInTheDocument();
-    
+
     // Cleanup
     localStorage.removeItem('theme');
   });
