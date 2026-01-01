@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FeatureFlagService } from './FeatureFlagService';
 
 describe('FeatureFlagService', () => {
@@ -114,7 +114,7 @@ describe('FeatureFlagService', () => {
       service.enable('TEST');
 
       expect(consoleSpy).toHaveBeenCalledWith('Cannot toggle feature flags in production');
-      
+
       consoleSpy.mockRestore();
     });
 
@@ -162,7 +162,7 @@ describe('FeatureFlagService', () => {
       service.disable('TEST');
 
       expect(consoleSpy).toHaveBeenCalledWith('Cannot toggle feature flags in production');
-      
+
       consoleSpy.mockRestore();
     });
   });

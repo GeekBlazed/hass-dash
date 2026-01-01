@@ -1,12 +1,11 @@
-import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { useFeatureFlag, useFeatureFlags } from './useFeatureFlag';
-import { vi } from 'vitest';
 
 describe('useFeatureFlag', () => {
   it('should return isEnabled false for disabled features', () => {
     vi.stubEnv('VITE_FEATURE_TEST', 'false');
-    
+
     const { result } = renderHook(() => useFeatureFlag('TEST'));
 
     expect(result.current.isEnabled).toBe(false);
@@ -15,7 +14,7 @@ describe('useFeatureFlag', () => {
 
   it('should return isEnabled true for enabled features', () => {
     vi.stubEnv('VITE_FEATURE_TEST', 'true');
-    
+
     const { result } = renderHook(() => useFeatureFlag('TEST'));
 
     expect(result.current.isEnabled).toBe(true);
@@ -47,7 +46,7 @@ describe('useFeatureFlags', () => {
   it('should return all feature flags', () => {
     vi.stubEnv('VITE_FEATURE_TEST1', 'true');
     vi.stubEnv('VITE_FEATURE_TEST2', 'false');
-    
+
     const { result } = renderHook(() => useFeatureFlags());
 
     expect(result.current.flags).toBeDefined();
