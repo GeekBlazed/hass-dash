@@ -1,3 +1,4 @@
+import { ComponentShowcase } from './components/ComponentShowcase';
 import { DebugPanel } from './components/DebugPanel';
 import { Layout } from './components/Layout';
 import { TestFeature } from './components/TestFeature';
@@ -15,6 +16,7 @@ function App() {
   const { isEnabled: showDebugPanel } = useFeatureFlag('DEBUG_PANEL');
   const { isEnabled: showTestFeature } = useFeatureFlag('FLOOR_PLAN');
   const { isEnabled: useNewLayout } = useFeatureFlag('NAVIGATION');
+  const { isEnabled: showComponentShowcase } = useFeatureFlag('COMPONENT_SHOWCASE');
 
   // Use new layout if NAVIGATION flag is enabled, otherwise show old welcome screen
   if (!useNewLayout) {
@@ -87,30 +89,34 @@ function App() {
   // New layout with header and footer
   return (
     <Layout>
-      {/* Main content - centered welcome message as placeholder */}
-      <div className="flex min-h-[calc(100vh-200px)] items-center justify-center">
-        <div className="text-center">
-          <div className="mb-6 text-8xl">🏠</div>
-          <h2 className="mb-4 text-4xl font-bold text-gray-900 dark:text-white">
-            Welcome to HassDash
-          </h2>
-          <p className="mb-8 text-xl text-gray-600 dark:text-gray-300">
-            Your smart home, visualized.
-          </p>
+      {/* Show Component Showcase if flag is enabled, otherwise show welcome message */}
+      {showComponentShowcase ? (
+        <ComponentShowcase />
+      ) : (
+        <div className="flex min-h-[calc(100vh-200px)] items-center justify-center">
+          <div className="text-center">
+            <div className="mb-6 text-8xl">🏠</div>
+            <h2 className="mb-4 text-4xl font-bold text-gray-900 dark:text-white">
+              Welcome to HassDash
+            </h2>
+            <p className="mb-8 text-xl text-gray-600 dark:text-gray-300">
+              Your smart home, visualized.
+            </p>
 
-          {/* Status indicator */}
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full bg-yellow-50 px-6 py-3 dark:bg-yellow-900/20">
-            <span className="text-2xl">🟡</span>
-            <span className="font-medium text-yellow-800 dark:text-yellow-200">
-              Development Mode
-            </span>
+            {/* Status indicator */}
+            <div className="mb-8 inline-flex items-center gap-2 rounded-full bg-yellow-50 px-6 py-3 dark:bg-yellow-900/20">
+              <span className="text-2xl">🟡</span>
+              <span className="font-medium text-yellow-800 dark:text-yellow-200">
+                Development Mode
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Building your smart home dashboard...
+            </p>
           </div>
-
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Building your smart home dashboard...
-          </p>
         </div>
-      </div>
+      )}
 
       {/* Feature-flagged components */}
       {showTestFeature && (
