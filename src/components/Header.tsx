@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -40,7 +40,7 @@ export function Header({ onMenuClick }: HeaderProps): React.ReactElement {
         {onMenuClick && (
           <button
             onClick={onMenuClick}
-            className="text-primary hover:text-primary-dark focus:ring-primary -m-2 rounded-lg p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 lg:hidden"
+            className="text-primary hover:text-primary-dark focus:ring-primary -m-2 rounded-lg p-2 transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none lg:hidden"
             aria-label="Open menu"
           >
             <svg
@@ -74,7 +74,7 @@ export function Header({ onMenuClick }: HeaderProps): React.ReactElement {
       {/* Right: Theme toggle */}
       <button
         onClick={toggleTheme}
-        className="text-primary hover:bg-primary/10 focus:ring-primary rounded-lg p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+        className="text-primary hover:bg-primary/10 focus:ring-primary rounded-lg p-2 transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none"
         aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       >
         {isDark ? (

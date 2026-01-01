@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import { Layout } from './Layout';
 
 describe('Layout', () => {
@@ -13,10 +13,10 @@ describe('Layout', () => {
     // Header elements (use getAllByText since HassDash appears in both header and footer)
     const hassDashElements = screen.getAllByText('HassDash');
     expect(hassDashElements.length).toBeGreaterThan(0);
-    
+
     // Main content
     expect(screen.getByText('Test Content')).toBeInTheDocument();
-    
+
     // Footer elements
     expect(screen.getByText(/v0.1.0/)).toBeInTheDocument();
   });

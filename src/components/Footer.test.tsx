@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import { Footer } from './Footer';
 
 describe('Footer', () => {
@@ -42,7 +42,7 @@ describe('Footer', () => {
   it('should have proper link accessibility attributes', () => {
     render(<Footer />);
     const links = screen.getAllByRole('link');
-    
+
     links.forEach((link) => {
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });
