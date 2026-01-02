@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { RoomCard, type RoomData } from './RoomCard';
 
 describe('RoomCard', () => {
@@ -56,7 +56,7 @@ describe('RoomCard', () => {
     const room: RoomData = { id: 'test', name: 'Test Room', status: 'on' };
     const handleClick = vi.fn();
     render(<RoomCard room={room} onClick={handleClick} />);
-    
+
     fireEvent.click(screen.getByRole('button'));
     expect(handleClick).toHaveBeenCalledWith(room);
   });
@@ -64,7 +64,7 @@ describe('RoomCard', () => {
   it('should not throw when clicked without onClick handler', () => {
     const room: RoomData = { id: 'test', name: 'Test Room' };
     render(<RoomCard room={room} />);
-    
+
     // Should not throw
     expect(() => fireEvent.click(screen.getByRole('button'))).not.toThrow();
   });
@@ -72,10 +72,10 @@ describe('RoomCard', () => {
   it('should apply hover state on mouse enter', () => {
     const room: RoomData = { id: 'test', name: 'Test Room', status: 'on' };
     render(<RoomCard room={room} />);
-    
+
     const button = screen.getByRole('button');
     fireEvent.mouseEnter(button);
-    
+
     // Check that the hover scale class is applied
     expect(button.className).toContain('scale-[1.02]');
   });
@@ -83,11 +83,11 @@ describe('RoomCard', () => {
   it('should remove hover state on mouse leave', () => {
     const room: RoomData = { id: 'test', name: 'Test Room', status: 'on' };
     render(<RoomCard room={room} />);
-    
+
     const button = screen.getByRole('button');
     fireEvent.mouseEnter(button);
     expect(button.className).toContain('scale-[1.02]');
-    
+
     fireEvent.mouseLeave(button);
     expect(button.className).not.toContain('scale-[1.02]');
   });
@@ -95,7 +95,7 @@ describe('RoomCard', () => {
   it('should render status indicator dot', () => {
     const room: RoomData = { id: 'test', name: 'Test Room', temperature: 20 };
     const { container } = render(<RoomCard room={room} />);
-    
+
     // Check for the accent-colored status dot
     const dot = container.querySelector('.bg-accent');
     expect(dot).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe('RoomCard', () => {
   it('should have proper accessibility attributes', () => {
     const room: RoomData = { id: 'test', name: 'Test Room' };
     render(<RoomCard room={room} />);
-    
+
     const button = screen.getByRole('button');
     expect(button).toBeInTheDocument();
   });
