@@ -21,6 +21,10 @@ export default defineConfig({
         '**/eslint.config.js',
         '**/tailwind.config.js',
         '**/postcss.config.js',
+        // Dev-only components
+        '**/ComponentShowcase.tsx',
+        // Barrel exports (re-exports only)
+        '**/components/dashboard/index.ts',
       ],
       thresholds: {
         lines: 80,

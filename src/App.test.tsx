@@ -1,73 +1,73 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import App from './App';
 
 describe('App', () => {
-  it('renders the welcome screen', () => {
+  it('renders the dashboard', () => {
     render(<App />);
 
-    expect(screen.getByText(/Home Assistant Dashboard/i)).toBeInTheDocument();
-    expect(screen.getByText(/Your smart home, visualized/i)).toBeInTheDocument();
+    // Dashboard should display the Home heading
+    expect(screen.getByRole('heading', { name: /Home/i })).toBeInTheDocument();
+    // Dashboard should show "Welcome back" subheading
+    expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
   });
 
-  it('displays the version from environment variable', () => {
+  it('renders quick action buttons', () => {
     render(<App />);
 
-    const version = import.meta.env.VITE_APP_VERSION || '0.1.0';
-    expect(screen.getByText(new RegExp(`hass-dash v${version}`, 'i'))).toBeInTheDocument();
+    // Quick action buttons should be present
+    expect(screen.getByRole('button', { name: /All Off/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Bright/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Warm/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Scenes/i })).toBeInTheDocument();
   });
 
-  it('displays default version when env variable is not set', () => {
-    // Store original value
-    const originalEnv = import.meta.env.VITE_APP_VERSION;
-
-    // Temporarily unset the env variable
-    vi.stubEnv('VITE_APP_VERSION', undefined);
-
+  it('renders room cards', () => {
     render(<App />);
 
-    expect(screen.getByText(/hass-dash v0\.1\.0/i)).toBeInTheDocument();
-
-    // Restore original value
-    if (originalEnv !== undefined) {
-      vi.stubEnv('VITE_APP_VERSION', originalEnv);
-    } else {
-      vi.unstubAllEnvs();
-    }
+    // Room cards should be present
+    expect(screen.getByText(/Living Room/i)).toBeInTheDocument();
+    expect(screen.getByText(/Kitchen/i)).toBeInTheDocument();
+    expect(screen.getByText(/Bedroom/i)).toBeInTheDocument();
+    expect(screen.getByText(/Office/i)).toBeInTheDocument();
+    expect(screen.getByText(/Bathroom/i)).toBeInTheDocument();
+    expect(screen.getByText(/Garage/i)).toBeInTheDocument();
   });
 
-  it('shows development mode indicator', () => {
+  it('renders weather display', () => {
     render(<App />);
 
-    expect(screen.getByText(/Development Mode/i)).toBeInTheDocument();
+    // Weather should show temperature (4.8°C)
+    expect(screen.getByText(/4\.8°C/i)).toBeInTheDocument();
   });
 
-  it('renders documentation and GitHub links', () => {
+  it('renders dashboard stats', () => {
     render(<App />);
 
-    const docLink = screen.getByRole('link', { name: /Documentation/i });
-    const githubLink = screen.getByRole('link', { name: /GitHub/i });
-
-    expect(docLink).toBeInTheDocument();
-    expect(docLink).toHaveAttribute('href', expect.stringContaining('github.com'));
-    expect(githubLink).toBeInTheDocument();
-    expect(githubLink).toHaveAttribute('href', expect.stringContaining('github.com'));
+    // Stats footer should be present
+    expect(screen.getByText(/6 Rooms/i)).toBeInTheDocument();
+    expect(screen.getByText(/12 Devices/i)).toBeInTheDocument();
+    expect(screen.getByText(/3 Active/i)).toBeInTheDocument();
   });
 
-  it('has proper accessibility attributes on interactive elements', () => {
+  it('has proper semantic structure', () => {
     render(<App />);
 
-    const links = screen.getAllByRole('link');
-    links.forEach((link) => {
-      expect(link).toHaveAttribute('href');
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    // Should have main and aside landmarks
+    expect(screen.getByRole('main')).toBeInTheDocument();
+    expect(screen.getByRole('complementary')).toBeInTheDocument();
+  });
+
+  it('has accessible buttons with proper roles', () => {
+    render(<App />);
+
+    // All buttons should be accessible
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.length).toBeGreaterThanOrEqual(10); // 4 actions + 6 rooms
+
+    // Each button should be focusable
+    buttons.forEach((button) => {
+      expect(button).not.toHaveAttribute('tabindex', '-1');
     });
-  });
-
-  it('displays the developer tools hint', () => {
-    render(<App />);
-
-    expect(screen.getByText(/Press/i)).toBeInTheDocument();
-    expect(screen.getByText(/F12/i)).toBeInTheDocument();
   });
 });
