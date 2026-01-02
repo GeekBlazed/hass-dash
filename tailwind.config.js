@@ -5,15 +5,35 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Warm dark theme from SVG design
+        accent: {
+          DEFAULT: '#ffb65c',
+          light: '#ffc97d',
+          dark: '#e5a352',
+        },
+        panel: {
+          bg: '#090909',
+          'bg-warm': '#1a1713',
+          surface: '#121212',
+          card: '#151515',
+          border: '#1f1f1f',
+          'border-light': '#2a2a2a',
+        },
+        text: {
+          primary: '#eae7df',
+          secondary: '#b9b6af',
+          muted: '#8a8885',
+        },
+        // Legacy colors for compatibility
         primary: {
-          light: '#5c6bc0',
-          DEFAULT: '#3f51b5',
-          dark: '#303f9f',
+          light: '#ffc97d',
+          DEFAULT: '#ffb65c',
+          dark: '#e5a352',
         },
         surface: {
-          light: '#ffffff',
-          DEFAULT: '#f5f5f5',
-          dark: '#121212',
+          light: '#1a1713',
+          DEFAULT: '#121212',
+          dark: '#090909',
         },
         success: {
           light: '#81c784',
@@ -30,6 +50,9 @@ export default {
           DEFAULT: '#f44336',
           dark: '#d32f2f',
         },
+      },
+      backgroundImage: {
+        'warm-gradient': 'linear-gradient(135deg, #1a1713 0%, #0e0d0b 50%, #090909 100%)',
       },
       spacing: {
         18: '4.5rem',
