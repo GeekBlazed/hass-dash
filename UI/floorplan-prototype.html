@@ -1,0 +1,1989 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>hass-dash – Floorplan Prototype</title>
+    <style>
+      :root {
+        /* Theme tokens aligned with tailwind.config.js (no new colors) */
+        --accent: #ffb65c;
+        --accent-light: #ffc97d;
+        --accent-dark: #e5a352;
+
+        --panel-bg: #090909;
+        --panel-bg-warm: #1a1713;
+        --panel-surface: #121212;
+        --panel-card: #151515;
+        --panel-border: #1f1f1f;
+        --panel-border-light: #2a2a2a;
+
+        --text-primary: #eae7df;
+        --text-secondary: #b9b6af;
+        --text-muted: #8a8885;
+
+        --success: #4caf50;
+        --warning: #ff9800;
+        --danger: #f44336;
+
+        --radius-lg: 28px;
+        --radius-md: 18px;
+        --radius-sm: 14px;
+
+        --shadow-soft: 0 30px 100px rgba(0, 0, 0, 0.55);
+        --shadow-card: 0 16px 50px rgba(0, 0, 0, 0.45);
+
+        --blur-strong: blur(18px);
+        --blur-soft: blur(10px);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          Helvetica,
+          Arial,
+          'Apple Color Emoji',
+          'Segoe UI Emoji';
+        color: var(--text-primary);
+        background:
+          radial-gradient(1000px 520px at 50% 0%, rgba(255, 182, 92, 0.22), transparent 62%),
+          radial-gradient(900px 520px at 12% 12%, rgba(255, 201, 125, 0.1), transparent 58%),
+          radial-gradient(900px 520px at 86% 18%, rgba(255, 182, 92, 0.08), transparent 60%),
+          linear-gradient(135deg, var(--panel-bg-warm) 0%, #0e0d0b 50%, var(--panel-bg) 100%);
+        overflow: hidden;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .viewport {
+        height: 100%;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .frame {
+        width: min(1200px, 100%);
+        aspect-ratio: 16 / 9;
+        border-radius: var(--radius-lg);
+        background: rgba(10, 10, 10, 0.56);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        box-shadow: var(--shadow-soft);
+        overflow: hidden;
+        position: relative;
+      }
+
+      .frame::before {
+        content: '';
+        position: absolute;
+        inset: -120px;
+        background: radial-gradient(
+          700px 360px at 50% 10%,
+          rgba(255, 182, 92, 0.22),
+          transparent 70%
+        );
+        filter: blur(32px);
+        pointer-events: none;
+      }
+
+      .frame::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(1200px 680px at 50% 40%, transparent 40%, rgba(0, 0, 0, 0.85) 85%),
+          linear-gradient(to bottom, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.28));
+        pointer-events: none;
+      }
+
+      .app {
+        position: relative;
+        z-index: 1;
+        height: 100%;
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 22px;
+        padding: 26px;
+        min-height: 0;
+      }
+
+      .sidebar {
+        padding: 20px 18px;
+        border-radius: var(--radius-md);
+        background: rgba(9, 9, 9, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        backdrop-filter: var(--blur-soft);
+        box-shadow: var(--shadow-card);
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        min-height: 0;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 6px 6px 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .brand svg {
+        width: 34px;
+        height: 34px;
+        opacity: 0.9;
+      }
+
+      .brand .title {
+        font-size: 26px;
+        letter-spacing: 0.2px;
+        color: var(--text-primary);
+      }
+
+      .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        padding: 2px 6px 0;
+      }
+
+      .qa {
+        display: grid;
+        place-items: center;
+        text-decoration: none;
+        border-radius: 14px;
+        padding: 10px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(18, 18, 18, 0.3);
+        backdrop-filter: blur(8px);
+        transition:
+          transform 140ms ease,
+          background-color 140ms ease,
+          border-color 140ms ease;
+        user-select: none;
+      }
+
+      button.qa {
+        appearance: none;
+        cursor: pointer;
+        color: inherit;
+        font: inherit;
+      }
+
+      .qa:focus-visible {
+        outline: 2px solid rgba(255, 201, 125, 0.55);
+        outline-offset: 2px;
+      }
+
+      .qa:hover {
+        transform: translateY(-1px);
+        border-color: rgba(255, 201, 125, 0.28);
+        background: rgba(18, 18, 18, 0.42);
+      }
+
+      .qa .label {
+        margin-top: 6px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        letter-spacing: 0.2px;
+      }
+
+      .qa svg {
+        width: 26px;
+        height: 26px;
+        opacity: 0.92;
+        color: rgba(234, 231, 223, 0.9);
+      }
+
+      .agenda {
+        padding: 12px 10px 8px;
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+      }
+
+      .agenda .item {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2px;
+        padding: 10px 8px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(18, 18, 18, 0.2);
+        margin-bottom: 10px;
+      }
+
+      .agenda .item:last-child {
+        margin-bottom: 0;
+      }
+
+      .agenda .name {
+        color: var(--text-primary);
+        font-size: 14px;
+        letter-spacing: 0.2px;
+      }
+
+      .agenda .time {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .stage {
+        position: relative;
+        border-radius: var(--radius-md);
+        background: rgba(9, 9, 9, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        backdrop-filter: var(--blur-soft);
+        box-shadow: var(--shadow-card);
+        overflow: hidden;
+        min-height: 0;
+      }
+
+      .weather {
+        pointer-events: auto;
+        display: grid;
+        grid-template-columns: 44px auto;
+        gap: 12px;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(18, 18, 18, 0.28);
+        backdrop-filter: blur(10px);
+      }
+
+      .weather .temp {
+        font-size: 34px;
+        line-height: 1;
+        letter-spacing: 0.2px;
+      }
+
+      .weather .desc {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .weather .meta {
+        margin-top: 2px;
+        font-size: 12px;
+        color: var(--text-muted);
+        letter-spacing: 0.2px;
+      }
+
+      .weather svg {
+        width: 44px;
+        height: 44px;
+        opacity: 0.92;
+      }
+
+      .floorplan {
+        position: absolute;
+        inset: 0;
+        padding: 22px 22px 26px;
+      }
+
+      .floorplan svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+        touch-action: none;
+        cursor: grab;
+      }
+
+      .floorplan svg.is-panning {
+        cursor: grabbing;
+      }
+
+      .map-controls {
+        position: absolute;
+        right: 18px;
+        bottom: 18px;
+        z-index: 42;
+        width: min(280px, calc(100% - 36px));
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(9, 9, 9, 0.46);
+        backdrop-filter: blur(10px);
+        padding: 12px 12px 10px;
+        box-shadow: 0 14px 46px rgba(0, 0, 0, 0.42);
+      }
+
+      .map-controls.is-hidden {
+        display: none;
+      }
+
+      .map-controls__top {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        margin-bottom: 10px;
+      }
+
+      .map-controls__close {
+        appearance: none;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(9, 9, 9, 0.5);
+        color: rgba(234, 231, 223, 0.88);
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .map-controls__close:hover {
+        border-color: rgba(255, 201, 125, 0.28);
+        background: rgba(18, 18, 18, 0.42);
+      }
+
+      .map-controls__close:focus-visible {
+        outline: 2px solid rgba(255, 201, 125, 0.55);
+        outline-offset: 2px;
+      }
+
+      .map-controls-toggle {
+        position: absolute;
+        right: 18px;
+        bottom: 18px;
+        z-index: 41;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(18, 18, 18, 0.26);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 14px 46px rgba(0, 0, 0, 0.42);
+        color: rgba(234, 231, 223, 0.92);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+
+      .map-controls-toggle.is-hidden {
+        display: none;
+      }
+
+      .map-controls-toggle:hover {
+        border-color: rgba(255, 201, 125, 0.28);
+        background: rgba(18, 18, 18, 0.42);
+      }
+
+      .map-controls-toggle:focus-visible {
+        outline: 2px solid rgba(255, 201, 125, 0.55);
+        outline-offset: 2px;
+      }
+
+      .map-controls-toggle svg {
+        width: 22px;
+        height: 22px;
+        opacity: 0.95;
+      }
+
+      .map-controls__row {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .map-controls__zoom {
+        display: grid;
+        gap: 6px;
+      }
+
+      .map-controls__zoom-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .map-controls__stack {
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+        gap: 6px;
+      }
+
+      .map-controls__label {
+        font-size: 12px;
+        color: rgba(234, 231, 223, 0.78);
+        letter-spacing: 0.2px;
+      }
+
+      .map-controls__value {
+        font-size: 12px;
+        color: rgba(234, 231, 223, 0.72);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .map-controls__slider {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+
+      .map-controls__btn {
+        appearance: none;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(9, 9, 9, 0.5);
+        color: rgba(234, 231, 223, 0.88);
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .map-controls__btn:hover {
+        border-color: rgba(255, 201, 125, 0.28);
+        background: rgba(18, 18, 18, 0.42);
+      }
+
+      .map-controls__btn:focus-visible {
+        outline: 2px solid rgba(255, 201, 125, 0.55);
+        outline-offset: 2px;
+      }
+
+      /* Room interaction (YAML-driven SVG) */
+      .room {
+        cursor: pointer;
+      }
+
+      .room-shape {
+        fill: rgba(18, 18, 18, 0.62);
+        stroke: rgba(255, 255, 255, 0.18);
+        stroke-width: 0.18;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .room-label {
+        fill: rgba(234, 231, 223, 0.88);
+        font-weight: 650;
+        letter-spacing: 0.02em;
+        user-select: none;
+        pointer-events: none;
+      }
+
+      .room:hover .room-shape {
+        stroke: rgba(255, 201, 125, 0.55);
+        stroke-width: 0.22;
+        fill: rgba(18, 18, 18, 0.52);
+        filter: drop-shadow(0 0 10px rgba(255, 182, 92, 0.18));
+      }
+
+      .room:hover .room-label {
+        fill: rgba(255, 201, 125, 0.92);
+      }
+
+      .room.is-active .room-shape {
+        stroke: rgba(255, 201, 125, 0.65);
+        filter: drop-shadow(0 0 18px rgba(255, 182, 92, 0.22));
+      }
+
+      .tile {
+        border-radius: 22px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(18, 18, 18, 0.26);
+        padding: 20px 18px;
+        min-height: 260px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .tile::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          220px 160px at 30% 18%,
+          rgba(255, 182, 92, 0.16),
+          transparent 72%
+        );
+        opacity: 0.35;
+        pointer-events: none;
+      }
+
+      .tile .icon {
+        width: 72px;
+        height: 72px;
+        margin: 2px 0 10px;
+        opacity: 0.96;
+        filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.7));
+      }
+
+      .tile .name {
+        font-size: 28px;
+        margin: 0;
+        letter-spacing: 0.2px;
+      }
+
+      .tile .status {
+        margin-top: 2px;
+        font-size: 20px;
+        color: rgba(185, 182, 175, 0.9);
+      }
+
+      .tile .big {
+        position: absolute;
+        left: 18px;
+        bottom: 18px;
+        font-size: 54px;
+        font-weight: 800;
+        letter-spacing: 0.3px;
+        color: rgba(234, 231, 223, 0.92);
+      }
+
+      .tile .media {
+        display: grid;
+        gap: 8px;
+        margin-top: 8px;
+        align-content: start;
+      }
+
+      .tile .media .track {
+        font-size: 24px;
+        font-weight: 700;
+      }
+
+      .tile .media .artist {
+        color: rgba(185, 182, 175, 0.9);
+      }
+
+      .tile .controls {
+        position: absolute;
+        left: 18px;
+        right: 18px;
+        bottom: 18px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .tile .buttons {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .tile .btn {
+        height: 44px;
+        display: grid;
+        place-items: center;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(18, 18, 18, 0.3);
+      }
+
+      .tile .btn svg {
+        width: 20px;
+        height: 20px;
+        opacity: 0.9;
+      }
+
+      .tile .scrub {
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+
+      .tile .scrub span {
+        display: block;
+        width: 44%;
+        height: 100%;
+        background: rgba(234, 231, 223, 0.7);
+      }
+
+      .tile .avatar {
+        position: absolute;
+        right: 18px;
+        bottom: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .tile .avatar .pic {
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background:
+          radial-gradient(18px 18px at 30% 28%, rgba(255, 255, 255, 0.3), transparent 60%),
+          radial-gradient(20px 20px at 70% 40%, rgba(255, 201, 125, 0.24), transparent 60%),
+          linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(18, 18, 18, 0.12));
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+      }
+
+      .tile .avatar .who {
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      /* Floating media player (draggable) */
+      .media-window {
+        position: absolute;
+        top: 92px;
+        left: 54px;
+        width: 360px;
+        min-height: 220px;
+        z-index: 10;
+        background: rgba(18, 18, 18, 0.96);
+      }
+
+      .is-hidden {
+        display: none !important;
+      }
+
+      .media-window__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px 6px;
+        margin: -6px -6px 10px;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(18, 18, 18, 0.22);
+        cursor: grab;
+        user-select: none;
+      }
+
+      .media-window__header:active {
+        cursor: grabbing;
+      }
+
+      .media-window__title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        color: rgba(185, 182, 175, 0.92);
+        letter-spacing: 0.2px;
+      }
+
+      .media-window__pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(9, 9, 9, 0.38);
+      }
+
+      .media-window__pill svg {
+        width: 16px;
+        height: 16px;
+        opacity: 0.9;
+      }
+
+      .media-window__hint {
+        font-size: 12px;
+        color: rgba(138, 136, 133, 0.95);
+      }
+
+      /* Small screens: allow scroll, stack layout */
+      @media (max-width: 980px) {
+        body {
+          overflow: auto;
+        }
+
+        .frame {
+          aspect-ratio: auto;
+          height: auto;
+          min-height: 720px;
+        }
+
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          order: 2;
+        }
+
+        .stage {
+          order: 1;
+          min-height: 520px;
+        }
+
+        .tile {
+          min-height: 220px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .qa {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a id="top"></a>
+    <div class="viewport">
+      <div class="frame" role="application" aria-label="Floorplan prototype">
+        <div class="app">
+          <aside class="sidebar" aria-label="Home controls">
+            <div class="brand">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M10.5 20v-6h3v6h4.5v-8h2L12 3 1 12h2v8z" />
+              </svg>
+              <div class="title">Home</div>
+            </div>
+
+            <div class="quick-actions" aria-label="Quick actions">
+              <a class="qa" href="#top" aria-label="All Off (prototype)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M13 3h-2v10h2V3zm4.83 2.17-1.42 1.42A7.97 7.97 0 0 1 20 12a8 8 0 1 1-14.41-4.41L4.17 6.17A9.95 9.95 0 0 0 2 12a10 10 0 1 0 18-6a9.95 9.95 0 0 0-2.17-.83z"
+                  />
+                </svg>
+                <div class="label">All Off</div>
+              </a>
+              <a class="qa" href="#top" aria-label="Bright (prototype)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M12 18a6 6 0 1 1 0-12a6 6 0 0 1 0 12zm0-14V1h0v3zm0 22v-3h0v3zM4.22 5.64 2.1 3.51l1.41-1.41 2.12 2.12L4.22 5.64zM21.9 20.49l-1.41 1.41-2.12-2.12 1.41-1.41 2.12 2.12zM1 12h3v0H1zm22 0h-3v0h3zM4.22 18.36l1.41 1.41-2.12 2.12-1.41-1.41 2.12-2.12zM19.78 5.64 18.36 4.22l2.12-2.12 1.41 1.41-2.12 2.13z"
+                  />
+                </svg>
+                <div class="label">Bright</div>
+              </a>
+              <a class="qa" href="#top" aria-label="Warm (prototype)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M12 2a7 7 0 0 0-4 12.74V22h8v-7.26A7 7 0 0 0 12 2zm3 18H9v-4.5h6V20zm0-6.5H9v-0.86A5 5 0 1 1 15 12.64v0.86z"
+                  />
+                </svg>
+                <div class="label">Warm</div>
+              </a>
+              <a class="qa" href="#top" aria-label="Cabin (prototype)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M19.36 10.46 12 4.58 4.64 10.46 3.4 8.9 12 2l8.6 6.9-1.24 1.56zM5 11h14v11h-6v-7H11v7H5V11z"
+                  />
+                </svg>
+                <div class="label">Cabin</div>
+              </a>
+              <button
+                class="qa"
+                type="button"
+                id="media-toggle"
+                aria-label="Media"
+                aria-controls="media-window"
+                aria-expanded="false"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M18 4v2h2v14H4V6h2V4H2v18h20V4h-4zM8 4v2h2V4H8zm4 0v2h2V4h-2zm4 0v2h2V4h-2z"
+                  />
+                </svg>
+                <div class="label">Media</div>
+              </button>
+              <a class="qa" href="#top" aria-label="More (prototype)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M7 10l5 5 5-5H7z" />
+                </svg>
+                <div class="label">More</div>
+              </a>
+            </div>
+
+            <div class="weather" aria-label="Weather summary">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M6 14.5a4.5 4.5 0 0 1 4.43-4.5A5.5 5.5 0 0 1 21 12.5a4.5 4.5 0 0 1-4.5 4.5H7.5A3.5 3.5 0 0 1 6 14.5zm4.5 4.5h2l-1 3h-2l1-3zm4 0h2l-1 3h-2l1-3z"
+                />
+              </svg>
+              <div>
+                <div class="temp">4.8°C</div>
+                <div class="desc">Breezy and foggy for the hour</div>
+                <div class="meta">humidity: 47%</div>
+              </div>
+            </div>
+
+            <div class="agenda" aria-label="Agenda">
+              <div class="item">
+                <div class="name">Weekend In</div>
+                <div class="time">Until 7:00 PM</div>
+              </div>
+              <div class="item">
+                <div class="name">Lunch at the park</div>
+                <div class="time">11:00 AM – 2:00 PM</div>
+              </div>
+              <div class="item">
+                <div class="name">Install New Home Batteries and Solar</div>
+                <div class="time">All Day</div>
+              </div>
+              <div class="item">
+                <div class="name">Take Out Garbage</div>
+                <div class="time">All Day</div>
+              </div>
+              <div class="item">
+                <div class="name">Farmers Market</div>
+                <div class="time">All Day</div>
+              </div>
+            </div>
+          </aside>
+
+          <main class="stage" aria-label="Floorplan">
+            <div class="floorplan" aria-label="Interactive SVG floorplan">
+              <svg
+                id="floorplan-svg"
+                viewBox="0 0 10 10"
+                role="img"
+                aria-label="Home floorplan (from YAML)"
+              >
+                <defs>
+                  <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+                    <feColorMatrix
+                      in="blur"
+                      type="matrix"
+                      values="1 0 0 0 0.12  0 1 0 0 0.08  0 0 1 0 0  0 0 0 1 0"
+                      result="tint"
+                    />
+                    <feMerge>
+                      <feMergeNode in="tint" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+
+                  <linearGradient id="wall" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0" stop-color="rgba(255,255,255,0.10)" />
+                    <stop offset="1" stop-color="rgba(255,255,255,0.04)" />
+                  </linearGradient>
+
+                  <linearGradient id="floorWood" x1="0" x2="1" y1="0" y2="1">
+                    <stop offset="0" stop-color="rgba(255, 182, 92, 0.08)" />
+                    <stop offset="1" stop-color="rgba(0, 0, 0, 0)" />
+                  </linearGradient>
+                </defs>
+                <g id="rooms-layer"></g>
+              </svg>
+
+              <button
+                class="map-controls-toggle is-hidden"
+                id="map-controls-toggle"
+                type="button"
+                aria-label="Show map controls"
+                aria-controls="map-controls"
+                aria-expanded="false"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M10.5 3a7.5 7.5 0 1 1 4.52 13.5l3.74 3.74a1 1 0 0 1-1.42 1.42l-3.74-3.74A7.5 7.5 0 0 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11a5.5 5.5 0 0 0 0-11z"
+                  />
+                </svg>
+              </button>
+
+              <div class="map-controls" id="map-controls" aria-label="Map controls">
+                <div class="map-controls__top">
+                  <button
+                    class="map-controls__close"
+                    type="button"
+                    id="map-controls-close"
+                    aria-label="Hide map controls"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div class="map-controls__row">
+                  <div class="map-controls__stack" aria-label="Pan up/down">
+                    <button
+                      class="map-controls__btn"
+                      type="button"
+                      id="map-pan-up"
+                      aria-label="Pan up"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      class="map-controls__btn"
+                      type="button"
+                      id="map-pan-down"
+                      aria-label="Pan down"
+                    >
+                      ↓
+                    </button>
+                  </div>
+
+                  <div class="map-controls__zoom">
+                    <div class="map-controls__zoom-head">
+                      <label class="map-controls__label" for="map-zoom">Zoom</label>
+                      <div class="map-controls__value" id="map-zoom-value" aria-hidden="true">
+                        100%
+                      </div>
+                    </div>
+                    <input
+                      id="map-zoom"
+                      class="map-controls__slider"
+                      type="range"
+                      min="50"
+                      max="300"
+                      value="100"
+                      step="1"
+                      aria-label="Zoom"
+                    />
+                  </div>
+
+                  <div class="map-controls__stack" aria-label="Pan right/left">
+                    <button
+                      class="map-controls__btn"
+                      type="button"
+                      id="map-pan-right"
+                      aria-label="Pan right"
+                    >
+                      →
+                    </button>
+                    <button
+                      class="map-controls__btn"
+                      type="button"
+                      id="map-pan-left"
+                      aria-label="Pan left"
+                    >
+                      ←
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <section
+              id="media-window"
+              class="tile media-window is-hidden"
+              aria-label="Media player window"
+            >
+              <div
+                class="media-window__header"
+                id="media-window-handle"
+                aria-label="Drag media window"
+              >
+                <div class="media-window__title">
+                  <span class="media-window__pill">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        fill="rgba(234,231,223,0.85)"
+                        d="M12 3c5 0 9 4 9 9s-4 9-9 9-9-4-9-9 4-9 9-9zm-1 5v8l7-4-7-4z"
+                      />
+                    </svg>
+                    Media
+                  </span>
+                  <span class="media-window__hint">Drag</span>
+                </div>
+              </div>
+
+              <div class="media" aria-label="Now playing">
+                <div class="track" id="media-track">Dawn</div>
+                <div class="artist" id="media-artist">Kelly Moran</div>
+              </div>
+
+              <div class="controls" aria-label="Media controls">
+                <div class="buttons" role="group" aria-label="Playback">
+                  <div class="btn" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        fill="rgba(234,231,223,0.85)"
+                        d="M11 18V6l-8.5 6L11 18zm1-12v12h2V6h-2z"
+                      />
+                    </svg>
+                  </div>
+                  <div class="btn" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="rgba(234,231,223,0.85)" d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                  <div class="btn" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="rgba(234,231,223,0.85)" d="M13 6v12l8.5-6L13 6zM4 18h2V6H4v12z" />
+                    </svg>
+                  </div>
+                </div>
+                <div class="scrub" aria-hidden="true"><span></span></div>
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <script type="text/plain" id="floorplan-yaml">
+      # Embedded fallback (used when fetch('./floorplan.yaml') is blocked, e.g. file://).
+      # Keep this in sync with UI/floorplan.yaml if you edit it.
+      gps:
+        latitude: 29.81548
+        longitude: -95.538265
+        elevation: 33.53
+
+      floors:
+        - id: ground
+          name: Ground Floor
+          bounds: [[-10, -10, 0], [25, 20, 2.4384]]
+          rooms:
+            - name: NORAD
+              id: norad
+              points:
+                - [0, 0.5]
+                - [3.5, 0.5]
+                - [3.5, 3.8]
+                - [0, 3.8]
+            - name: Studio
+              id: studio
+              points:
+                - [3.5, 0]
+                - [8, 0]
+                - [8, 3.8]
+                - [3.5, 3.8]
+            - name: Foyer
+              id: foyer
+              points:
+                - [8, 0.5]
+                - [9.5, 0.5]
+                - [9.5, 3.8]
+                - [8, 3.8]
+            - name: Music Room
+              id: music_room
+              points:
+                - [9.5, 0]
+                - [14.5, 0]
+                - [14.5, 3.1]
+                - [13, 3.1]
+                - [13, 3.8]
+                - [9.5, 3.8]
+            - name: Second Bedroom
+              id: second_bedroom
+              points:
+                - [14.5, 0.5]
+                - [18, 0.5]
+                - [18, 4.5]
+                - [16.25, 4.5]
+                - [16.25, 5.5]
+                - [14.5, 5.5]
+            - name: Kitchen
+              id: kitchen
+              points:
+                - [0, 3.8]
+                - [4, 3.8]
+                - [4, 9]
+                - [0, 9]
+            - name: Family Room
+              id: family_room
+              points:
+                - [4, 3.8]
+                - [10.5, 3.8]
+                - [10.5, 10.1]
+                - [4, 10.1]
+            - name: Guest Bathroom
+              id: guest_bathroom
+              points:
+                - [10.5, 5.1]
+                - [13, 5.1]
+                - [13, 10.1]
+                - [10.5, 10.1]
+            - name: Hallway
+              id: hallway
+              points:
+                - [10.5, 3.8]
+                - [13, 3.8]
+                - [13, 3.1]
+                - [14.5, 3.1]
+                - [14.5, 9]
+                - [13, 9]
+                - [13, 5.1]
+                - [10.5, 5.1]
+            - name: Office
+              id: office
+              points:
+                - [14.5, 5.5]
+                - [16.25, 5.5]
+                - [16.25, 4.5]
+                - [18, 4.5]
+                - [18, 9.5]
+                - [14.5, 9.5]
+            - name: Breakfast Area
+              id: breakfast_area
+              points:
+                - [0, 9]
+                - [4, 9]
+                - [4, 13.1]
+                - [0, 13.1]
+            - name: Dining Area
+              id: dining_area
+              points:
+                - [4, 10.1]
+                - [10.5, 10.1]
+                - [10.5, 13.1]
+                - [4, 13.1]
+            - name: Bedroom
+              id: bedroom
+              points:
+                - [10.5, 10.1]
+                - [13, 10.1]
+                - [13, 9]
+                - [14.5, 9]
+                - [14.5, 9.5]
+                - [18, 9.5]
+                - [18, 13.1]
+                - [10.5, 13.1]
+            - name: Utility Room
+              id: utility_room
+              points:
+                - [1, 13.1]
+                - [4, 13.1]
+                - [4, 15.5]
+                - [1, 15.5]
+            - name: Patio
+              id: patio
+              points:
+                - [4, 13.1]
+                - [11.2, 13.1]
+                - [11.2, 16]
+                - [4, 16]
+            - name: Bathroom
+              id: bathroom
+              points:
+                - [11.2, 13.1]
+                - [18, 13.1]
+                - [18, 16]
+                - [11.2, 16]
+            - name: Garage
+              id: garage
+              points:
+                - [-5.5, 16.5]
+                - [1.5, 16.5]
+                - [1.5, 23]
+                - [-5.5, 23]
+            - name: Driveway
+              id: driveway
+              points:
+                - [-7, -11.5]
+                - [-1.5, -11.5]
+                - [-1.5, 0.5]
+                - [0, 0.5]
+                - [0, 16.5]
+                - [-7, 16.5]
+            - name: Front yard
+              id: front_yard
+              points:
+                - [-1.5, -11.5]
+                - [18, -11.5]
+                - [18, 0]
+                - [-1.5, 0]
+            - name: Back yard
+              id: back_yard
+              points:
+                - [-7, 16.5]
+                - [-5.5, 16.5]
+                - [-5.5, 23]
+                - [1.5, 23]
+                - [1.5, 16.5]
+                - [18, 16]
+                - [18, 32.5]
+                - [-7, 32.5]
+        - id: attic
+          name: Attic
+          bounds: [[0, 0, 2.4384], [18, 16, 6]]
+          rooms:
+            - id: attic
+              name: Attic
+              points:
+                - [0, 0]
+                - [18, 0]
+                - [18, 16]
+                - [0, 16]
+    </script>
+
+    <script>
+      (function () {
+        const SVG_NS = 'http://www.w3.org/2000/svg';
+        let suppressRoomClick = false;
+
+        function stripComments(line) {
+          const idx = line.indexOf('#');
+          if (idx === -1) return line;
+          return line.slice(0, idx);
+        }
+
+        function unquote(value) {
+          const v = value.trim();
+          if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
+            return v.slice(1, -1);
+          }
+          return v;
+        }
+
+        function coerceScalar(value) {
+          const raw = unquote(value);
+          if (raw === '') return '';
+          if (raw === 'true') return true;
+          if (raw === 'false') return false;
+          const n = Number(raw);
+          if (!Number.isNaN(n) && String(n) === raw.replace(/\.0+$/, '').replace(/\.$/, ''))
+            return n;
+          if (!Number.isNaN(n) && /^-?\d+(\.\d+)?$/.test(raw)) return n;
+          return raw;
+        }
+
+        function parseInlineArray(text) {
+          const t = text.trim();
+          if (!t.startsWith('[') || !t.endsWith(']')) return null;
+          const jsonish = t.replace(/'([^']*)'/g, '"$1"');
+          try {
+            return JSON.parse(jsonish);
+          } catch {
+            return null;
+          }
+        }
+
+        function parseYamlLite(yamlText) {
+          const lines = yamlText
+            .split(/\r?\n/)
+            .map((l) => stripComments(l))
+            .map((l) => l.replace(/\t/g, '    '));
+
+          function nextNonEmpty(startIdx) {
+            let i = startIdx;
+            while (i < lines.length) {
+              if (lines[i].trim() !== '') return i;
+              i++;
+            }
+            return i;
+          }
+
+          function indentOf(line) {
+            const m = line.match(/^\s*/);
+            return m ? m[0].length : 0;
+          }
+
+          function parseBlock(startIdx, baseIndent) {
+            let idx = nextNonEmpty(startIdx);
+            if (idx >= lines.length) return [{}, idx];
+
+            const isSeq = lines[idx].trimStart().startsWith('- ');
+            if (isSeq) {
+              const arr = [];
+              while (idx < lines.length) {
+                idx = nextNonEmpty(idx);
+                if (idx >= lines.length) break;
+                const line = lines[idx];
+                const ind = indentOf(line);
+                if (ind < baseIndent) break;
+                if (ind !== baseIndent || !line.trimStart().startsWith('- ')) break;
+
+                const afterDash = line.trimStart().slice(2);
+                if (afterDash.includes(':')) {
+                  const colon = afterDash.indexOf(':');
+                  const k = afterDash.slice(0, colon).trim();
+                  const rest = afterDash.slice(colon + 1).trim();
+                  const obj = {};
+                  if (rest === '') {
+                    const [nested, nextIdx] = parseBlock(idx + 1, baseIndent + 2);
+                    obj[k] = nested;
+                    arr.push(obj);
+                    idx = nextIdx;
+                    continue;
+                  }
+                  const inlineArr = parseInlineArray(rest);
+                  obj[k] = inlineArr !== null ? inlineArr : coerceScalar(rest);
+                  idx++;
+                  const nextIdx = nextNonEmpty(idx);
+                  if (nextIdx < lines.length && indentOf(lines[nextIdx]) > baseIndent) {
+                    const [more, doneIdx] = parseBlock(idx, baseIndent + 2);
+                    if (more && typeof more === 'object' && !Array.isArray(more)) {
+                      Object.assign(obj, more);
+                    }
+                    idx = doneIdx;
+                  }
+                  arr.push(obj);
+                  continue;
+                }
+
+                const inlineArr = parseInlineArray(afterDash);
+                if (inlineArr !== null) {
+                  arr.push(inlineArr);
+                  idx++;
+                  continue;
+                }
+                if (afterDash.trim() === '') {
+                  const [nested, nextIdx] = parseBlock(idx + 1, baseIndent + 2);
+                  arr.push(nested);
+                  idx = nextIdx;
+                  continue;
+                }
+                arr.push(coerceScalar(afterDash));
+                idx++;
+              }
+              return [arr, idx];
+            }
+
+            const obj = {};
+            while (idx < lines.length) {
+              idx = nextNonEmpty(idx);
+              if (idx >= lines.length) break;
+              const line = lines[idx];
+              const ind = indentOf(line);
+              if (ind < baseIndent) break;
+              if (ind !== baseIndent) break;
+              const trimmed = line.trim();
+              const colon = trimmed.indexOf(':');
+              if (colon === -1) {
+                idx++;
+                continue;
+              }
+              const key = trimmed.slice(0, colon).trim();
+              const rest = trimmed.slice(colon + 1).trim();
+              if (rest === '') {
+                const [nested, nextIdx] = parseBlock(idx + 1, baseIndent + 2);
+                obj[key] = nested;
+                idx = nextIdx;
+                continue;
+              }
+              const inlineArr = parseInlineArray(rest);
+              obj[key] = inlineArr !== null ? inlineArr : coerceScalar(rest);
+              idx++;
+            }
+            return [obj, idx];
+          }
+
+          const [doc] = parseBlock(0, 0);
+          return doc;
+        }
+
+        function svgEl(tag, attrs) {
+          const el = document.createElementNS(SVG_NS, tag);
+          if (attrs) {
+            for (const [k, v] of Object.entries(attrs)) {
+              el.setAttribute(k, String(v));
+            }
+          }
+          return el;
+        }
+
+        function centroid(points) {
+          let sx = 0;
+          let sy = 0;
+          for (const [x, y] of points) {
+            sx += x;
+            sy += y;
+          }
+          return [sx / points.length, sy / points.length];
+        }
+
+        function computeBounds(rooms) {
+          let minX = Infinity;
+          let minY = Infinity;
+          let maxX = -Infinity;
+          let maxY = -Infinity;
+          for (const room of rooms) {
+            for (const [x, y] of room.points) {
+              minX = Math.min(minX, x);
+              minY = Math.min(minY, y);
+              maxX = Math.max(maxX, x);
+              maxY = Math.max(maxY, y);
+            }
+          }
+          if (!Number.isFinite(minX)) return { minX: 0, minY: 0, maxX: 10, maxY: 10 };
+          return { minX, minY, maxX, maxY };
+        }
+
+        function renderFloorplan(doc) {
+          const svg = document.getElementById('floorplan-svg');
+          const layer = document.getElementById('rooms-layer');
+          if (!svg || !layer) return;
+
+          const floors = Array.isArray(doc?.floors) ? doc.floors : [];
+          const floor = floors.find((f) => f?.id === 'ground') || floors[0];
+          const rooms = Array.isArray(floor?.rooms) ? floor.rooms : [];
+          const floorBounds = Array.isArray(floor?.bounds) ? floor.bounds : null;
+          const roomsNormalized = rooms
+            .filter((r) => r && Array.isArray(r.points))
+            .map((r) => ({
+              id: String(r.id || r.name || '').trim(),
+              name: String(r.name || r.id || '').trim(),
+              points: r.points.map((p) => [Number(p[0]), Number(p[1])]),
+            }))
+            .filter((r) => r.id && r.points.length >= 3);
+
+          const boundsFromFloor =
+            floorBounds &&
+            floorBounds.length >= 2 &&
+            Array.isArray(floorBounds[0]) &&
+            Array.isArray(floorBounds[1])
+              ? {
+                  minX: Number(floorBounds[0][0]),
+                  minY: Number(floorBounds[0][1]),
+                  maxX: Number(floorBounds[1][0]),
+                  maxY: Number(floorBounds[1][1]),
+                }
+              : null;
+
+          const { minX, minY, maxX, maxY } = boundsFromFloor || computeBounds(roomsNormalized);
+          const pad = 1.25;
+          const vbX = minX - pad;
+          const vbY = minY - pad;
+          const vbW = maxX - minX + pad * 2;
+          const vbH = maxY - minY + pad * 2;
+          svg.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+
+          // YAML coordinates treat positive Y as north/up.
+          // SVG increases Y downward, so we flip within the computed viewBox.
+          const flipY = (y) => 2 * vbY + vbH - y;
+          const roomsForRender = roomsNormalized.map((room) => ({
+            ...room,
+            points: room.points.map(([x, y]) => [x, flipY(y)]),
+          }));
+
+          while (layer.firstChild) layer.removeChild(layer.firstChild);
+
+          let activeId = null;
+
+          function setActive(id) {
+            activeId = id;
+            for (const g of layer.querySelectorAll('.room')) {
+              g.classList.toggle('is-active', g.getAttribute('data-room-id') === id);
+            }
+          }
+
+          for (const room of roomsForRender) {
+            const g = svgEl('g', {
+              class: 'room',
+              'data-room-id': room.id,
+              tabindex: '0',
+              role: 'button',
+              'aria-label': room.name,
+            });
+
+            const pts = room.points.map(([x, y]) => `${x},${y}`).join(' ');
+            const poly = svgEl('polygon', { points: pts, class: 'room-shape' });
+            g.appendChild(poly);
+
+            const [cx, cy] = centroid(room.points);
+            const label = svgEl('text', {
+              x: cx,
+              y: cy,
+              'text-anchor': 'middle',
+              'dominant-baseline': 'middle',
+              class: 'room-label',
+            });
+            label.textContent = room.name;
+            g.appendChild(label);
+
+            g.addEventListener('click', (e) => {
+              e.preventDefault();
+              if (suppressRoomClick) {
+                suppressRoomClick = false;
+                return;
+              }
+              setActive(room.id);
+            });
+            g.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setActive(room.id);
+              }
+            });
+
+            layer.appendChild(g);
+          }
+
+          if (roomsForRender.length) setActive(roomsForRender[0].id);
+
+          return {
+            floorId: String(floor?.id || ''),
+            roomsCount: roomsForRender.length,
+            viewBox: `${vbX} ${vbY} ${vbW} ${vbH}`,
+            baseViewBox: { x: vbX, y: vbY, w: vbW, h: vbH },
+          };
+        }
+
+        function enablePanZoom(baseViewBox) {
+          const svg = document.getElementById('floorplan-svg');
+          if (!(svg instanceof SVGSVGElement) || !baseViewBox) return;
+
+          const controls = document.getElementById('map-controls');
+          const controlsClose = document.getElementById('map-controls-close');
+          const controlsToggle = document.getElementById('map-controls-toggle');
+
+          const setControlsVisible = (visible) => {
+            if (controls instanceof HTMLElement) {
+              controls.classList.toggle('is-hidden', !visible);
+            }
+            if (controlsToggle instanceof HTMLElement) {
+              controlsToggle.classList.toggle('is-hidden', visible);
+              controlsToggle.setAttribute('aria-expanded', visible ? 'true' : 'false');
+            }
+          };
+
+          if (controlsClose instanceof HTMLButtonElement) {
+            controlsClose.addEventListener('click', () => setControlsVisible(false));
+          }
+          if (controlsToggle instanceof HTMLButtonElement) {
+            controlsToggle.addEventListener('click', () => setControlsVisible(true));
+          }
+
+          // Default: controls visible, toggle hidden.
+          setControlsVisible(true);
+
+          const zoomSlider = document.getElementById('map-zoom');
+          const zoomValue = document.getElementById('map-zoom-value');
+          const panUp = document.getElementById('map-pan-up');
+          const panDown = document.getElementById('map-pan-down');
+          const panLeft = document.getElementById('map-pan-left');
+          const panRight = document.getElementById('map-pan-right');
+
+          const minScale = 0.5;
+          const maxScale = 3.0;
+
+          let current = { ...baseViewBox };
+          let scale = 1.0;
+
+          const pointers = new Map();
+          let mouseDragging = false;
+          let dragStart = null;
+          let dragMoved = false;
+          let gestureStart = null;
+
+          const updateRoomLabelSizes = (desiredPx = 14) => {
+            const rect = svg.getBoundingClientRect();
+            if (!rect.width) return;
+            const vb = readViewBox();
+            const unitsPerPx = vb.w / rect.width;
+            const fontSizeInUserUnits = desiredPx * unitsPerPx;
+
+            const labels = svg.querySelectorAll('.room-label');
+            for (const label of labels) {
+              if (label instanceof SVGTextElement) {
+                label.setAttribute('font-size', String(fontSizeInUserUnits));
+              }
+            }
+          };
+
+          const clampScale = (s) => Math.min(maxScale, Math.max(minScale, s));
+
+          const applyViewBox = (vb) => {
+            current = vb;
+            svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+            updateRoomLabelSizes(14);
+          };
+
+          const readViewBox = () => {
+            const parts = String(svg.getAttribute('viewBox') || '')
+              .trim()
+              .split(/\s+/)
+              .map(Number);
+            if (parts.length === 4 && parts.every(Number.isFinite)) {
+              return { x: parts[0], y: parts[1], w: parts[2], h: parts[3] };
+            }
+            return { ...current };
+          };
+
+          const clientToSvg = (clientX, clientY) => {
+            const ctm = svg.getScreenCTM();
+            if (!ctm) return { x: 0, y: 0 };
+            const inv = ctm.inverse();
+
+            if (typeof DOMPoint !== 'undefined') {
+              const pt = new DOMPoint(clientX, clientY);
+              const out = pt.matrixTransform(inv);
+              return { x: out.x, y: out.y };
+            }
+
+            const pt = svg.createSVGPoint();
+            pt.x = clientX;
+            pt.y = clientY;
+            const out = pt.matrixTransform(inv);
+            return { x: out.x, y: out.y };
+          };
+
+          const syncControls = () => {
+            const percent = Math.round(scale * 100);
+            if (zoomSlider instanceof HTMLInputElement) zoomSlider.value = String(percent);
+            if (zoomValue instanceof HTMLElement) zoomValue.textContent = `${percent}%`;
+          };
+
+          const viewBoxForScaleAround = (startVb, nextScale, focalSvg) => {
+            const newW = baseViewBox.w / nextScale;
+            const newH = baseViewBox.h / nextScale;
+            const fx = focalSvg.x;
+            const fy = focalSvg.y;
+            const newX = fx - ((fx - startVb.x) * newW) / startVb.w;
+            const newY = fy - ((fy - startVb.y) * newH) / startVb.h;
+            return { x: newX, y: newY, w: newW, h: newH };
+          };
+
+          const setScaleAround = (nextScale, focalSvg) => {
+            const vb = readViewBox();
+            const clamped = clampScale(nextScale);
+            scale = clamped;
+            applyViewBox(viewBoxForScaleAround(vb, clamped, focalSvg));
+            syncControls();
+          };
+
+          const panByPixels = (dxPx, dyPx) => {
+            const rect = svg.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            const vb = readViewBox();
+            const dx = (dxPx * vb.w) / rect.width;
+            const dy = (dyPx * vb.h) / rect.height;
+            applyViewBox({ ...vb, x: vb.x - dx, y: vb.y - dy });
+          };
+
+          syncControls();
+          updateRoomLabelSizes(14);
+
+          window.addEventListener('resize', () => {
+            updateRoomLabelSizes(14);
+          });
+
+          // Mouse wheel zoom (desktop/laptop)
+          svg.addEventListener(
+            'wheel',
+            (e) => {
+              e.preventDefault();
+              const focal = clientToSvg(e.clientX, e.clientY);
+              const zoomFactor = Math.pow(1.0016, -e.deltaY);
+              const nextScale = clampScale(scale * zoomFactor);
+              setScaleAround(nextScale, focal);
+            },
+            { passive: false }
+          );
+
+          // Pointer: click-drag pan (mouse). Touch: pinch zoom + two-finger pan.
+          svg.addEventListener('pointerdown', (e) => {
+            pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
+
+            if (e.pointerType === 'mouse' && e.button === 0) {
+              mouseDragging = true;
+              dragMoved = false;
+              dragStart = { x: e.clientX, y: e.clientY };
+              svg.classList.add('is-panning');
+              svg.setPointerCapture(e.pointerId);
+            }
+
+            if (e.pointerType !== 'mouse' && pointers.size === 2) {
+              const pts = Array.from(pointers.values());
+              const a = pts[0];
+              const b = pts[1];
+              const startMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+              const startDist = Math.hypot(a.x - b.x, a.y - b.y);
+              gestureStart = {
+                startViewBox: readViewBox(),
+                startScale: scale,
+                startMid,
+                startDist,
+                startMidSvg: clientToSvg(startMid.x, startMid.y),
+              };
+              svg.classList.add('is-panning');
+              e.preventDefault();
+            }
+          });
+
+          svg.addEventListener('pointermove', (e) => {
+            if (!pointers.has(e.pointerId)) return;
+            const prev = pointers.get(e.pointerId);
+            pointers.set(e.pointerId, { ...prev, x: e.clientX, y: e.clientY });
+
+            if (mouseDragging && e.pointerType === 'mouse') {
+              const dx = e.clientX - prev.x;
+              const dy = e.clientY - prev.y;
+              if (dragStart) {
+                const moved = Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y);
+                if (moved > 4) dragMoved = true;
+              }
+              panByPixels(dx, dy);
+              e.preventDefault();
+              return;
+            }
+
+            if (e.pointerType !== 'mouse' && pointers.size === 2 && gestureStart) {
+              const pts = Array.from(pointers.values());
+              const a = pts[0];
+              const b = pts[1];
+              const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+              const dist = Math.hypot(a.x - b.x, a.y - b.y);
+
+              const zoomFactor = gestureStart.startDist > 0 ? dist / gestureStart.startDist : 1;
+              const nextScale = clampScale(gestureStart.startScale * zoomFactor);
+              const vb1 = viewBoxForScaleAround(
+                gestureStart.startViewBox,
+                nextScale,
+                gestureStart.startMidSvg
+              );
+
+              // Apply two-finger pan based on midpoint movement
+              const rect = svg.getBoundingClientRect();
+              if (rect.width && rect.height) {
+                const dxPx = mid.x - gestureStart.startMid.x;
+                const dyPx = mid.y - gestureStart.startMid.y;
+                vb1.x -= (dxPx * vb1.w) / rect.width;
+                vb1.y -= (dyPx * vb1.h) / rect.height;
+              }
+
+              scale = nextScale;
+              applyViewBox(vb1);
+              syncControls();
+              e.preventDefault();
+            }
+          });
+
+          const endPointer = (e) => {
+            const wasMouse = e.pointerType === 'mouse';
+            pointers.delete(e.pointerId);
+
+            if (wasMouse) {
+              mouseDragging = false;
+              svg.classList.remove('is-panning');
+              if (dragMoved) {
+                suppressRoomClick = true;
+                setTimeout(() => {
+                  suppressRoomClick = false;
+                }, 0);
+              }
+              dragStart = null;
+              dragMoved = false;
+              try {
+                svg.releasePointerCapture(e.pointerId);
+              } catch {
+                // ignore
+              }
+            } else if (pointers.size < 2) {
+              gestureStart = null;
+              svg.classList.remove('is-panning');
+              // Two-finger gestures should not trigger room clicks.
+              suppressRoomClick = true;
+              setTimeout(() => {
+                suppressRoomClick = false;
+              }, 0);
+            }
+          };
+
+          svg.addEventListener('pointerup', endPointer);
+          svg.addEventListener('pointercancel', endPointer);
+
+          // Slider zoom (starter on-screen control)
+          if (zoomSlider instanceof HTMLInputElement) {
+            zoomSlider.addEventListener('input', () => {
+              const nextScale = clampScale(Number(zoomSlider.value) / 100);
+              const vb = readViewBox();
+              const focal = { x: vb.x + vb.w / 2, y: vb.y + vb.h / 2 };
+              setScaleAround(nextScale, focal);
+            });
+          }
+
+          // Arrow pad + keyboard arrows
+          const panStep = (dxSign, dySign) => {
+            const vb = readViewBox();
+            applyViewBox({
+              ...vb,
+              x: vb.x + vb.w * 0.1 * dxSign,
+              y: vb.y + vb.h * 0.1 * dySign,
+            });
+          };
+
+          const bindPanButton = (el, dx, dy) => {
+            if (!(el instanceof HTMLButtonElement)) return;
+            el.addEventListener('click', () => panStep(dx, dy));
+          };
+
+          bindPanButton(panUp, 0, -1);
+          bindPanButton(panDown, 0, 1);
+          bindPanButton(panLeft, -1, 0);
+          bindPanButton(panRight, 1, 0);
+
+          window.addEventListener('keydown', (e) => {
+            const active = document.activeElement;
+            const typing =
+              active instanceof HTMLInputElement ||
+              active instanceof HTMLTextAreaElement ||
+              (active instanceof HTMLElement && active.isContentEditable);
+            if (typing) return;
+
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              panStep(0, -1);
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              panStep(0, 1);
+            } else if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              panStep(-1, 0);
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              panStep(1, 0);
+            }
+          });
+        }
+
+        function normalizeYamlText(text) {
+          const raw = String(text || '').replace(/^\uFEFF/, '');
+          const lines = raw.split(/\r?\n/);
+          let minIndent = Infinity;
+          for (const line of lines) {
+            if (line.trim() === '') continue;
+            const leading = (line.match(/^\s*/) || [''])[0].length;
+            minIndent = Math.min(minIndent, leading);
+          }
+          if (!Number.isFinite(minIndent) || minIndent <= 0) return raw;
+          return lines.map((l) => (l.length >= minIndent ? l.slice(minIndent) : l)).join('\n');
+        }
+
+        async function loadYamlText() {
+          try {
+            const res = await fetch('./floorplan.yaml', { cache: 'no-store' });
+            if (res.ok) {
+              return { text: await res.text(), source: 'fetch' };
+            }
+          } catch {
+            // ignore
+          }
+          const fallback = document.getElementById('floorplan-yaml');
+          return { text: fallback ? fallback.textContent || '' : '', source: 'fallback' };
+        }
+
+        function enableDragging() {
+          const stage = document.querySelector('.stage');
+          const win = document.getElementById('media-window');
+          const handle = document.getElementById('media-window-handle');
+          if (
+            !(stage instanceof HTMLElement) ||
+            !(win instanceof HTMLElement) ||
+            !(handle instanceof HTMLElement)
+          ) {
+            return;
+          }
+
+          let startX = 0;
+          let startY = 0;
+          let startLeft = 0;
+          let startTop = 0;
+          let dragging = false;
+
+          function clamp(v, min, max) {
+            return Math.min(Math.max(v, min), max);
+          }
+
+          handle.addEventListener('pointerdown', (e) => {
+            dragging = true;
+            handle.setPointerCapture(e.pointerId);
+            const rect = win.getBoundingClientRect();
+            const stageRect = stage.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = rect.left - stageRect.left;
+            startTop = rect.top - stageRect.top;
+          });
+
+          handle.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            const stageRect = stage.getBoundingClientRect();
+            const w = win.offsetWidth;
+            const h = win.offsetHeight;
+            const margin = 10;
+            const maxLeft = stageRect.width - w - margin;
+            const maxTop = stageRect.height - h - margin;
+            const nextLeft = clamp(startLeft + dx, margin, Math.max(margin, maxLeft));
+            const nextTop = clamp(startTop + dy, margin, Math.max(margin, maxTop));
+            win.style.left = `${nextLeft}px`;
+            win.style.top = `${nextTop}px`;
+          });
+
+          handle.addEventListener('pointerup', (e) => {
+            dragging = false;
+            try {
+              handle.releasePointerCapture(e.pointerId);
+            } catch {
+              // ignore
+            }
+          });
+        }
+
+        function enableMediaToggle() {
+          const toggleButton = document.getElementById('media-toggle');
+          const win = document.getElementById('media-window');
+
+          if (!(toggleButton instanceof HTMLButtonElement) || !(win instanceof HTMLElement)) {
+            return;
+          }
+
+          const isHidden = () => win.classList.contains('is-hidden');
+          const syncAria = () =>
+            toggleButton.setAttribute('aria-expanded', isHidden() ? 'false' : 'true');
+
+          syncAria();
+
+          toggleButton.addEventListener('click', () => {
+            win.classList.toggle('is-hidden');
+            syncAria();
+          });
+        }
+
+        (async function init() {
+          enableDragging();
+          enableMediaToggle();
+          const statusEl = document.getElementById('floorplan-status');
+          try {
+            const { text, source } = await loadYamlText();
+            const normalized = normalizeYamlText(text);
+            const doc = parseYamlLite(normalized);
+            const floorsCount = Array.isArray(doc?.floors) ? doc.floors.length : 0;
+            const result = renderFloorplan(doc);
+            if (result?.baseViewBox) {
+              enablePanZoom(result.baseViewBox);
+            }
+            const roomsCount = result?.roomsCount ?? 0;
+            const floorId = result?.floorId ?? 'unknown';
+            const viewBox = result?.viewBox ?? '(none)';
+
+            const msg =
+              `Floorplan: ok\n` +
+              `source: ${source}\n` +
+              `floors: ${floorsCount}  floor: ${floorId}\n` +
+              `rooms: ${roomsCount}\n` +
+              `viewBox: ${viewBox}`;
+
+            if (statusEl) statusEl.textContent = msg;
+            console.log(msg);
+          } catch (err) {
+            const msg = `Floorplan: ERROR\n${String(err)}`;
+            if (statusEl) statusEl.textContent = msg;
+            console.error(err);
+          }
+        })();
+      })();
+    </script>
+  </body>
+</html>

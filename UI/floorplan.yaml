@@ -1,0 +1,240 @@
+# Floors w/ the points to draw it in meters
+floors:
+  - id: ground
+    name: Ground Floor
+    # Bounds (x,y,z) of map in meters
+    bounds: [[-10, -10, 0], [25, 20, 2.4384]]
+    rooms:
+      - name: NORAD
+        id: norad
+        points:
+          - [0, 0.5]
+          - [3.5, 0.5]
+          - [3.5, 3.8]
+          - [0, 3.8]
+      - name: Studio
+        id: studio
+        points:
+          - [3.5, 0]
+          - [8, 0]
+          - [8, 3.8]
+          - [3.5, 3.8]
+      - name: Foyer
+        id: foyer
+        points:
+          - [8, 0.5]
+          - [9.5, 0.5]
+          - [9.5, 3.8]
+          - [8, 3.8]
+      - name: Music Room
+        id: music_room
+        points:
+          - [9.5, 0]
+          - [14.5, 0]
+          - [14.5, 3.1]
+          - [13, 3.1]
+          - [13, 3.8]
+          - [9.5, 3.8]
+      - name: Second Bedroom
+        id: second_bedroom
+        points:
+          - [14.5, 0.5]
+          - [18, 0.5]
+          - [18, 4.5]
+          - [16.25, 4.5]
+          - [16.25, 5.5]
+          - [14.5, 5.5]
+      - name: Kitchen
+        id: kitchen
+        points:
+          - [0, 3.8]
+          - [4, 3.8]
+          - [4, 9]
+          - [0, 9]
+      - name: Family Room
+        id: family_room
+        points:
+          - [4, 3.8]
+          - [10.5, 3.8]
+          - [10.5, 10.1]
+          - [4, 10.1]
+      - name: Guest Bathroom
+        id: guest_bathroom
+        points:
+          - [10.5, 5.1]
+          - [13, 5.1]
+          - [13, 10.1]
+          - [10.5, 10.1]
+      - name: Hallway
+        id: hallway
+        points:
+          - [10.5, 3.8]
+          - [13, 3.8]
+          - [13, 3.1]
+          - [14.5, 3.1]
+          - [14.5, 9]
+          - [13, 9]
+          - [13, 5.1]
+          - [10.5, 5.1]
+      - name: Office
+        id: office
+        points:
+          - [14.5, 5.5]
+          - [16.25, 5.5]
+          - [16.25, 4.5]
+          - [18, 4.5]
+          - [18, 9.5]
+          - [14.5, 9.5]
+      - name: Breakfast Area
+        id: breakfast_area
+        points:
+          - [0, 9]
+          - [4, 9]
+          - [4, 13.1]
+          - [0, 13.1]
+      - name: Dining Area
+        id: dining_area
+        points:
+          - [4, 10.1]
+          - [10.5, 10.1]
+          - [10.5, 13.1]
+          - [4, 13.1]
+      - name: Bedroom
+        id: bedroom
+        points:
+          - [10.5, 10.1]
+          - [13, 10.1]
+          - [13, 9]
+          - [14.5, 9]
+          - [14.5, 9.5]
+          - [18, 9.5]
+          - [18, 13.1]
+          - [10.5, 13.1]
+      - name: Utility Room
+        id: utility_room
+        points:
+          - [1, 13.1]
+          - [4, 13.1]
+          - [4, 15.5]
+          - [1, 15.5]
+      - name: Patio
+        id: patio
+        points:
+          - [4, 13.1]
+          - [11.2, 13.1]
+          - [11.2, 16]
+          - [4, 16]
+      - name: Bathroom
+        id: bathroom
+        points:
+          - [11.2, 13.1]
+          - [18, 13.1]
+          - [18, 16]
+          - [11.2, 16]
+
+      - name: Garage
+        id: garage
+        points:
+          - [-5.5, 16.5]
+          - [1.5, 16.5]
+          - [1.5, 23]
+          - [-5.5, 23]
+
+      - name: Driveway
+        id: driveway
+        points:
+          - [-7, -11.5]
+          - [-1.5, -11.5]
+          - [-1.5, 0.5]
+          - [0, 0.5]
+          - [0, 16.5]
+          - [-7, 16.5]
+
+      - name: Front yard
+        id: front_yard
+        points:
+          - [-1.5, -11.5]
+          - [18, -11.5]
+          - [18, 0]
+          - [-1.5, 0]
+
+      - name: Back yard
+        id: back_yard
+        points:
+          - [-7, 16.5]
+          - [-5.5, 16.5]
+          - [-5.5, 23]
+          - [1.5, 23]
+          - [1.5, 16.5]
+          - [18, 16]
+          - [18, 32.5]
+          - [-7, 32.5]
+  - id: attic
+    name: Attic
+    bounds: [[0, 0, 2.4384], [18, 16, 6]]
+    rooms:
+      - id: attic
+        name: Attic
+        points:
+          - [0, 0]
+          - [18, 0]
+          - [18, 16]
+          - [0, 16]
+
+# Locations of espresense nodes in meters
+nodes:
+  - name: MR Node
+    id: music_room
+    floor: First
+    room: Music Room
+    point: [11.25, 0, 0]
+  - name: FR Node
+    id: family_room
+    floor: First
+    room: Family Room
+    point: [10.5, 9, 0]
+  - name: UT Node
+    id: utility_room
+    floor: First
+    room: Utility Room
+    point: [4, 14.2, 1]
+  - name: OF Node
+    id: office
+    floor: First
+    room: Office
+    point: [15.5, 5.5, 0]
+  - name: BR Node
+    id: bedroom
+    floor: First
+    room: Bedroom
+    point: [18, 13.1, 1]
+  - name: NO Node
+    id: norad
+    floor: First
+    room: NORAD
+    point: [1.75, 1.5, 1]
+
+# Devices to track
+devices:
+  - id: 'watch:*'
+  - id: 'phone:*'
+  - id: 'tracker:*'
+
+locators:
+  nadaraya_watson:
+    enabled: true
+    floors: ['ground'] # floor id, see floor configuration section
+    bandwidth: 0.5
+    kernel: gaussian
+
+  nealder_mead:
+    enabled: false
+    floors: ['ground'] # floor id, see floor configuration section
+    weighting:
+      algorithm: gaussian
+      props:
+        sigma: 0.10
+
+  nearest_node:
+    enabled: false
+    max_distance: 10 # in meters
