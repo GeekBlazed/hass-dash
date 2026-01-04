@@ -33,7 +33,7 @@ This is a visual, user-friendly front-end companion to Home Assistant. The appli
 - ⏳ Konva.js floor plans (Phase 3)
 - ⏳ Home Assistant integration (Phase 2)
 
-See [IMPLEMENTATION-PLAN.md](../IMPLEMENTATION-PLAN.md) for detailed roadmap.
+See [IMPLEMENTATION-PLAN.md](../docs/IMPLEMENTATION-PLAN.md) for detailed roadmap.
 
 ---
 
@@ -181,7 +181,7 @@ service.disable('FLOOR_PLAN');
 
 **Before Adding New Features:**
 
-1. Check [IMPLEMENTATION-PLAN.md](../IMPLEMENTATION-PLAN.md) for planned iteration
+1. Check [IMPLEMENTATION-PLAN.md](../docs/IMPLEMENTATION-PLAN.md) for planned iteration
 2. Ensure feature has a corresponding feature flag
 3. **Write tests first or alongside implementation** - 80% coverage is mandatory
 4. Follow SOLID principles even before DI container exists
@@ -787,10 +787,10 @@ Every commit should pass:
 
 ## Resources
 
-- [REQUIREMENTS.md](../REQUIREMENTS.md) - Full project requirements
-- [TECHNOLOGY-STACK.md](../TECHNOLOGY-STACK.md) - Detailed tech decisions
+- [REQUIREMENTS.md](../docs/REQUIREMENTS.md) - Full project requirements
+- [TECHNOLOGY-STACK.md](../docs/TECHNOLOGY-STACK.md) - Detailed tech decisions
 - [DEVELOPMENT-STANDARDS.md](../DEVELOPMENT-STANDARDS.md) - Web standards reference
-- [IMPLEMENTATION-PLAN.md](../IMPLEMENTATION-PLAN.md) - Iteration roadmap
+- [IMPLEMENTATION-PLAN.md](../docs/IMPLEMENTATION-PLAN.md) - Iteration roadmap
 - [CONTRIBUTING.md](../CONTRIBUTING.md) - Contribution guidelines
 
 ---
