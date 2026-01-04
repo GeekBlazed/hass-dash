@@ -817,6 +817,12 @@
         fill: rgba(255, 201, 125, 0.92);
       }
 
+      .room-label-group.is-hover .room-label,
+      .room-label-group.is-focus .room-label,
+      .room-label-group.is-active .room-label {
+        fill: rgba(255, 201, 125, 0.92);
+      }
+
       .tile {
         border-radius: 22px;
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1366,7 +1372,8 @@
                     />
                   </symbol>
                 </defs>
-                <g id="rooms-layer"></g>
+                <g id="walls-layer"></g>
+                <g id="labels-layer"></g>
                 <g id="nodes-layer"></g>
                 <g id="devices-layer"></g>
               </svg>
@@ -1673,10 +1680,17 @@
 
         function renderFloorplan(doc, devicesDoc) {
           const svg = document.getElementById('floorplan-svg');
-          const layer = document.getElementById('rooms-layer');
+          const wallsLayer = document.getElementById('walls-layer');
+          const labelsLayer = document.getElementById('labels-layer');
           const nodesLayer = document.getElementById('nodes-layer');
           const devicesLayer = document.getElementById('devices-layer');
-          if (!svg || !layer) return;
+          if (
+            !svg ||
+            !(wallsLayer instanceof SVGGElement) ||
+            !(labelsLayer instanceof SVGGElement)
+          ) {
+            return;
+          }
 
           const floors = Array.isArray(doc?.floors) ? doc.floors : [];
 
@@ -1796,7 +1810,8 @@
             y: flipY(d.y),
           }));
 
-          while (layer.firstChild) layer.removeChild(layer.firstChild);
+          while (wallsLayer.firstChild) wallsLayer.removeChild(wallsLayer.firstChild);
+          while (labelsLayer.firstChild) labelsLayer.removeChild(labelsLayer.firstChild);
           if (nodesLayer instanceof SVGGElement) {
             while (nodesLayer.firstChild) nodesLayer.removeChild(nodesLayer.firstChild);
           }
@@ -1808,7 +1823,10 @@
 
           function setActive(id) {
             activeId = id;
-            for (const g of layer.querySelectorAll('.room')) {
+            for (const g of wallsLayer.querySelectorAll('.room')) {
+              g.classList.toggle('is-active', g.getAttribute('data-room-id') === id);
+            }
+            for (const g of labelsLayer.querySelectorAll('.room-label-group')) {
               g.classList.toggle('is-active', g.getAttribute('data-room-id') === id);
             }
           }
@@ -1826,6 +1844,11 @@
             const poly = svgEl('polygon', { points: pts, class: 'room-shape' });
             g.appendChild(poly);
 
+            const labelGroup = svgEl('g', {
+              class: 'room-label-group',
+              'data-room-id': room.id,
+            });
+
             const [cx, cy] = centroid(room.points);
             const label = svgEl('text', {
               x: cx,
@@ -1835,7 +1858,7 @@
               class: 'room-label',
             });
             label.textContent = room.name;
-            g.appendChild(label);
+            labelGroup.appendChild(label);
 
             g.addEventListener('click', (e) => {
               e.preventDefault();
@@ -1855,7 +1878,23 @@
               }
             });
 
-            layer.appendChild(g);
+            g.addEventListener('mouseenter', () => {
+              if (activeId === room.id) return;
+              labelGroup.classList.add('is-hover');
+            });
+            g.addEventListener('mouseleave', () => {
+              labelGroup.classList.remove('is-hover');
+            });
+            g.addEventListener('focus', () => {
+              if (activeId === room.id) return;
+              labelGroup.classList.add('is-focus');
+            });
+            g.addEventListener('blur', () => {
+              labelGroup.classList.remove('is-focus');
+            });
+
+            wallsLayer.appendChild(g);
+            labelsLayer.appendChild(labelGroup);
           }
 
           if (nodesLayer instanceof SVGGElement) {
