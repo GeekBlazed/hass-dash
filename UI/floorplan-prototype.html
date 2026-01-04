@@ -761,6 +761,18 @@
         pointer-events: none;
       }
 
+      .room-climate {
+        fill: rgba(185, 182, 175, 0.92);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        user-select: none;
+        pointer-events: none;
+      }
+
+      .room-climate.is-hidden {
+        display: none;
+      }
+
       .node-dot {
         fill: var(--node-blue);
         stroke: rgba(0, 0, 0, 0.45);
@@ -821,6 +833,12 @@
       .room-label-group.is-focus .room-label,
       .room-label-group.is-active .room-label {
         fill: rgba(255, 201, 125, 0.92);
+      }
+
+      .room-label-group.is-hover .room-climate,
+      .room-label-group.is-focus .room-climate,
+      .room-label-group.is-active .room-climate {
+        fill: rgba(255, 201, 125, 0.8);
       }
 
       .tile {
@@ -1248,20 +1266,24 @@
 
             <section id="climate-panel" class="tile climate-panel" aria-label="Climate controls">
               <div class="thermostat" aria-label="Thermostat">
-                <div class="thermostat__temp">71°F</div>
+                <div class="thermostat__temp" id="thermostat-temp">71°F</div>
                 <div class="thermostat__meta">
-                  <div><strong>Humidity</strong>: 47%</div>
-                  <div><strong>Mode</strong>: Cool</div>
+                  <div><strong>Humidity</strong>: <span id="thermostat-humidity">47%</span></div>
+                  <div><strong>Mode</strong>: <span id="thermostat-mode">Cool</span></div>
                 </div>
               </div>
 
               <div class="temp-range" aria-label="Home temperature range">
                 <div class="temp-range__row">
-                  <span>68°F</span>
-                  <span>78°F</span>
+                  <span id="temp-range-min">68°F</span>
+                  <span id="temp-range-max">78°F</span>
                 </div>
                 <div class="temp-range__bar" aria-hidden="true">
-                  <span class="temp-range__indicator" title="Setpoint: 71°F"></span>
+                  <span
+                    class="temp-range__indicator"
+                    id="temp-range-indicator"
+                    title="Setpoint: 71°F"
+                  ></span>
                 </div>
               </div>
             </section>
@@ -1678,7 +1700,7 @@
           return { minX, minY, maxX, maxY };
         }
 
-        function renderFloorplan(doc, devicesDoc) {
+        function renderFloorplan(doc, devicesDoc, climateDoc) {
           const svg = document.getElementById('floorplan-svg');
           const wallsLayer = document.getElementById('walls-layer');
           const labelsLayer = document.getElementById('labels-layer');
@@ -1693,6 +1715,42 @@
           }
 
           const floors = Array.isArray(doc?.floors) ? doc.floors : [];
+
+          const thermostatDefaults =
+            climateDoc?.thermostat && typeof climateDoc.thermostat === 'object'
+              ? climateDoc.thermostat.default
+              : null;
+          const climateUnit =
+            thermostatDefaults && typeof thermostatDefaults.unit === 'string'
+              ? String(thermostatDefaults.unit).trim()
+              : '°F';
+          const climatePrecisionRaw = thermostatDefaults ? Number(thermostatDefaults.precision) : 0;
+          const climatePrecision = Number.isFinite(climatePrecisionRaw)
+            ? Math.max(0, Math.min(3, climatePrecisionRaw))
+            : 0;
+          const formatTemp = (t) => {
+            if (!Number.isFinite(t)) return '';
+            const v = Number(t);
+            return `${v.toFixed(climatePrecision)}${climateUnit}`;
+          };
+
+          const climateAreas = Array.isArray(climateDoc?.areas) ? climateDoc.areas : [];
+          const climateByRoomId = new Map();
+          for (const area of climateAreas) {
+            if (!area || typeof area !== 'object') continue;
+            const areaId = String(area.area_id || '').trim();
+            if (!areaId) continue;
+
+            const temp = Number(area.temp);
+            const humidityRaw = area.humidity;
+            const humidity =
+              humidityRaw === null || humidityRaw === undefined ? NaN : Number(humidityRaw);
+
+            climateByRoomId.set(areaId, {
+              temp: Number.isFinite(temp) ? temp : null,
+              humidity: Number.isFinite(humidity) ? humidity : null,
+            });
+          }
 
           // Floor selection
           // Priority:
@@ -1859,6 +1917,29 @@
             });
             label.textContent = room.name;
             labelGroup.appendChild(label);
+
+            const climate = climateByRoomId.get(room.id);
+            const climateParts = [];
+            if (climate && Number.isFinite(climate.temp)) {
+              climateParts.push(formatTemp(climate.temp));
+            }
+            if (climate && Number.isFinite(climate.humidity)) {
+              climateParts.push(`${Math.round(climate.humidity)}%`);
+            }
+            const climateText = climateParts.join(' • ');
+            if (climateText) {
+              const climateEl = svgEl('text', {
+                x: cx,
+                y: cy,
+                'text-anchor': 'middle',
+                'dominant-baseline': 'middle',
+                dy: '1.45em',
+                class: 'room-climate is-hidden',
+                'data-room-id': room.id,
+              });
+              climateEl.textContent = climateText;
+              labelGroup.appendChild(climateEl);
+            }
 
             g.addEventListener('click', (e) => {
               e.preventDefault();
@@ -2034,6 +2115,7 @@
             const vb = readViewBox();
             const unitsPerPx = vb.w / rect.width;
             const roomFontSizeInUserUnits = desiredPx * unitsPerPx;
+            const roomClimateFontSizeInUserUnits = (desiredPx - 3) * unitsPerPx;
             const nodeFontSizeInUserUnits = 11 * unitsPerPx;
             const nodeRadiusInUserUnits = 4 * unitsPerPx;
             const deviceLabelFontSizeInUserUnits = 11 * unitsPerPx;
@@ -2045,6 +2127,13 @@
             for (const label of roomLabels) {
               if (label instanceof SVGTextElement) {
                 label.setAttribute('font-size', String(roomFontSizeInUserUnits));
+              }
+            }
+
+            const roomClimateLabels = svg.querySelectorAll('.room-climate');
+            for (const label of roomClimateLabels) {
+              if (label instanceof SVGTextElement) {
+                label.setAttribute('font-size', String(roomClimateFontSizeInUserUnits));
               }
             }
 
@@ -2536,6 +2625,20 @@
           if (climateToggle instanceof HTMLButtonElement) {
             climateToggle.setAttribute('aria-expanded', showClimate ? 'true' : 'false');
           }
+
+          setClimateOverlayVisible(showClimate);
+        }
+
+        function setClimateOverlayVisible(visible) {
+          const svg = document.getElementById('floorplan-svg');
+          if (!(svg instanceof SVGSVGElement)) return;
+
+          const roomClimate = svg.querySelectorAll('.room-climate');
+          for (const el of roomClimate) {
+            if (el instanceof SVGTextElement) {
+              el.classList.toggle('is-hidden', !visible);
+            }
+          }
         }
 
         function enableMediaToggle() {
@@ -2601,11 +2704,15 @@
             if (retryButton instanceof HTMLButtonElement) retryButton.disabled = true;
 
             try {
-              const [{ text, source }, { text: devicesText, source: devicesSource }] =
-                await Promise.all([
-                  loadYamlText('./floorplan.yaml', ''),
-                  loadYamlText('./devices.yaml', 'devices-yaml'),
-                ]);
+              const [
+                { text, source },
+                { text: devicesText, source: devicesSource },
+                { text: climateText, source: climateSource },
+              ] = await Promise.all([
+                loadYamlText('./floorplan.yaml', ''),
+                loadYamlText('./devices.yaml', 'devices-yaml'),
+                loadYamlText('./climate.yaml', ''),
+              ]);
 
               if (!String(text || '').trim()) {
                 const msg =
@@ -2629,6 +2736,17 @@
 
               const normalizedDevices = normalizeYamlText(devicesText);
               const devicesDoc = parseYamlLite(normalizedDevices);
+
+              const normalizedClimate = normalizeYamlText(climateText);
+              let climateDoc = null;
+              if (String(normalizedClimate || '').trim() && !isProbablyHtml(normalizedClimate)) {
+                try {
+                  climateDoc = parseYamlLite(normalizedClimate);
+                } catch (err) {
+                  climateDoc = null;
+                  console.warn('climate.yaml present but could not be parsed; ignoring.', err);
+                }
+              }
               const floorsCount = Array.isArray(doc?.floors) ? doc.floors.length : 0;
 
               if (floorsCount === 0) {
@@ -2642,9 +2760,16 @@
 
               hideEmptyMessage();
 
-              const result = renderFloorplan(doc, devicesDoc);
+              const result = renderFloorplan(doc, devicesDoc, climateDoc);
               if (result?.baseViewBox) {
                 enablePanZoom(result.baseViewBox, result.initialView);
+              }
+
+              // Ensure map overlay reflects current sidebar state (and not just the initial DOM classes).
+              setClimateOverlayVisible(getVisibleSidebarPanel() === 'climate');
+
+              if (climateDoc) {
+                applyClimatePanel(climateDoc);
               }
               const roomsCount = result?.roomsCount ?? 0;
               const devicesCount = result?.devicesCount ?? 0;
@@ -2667,6 +2792,7 @@
                 `Floorplan: ok\n` +
                 `source: ${source}\n` +
                 `devices: ${devicesSource}\n` +
+                `climate: ${climateSource}\n` +
                 `default_floor_id: ${defaultFloorId || '(none)'}${defaultFloorNote}\n` +
                 `floors: ${floorsCount}  floor: ${floorId}\n` +
                 `rooms: ${roomsCount}\n` +
@@ -2692,6 +2818,85 @@
 
           await loadAndRender();
         })();
+
+        function applyClimatePanel(climateDoc) {
+          const defaults =
+            climateDoc?.thermostat && typeof climateDoc.thermostat === 'object'
+              ? climateDoc.thermostat.default
+              : null;
+
+          if (!defaults || typeof defaults !== 'object') return;
+
+          const unit = typeof defaults.unit === 'string' ? String(defaults.unit).trim() : '°F';
+          const precisionRaw = Number(defaults.precision);
+          const precision = Number.isFinite(precisionRaw)
+            ? Math.max(0, Math.min(3, precisionRaw))
+            : 0;
+          const fmtTemp = (value) => {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '';
+            return `${n.toFixed(precision)}${unit}`;
+          };
+
+          const setTempEl = document.getElementById('thermostat-temp');
+          const humidityEl = document.getElementById('thermostat-humidity');
+          const modeEl = document.getElementById('thermostat-mode');
+          const minEl = document.getElementById('temp-range-min');
+          const maxEl = document.getElementById('temp-range-max');
+          const indicatorEl = document.getElementById('temp-range-indicator');
+
+          const setTemp = Number(defaults.set_temperature);
+          const measuredHumidity = Number(defaults.measured_humidity);
+          const hvacMode = typeof defaults.hvac_mode === 'string' ? String(defaults.hvac_mode) : '';
+
+          if (setTempEl instanceof HTMLElement) {
+            const formatted = fmtTemp(setTemp);
+            if (formatted) setTempEl.textContent = formatted;
+          }
+          if (humidityEl instanceof HTMLElement) {
+            if (Number.isFinite(measuredHumidity)) {
+              humidityEl.textContent = `${Math.round(measuredHumidity)}%`;
+            }
+          }
+          if (modeEl instanceof HTMLElement) {
+            if (hvacMode) {
+              modeEl.textContent = hvacMode
+                .split('_')
+                .map((w) => w.slice(0, 1).toUpperCase() + w.slice(1))
+                .join(' ');
+            }
+          }
+
+          const areas = Array.isArray(climateDoc?.areas) ? climateDoc.areas : [];
+          const temps = [];
+          for (const area of areas) {
+            if (!area || typeof area !== 'object') continue;
+            const t = Number(area.temp);
+            if (Number.isFinite(t)) temps.push(t);
+          }
+          if (!temps.length) return;
+
+          const minTemp = Math.min(...temps);
+          const maxTemp = Math.max(...temps);
+
+          if (minEl instanceof HTMLElement) {
+            minEl.textContent = fmtTemp(minTemp) || minEl.textContent;
+          }
+          if (maxEl instanceof HTMLElement) {
+            maxEl.textContent = fmtTemp(maxTemp) || maxEl.textContent;
+          }
+
+          if (indicatorEl instanceof HTMLElement && Number.isFinite(setTemp)) {
+            const denom = maxTemp - minTemp;
+            const ratio = denom === 0 ? 0.5 : (setTemp - minTemp) / denom;
+            const clamped = Math.max(0, Math.min(1, ratio));
+            indicatorEl.style.left = `${clamped * 100}%`;
+            const setLabel = fmtTemp(setTemp);
+            if (setLabel) {
+              indicatorEl.setAttribute('title', `Setpoint: ${setLabel}`);
+            }
+          }
+        }
       })();
     </script>
   </body>

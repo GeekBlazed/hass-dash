@@ -31,3 +31,4 @@ coverage
 **/*--IGNORE*
 UI/floorplan.yaml
 UI/devices.yaml
+UI/climate.yaml
