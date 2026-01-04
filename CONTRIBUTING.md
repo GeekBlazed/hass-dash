@@ -1,4 +1,5 @@
 # Contributing to Home Assistant Dashboard
+
 <!-- markdownlint-disable MD036 MD060 -->
 
 Thank you for your interest in contributing to **hass-dash**! This document provides guidelines and instructions for contributing to this project.
@@ -130,7 +131,7 @@ This project follows a **continuous integration and continuous delivery (CI/CD)*
 
 - **Main is Always Deployable** - Every commit on main goes to production
 - **Small, Incremental Changes** - PRs should be focused and reviewable in < 30 minutes
-- **Feature Flags** - Hide incomplete features behind flags (see [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md))
+- **Feature Flags** - Hide incomplete features behind flags (see [IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md))
 - **Test Before Merge** - All changes must have appropriate test coverage
 - **Fail Fast** - Automated checks catch issues immediately
 
@@ -279,12 +280,12 @@ All code must pass TypeScript strict mode checks:
 ```typescript
 // ✅ GOOD: Explicit types
 function calculateTemperature(celsius: number): number {
-  return (celsius * 9/5) + 32;
+  return (celsius * 9) / 5 + 32;
 }
 
 // ❌ BAD: Implicit any
 function calculateTemperature(celsius) {
-  return (celsius * 9/5) + 32;
+  return (celsius * 9) / 5 + 32;
 }
 ```
 
@@ -350,9 +351,9 @@ open coverage/index.html
      it('should fetch current weather', async () => {
        const mockClient = { getState: vi.fn().mockResolvedValue({ temp: 72 }) };
        const service = new WeatherService(mockClient);
-       
+
        const weather = await service.getCurrentWeather();
-       
+
        expect(weather.temperature).toBe(72);
      });
    });
@@ -488,28 +489,34 @@ When opening a PR, fill out all sections:
 
 ```markdown
 ## Description
+
 [Clear description of what this PR does]
 
 ## Type of Change
+
 - [ ] Bug fix (non-breaking change which fixes an issue)
 - [ ] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] Documentation update
 
 ## Related Issues
+
 Fixes #[issue number]
 Relates to #[issue number]
 
 ## Testing
+
 - [ ] Unit tests added/updated
 - [ ] Integration tests added/updated
 - [ ] E2E tests added/updated
 - [ ] Manual testing completed
 
 ## Screenshots (for UI changes)
+
 [Add screenshots or videos]
 
 ## Checklist
+
 - [ ] Code follows SOLID principles
 - [ ] All services use interfaces
 - [ ] Tests have 80%+ coverage
@@ -518,6 +525,7 @@ Relates to #[issue number]
 - [ ] Accessibility checked (WCAG 2.2 AA)
 
 ## Additional Notes
+
 [Any other information]
 ```
 
@@ -576,19 +584,31 @@ This is **non-negotiable**. All contributions must follow SOLID principles.
 ```typescript
 // ✅ GOOD: Each class has one responsibility
 class WeatherDataFetcher {
-  fetchWeather(): Promise<WeatherData> { /* ... */ }
+  fetchWeather(): Promise<WeatherData> {
+    /* ... */
+  }
 }
 
 class WeatherDataFormatter {
-  format(data: WeatherData): string { /* ... */ }
+  format(data: WeatherData): string {
+    /* ... */
+  }
 }
 
 // ❌ BAD: Class does too many things
 class WeatherManager {
-  fetchWeather() { /* ... */ }
-  formatWeather() { /* ... */ }
-  displayWeather() { /* ... */ }
-  logWeather() { /* ... */ }
+  fetchWeather() {
+    /* ... */
+  }
+  formatWeather() {
+    /* ... */
+  }
+  displayWeather() {
+    /* ... */
+  }
+  logWeather() {
+    /* ... */
+  }
 }
 ```
 
@@ -601,18 +621,25 @@ interface IOverlay {
 }
 
 class ClimateOverlay implements IOverlay {
-  render() { /* climate rendering */ }
+  render() {
+    /* climate rendering */
+  }
 }
 
 class SecurityOverlay implements IOverlay {
-  render() { /* security rendering */ }
+  render() {
+    /* security rendering */
+  }
 }
 
 // ❌ BAD: Must modify existing code to add features
 class OverlayManager {
   render(type: string) {
-    if (type === 'climate') { /* ... */ }
-    else if (type === 'security') { /* ... */ }
+    if (type === 'climate') {
+      /* ... */
+    } else if (type === 'security') {
+      /* ... */
+    }
     // Must modify this to add new overlay types
   }
 }
@@ -627,11 +654,15 @@ interface IDataService {
 }
 
 class HomeAssistantService implements IDataService {
-  async getData(): Promise<Data> { /* ... */ }
+  async getData(): Promise<Data> {
+    /* ... */
+  }
 }
 
 class MockDataService implements IDataService {
-  async getData(): Promise<Data> { /* ... */ }
+  async getData(): Promise<Data> {
+    /* ... */
+  }
 }
 
 // Both can be used interchangeably
@@ -671,15 +702,19 @@ interface IWeatherService {
 
 @injectable()
 class WeatherOverlay {
-  constructor(
-    @inject('IWeatherService') private weatherService: IWeatherService
-  ) {}
+  constructor(@inject('IWeatherService') private weatherService: IWeatherService) {}
 }
 
 // Can swap implementations without changing WeatherOverlay
-class HomeAssistantWeatherService implements IWeatherService { /* ... */ }
-class OpenWeatherMapService implements IWeatherService { /* ... */ }
-class MockWeatherService implements IWeatherService { /* ... */ }
+class HomeAssistantWeatherService implements IWeatherService {
+  /* ... */
+}
+class OpenWeatherMapService implements IWeatherService {
+  /* ... */
+}
+class MockWeatherService implements IWeatherService {
+  /* ... */
+}
 ```
 
 ```typescript
@@ -700,7 +735,8 @@ import { Container } from 'inversify';
 
 const container = new Container();
 
-container.bind<IWeatherService>('IWeatherService')
+container
+  .bind<IWeatherService>('IWeatherService')
   .to(HomeAssistantWeatherService)
   .inSingletonScope();
 
@@ -761,6 +797,7 @@ Test on all target sizes:
 Clear and concise description of the bug
 
 **Steps to Reproduce**
+
 1. Go to '...'
 2. Click on '...'
 3. Scroll down to '...'
@@ -776,6 +813,7 @@ What actually happened
 If applicable, add screenshots
 
 **Environment**
+
 - Browser: [e.g., Chrome 120]
 - OS: [e.g., Windows 11]
 - Node version: [e.g., 20.10.0]

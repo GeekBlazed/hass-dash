@@ -1,4 +1,5 @@
 # Home Assistant Dashboard - Requirements Document
+
 <!-- markdownlint-disable MD036 MD060 -->
 
 **Project Name:** Home Assistant Dashboard (hass-dash)  
@@ -35,7 +36,7 @@ While Home Assistant is the tool for managing services and resources behind the 
   - Service workers for offline functionality
   - App manifest for installability
   - Responsive design for all device types
-- **Web Standards Compliance:** See [DEVELOPMENT-STANDARDS.md](DEVELOPMENT-STANDARDS.md) for complete web standards reference
+- **Web Standards Compliance:** See [DEVELOPMENT-STANDARDS.md](../DEVELOPMENT-STANDARDS.md) for complete web standards reference
 
 ### 2.2 Backend Integration
 
@@ -560,7 +561,7 @@ Minimize visual clutter by allowing users to toggle specific information layers 
 
 ## 12. Contributing to This Project
 
-**Important:** All contributors must follow the modern web standards defined in [DEVELOPMENT-STANDARDS.md](DEVELOPMENT-STANDARDS.md). This document provides comprehensive guidance on HTML5, CSS3, JavaScript/ECMAScript, Web APIs, accessibility (WCAG 2.2), security, performance, and PWA standards.
+**Important:** All contributors must follow the modern web standards defined in [DEVELOPMENT-STANDARDS.md](../DEVELOPMENT-STANDARDS.md). This document provides comprehensive guidance on HTML5, CSS3, JavaScript/ECMAScript, Web APIs, accessibility (WCAG 2.2), security, performance, and PWA standards.
 
 ### 12.1 Open Source License
 
@@ -691,7 +692,7 @@ While not strictly required, Test-Driven Development (TDD) is strongly encourage
 - **Linting:** ESLint with strict configuration
 - **Formatting:** Prettier with project configuration
 - **Commit hooks:** Husky for pre-commit linting and formatting
-- **Web Standards:** All code must comply with modern web standards (see [DEVELOPMENT-STANDARDS.md](DEVELOPMENT-STANDARDS.md))
+- **Web Standards:** All code must comply with modern web standards (see [DEVELOPMENT-STANDARDS.md](../DEVELOPMENT-STANDARDS.md))
   - HTML5 semantic markup
   - CSS3 with modern features (Grid, Flexbox, Custom Properties)
   - ES6+ JavaScript features
@@ -863,6 +864,7 @@ src/
 Clear description of the bug
 
 **Steps to Reproduce:**
+
 1. Go to '...'
 2. Click on '...'
 3. See error
@@ -874,6 +876,7 @@ What should happen
 What actually happens
 
 **Environment:**
+
 - Browser: [e.g., Chrome 100]
 - OS: [e.g., Windows 11]
 - Home Assistant Version: [e.g., 2025.1]
@@ -942,7 +945,7 @@ All contributors will be recognized in:
 - Follow OWASP security guidelines
 - Keep dependencies updated
 - Use security scanning tools in CI/CD
-- **See [DEVELOPMENT-STANDARDS.md](DEVELOPMENT-STANDARDS.md) Section 4** for detailed security requirements including HTTPS/TLS, CSP, CORS, and GDPR compliance
+- **See [DEVELOPMENT-STANDARDS.md](../DEVELOPMENT-STANDARDS.md) Section 4** for detailed security requirements including HTTPS/TLS, CSP, CORS, and GDPR compliance
 
 ### 12.12 Release Process
 
@@ -1126,9 +1129,9 @@ All contributors will be recognized in:
 
 ## 14. Document Revision History
 
-| Version |    Date    |  Author      | Changes                                          |
-|---------|------------|--------------|--------------------------------------------------|
-| 1.0     | 2025-12-31 |  Geekblazed  | Initial requirements capture                     |
-| 1.1     | 2025-12-31 |  Geekblazed  | Added Contributing section and license guidance  |
-| 1.2     | 2025-12-31 |  Geekblazed  | Resolved design decisions and requirements questions |
-| 1.3     | 2025-12-31 |  Geekblazed  | Added web standards compliance and DEVELOPMENT-STANDARDS.md |
+| Version | Date       | Author     | Changes                                                     |
+| ------- | ---------- | ---------- | ----------------------------------------------------------- |
+| 1.0     | 2025-12-31 | Geekblazed | Initial requirements capture                                |
+| 1.1     | 2025-12-31 | Geekblazed | Added Contributing section and license guidance             |
+| 1.2     | 2025-12-31 | Geekblazed | Resolved design decisions and requirements questions        |
+| 1.3     | 2025-12-31 | Geekblazed | Added web standards compliance and DEVELOPMENT-STANDARDS.md |
