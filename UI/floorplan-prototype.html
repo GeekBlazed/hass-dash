@@ -229,6 +229,7 @@
       }
 
       .status-block {
+        display: none;
         margin: 0 6px;
         padding: 10px 10px;
         border-radius: 14px;
@@ -1030,7 +1031,12 @@
 
           <main class="stage" aria-label="Floorplan">
             <div class="floorplan" aria-label="Interactive SVG floorplan">
-              <div class="floorplan-empty is-hidden" id="floorplan-empty" role="alert" aria-live="polite">
+              <div
+                class="floorplan-empty is-hidden"
+                id="floorplan-empty"
+                role="alert"
+                aria-live="polite"
+              >
                 <div class="floorplan-empty__panel">
                   <h2 class="floorplan-empty__title">Floorplan not loaded</h2>
                   <p class="floorplan-empty__body" id="floorplan-empty-message"></p>
@@ -2190,7 +2196,9 @@
         }
 
         function isProbablyHtml(text) {
-          const trimmed = String(text || '').trimStart().toLowerCase();
+          const trimmed = String(text || '')
+            .trimStart()
+            .toLowerCase();
           if (!trimmed) return false;
           if (trimmed.startsWith('<!doctype html')) return true;
           if (trimmed.startsWith('<html')) return true;
@@ -2359,7 +2367,7 @@
               if (!String(text || '').trim()) {
                 const msg =
                   'No floorplan.yaml has been provided.\n\n' +
-                  "If you have not created your own yet, please copy the provided floorplan-example.yaml and name it floorplan.yaml so you have a working example.";
+                  'If you have not created your own yet, please copy the provided floorplan-example.yaml and name it floorplan.yaml so you have a working example.';
                 showEmptyMessage(msg);
                 console.error(msg);
                 return;
@@ -2369,7 +2377,7 @@
               if (isProbablyHtml(normalized)) {
                 const msg =
                   'No floorplan.yaml has been provided.\n\n' +
-                  "If you have not created your own yet, please copy the provided floorplan-example.yaml and name it floorplan.yaml so you have a working example.";
+                  'If you have not created your own yet, please copy the provided floorplan-example.yaml and name it floorplan.yaml so you have a working example.';
                 showEmptyMessage(msg);
                 console.error(msg);
                 return;
@@ -2383,7 +2391,7 @@
               if (floorsCount === 0) {
                 const msg =
                   'No floorplan.yaml has been provided.\n\n' +
-                  "If you have not created your own yet, please copy the provided floorplan-example.yaml and name it floorplan.yaml so you have a working example.";
+                  'If you have not created your own yet, please copy the provided floorplan-example.yaml and name it floorplan.yaml so you have a working example.';
                 showEmptyMessage(msg);
                 console.error(msg);
                 return;
