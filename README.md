@@ -182,7 +182,7 @@ This project is built with modern web technologies and strict architectural prin
 - **HTTP Client:** Axios with interceptors
 - **Real-time:** Native WebSocket with reconnection logic
 
-See [TECHNOLOGY-STACK.md](TECHNOLOGY-STACK.md) for detailed rationale and configuration.
+See [TECHNOLOGY-STACK.md](docs/TECHNOLOGY-STACK.md) for detailed rationale and configuration.
 
 ---
 
@@ -277,16 +277,16 @@ class MyService {
 - **Test before merge** - All changes must have appropriate test coverage
 - **Fail fast** - Automated checks catch issues immediately
 
-See [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) for the complete iteration roadmap (35+ iterations).
+See [IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) for the complete iteration roadmap (35+ iterations).
 
 ---
 
 ## Documentation
 
-- [**REQUIREMENTS.md**](REQUIREMENTS.md) - Comprehensive project requirements and design decisions
+- [**REQUIREMENTS.md**](docs/REQUIREMENTS.md) - Comprehensive project requirements and design decisions
 - [**DEVELOPMENT-STANDARDS.md**](DEVELOPMENT-STANDARDS.md) - Web standards, accessibility, security, performance guidelines
-- [**TECHNOLOGY-STACK.md**](TECHNOLOGY-STACK.md) - Technology choices with rationale and examples
-- [**IMPLEMENTATION-PLAN.md**](IMPLEMENTATION-PLAN.md) - Complete iteration roadmap (35+ micro-releases)
+- [**TECHNOLOGY-STACK.md**](docs/TECHNOLOGY-STACK.md) - Technology choices with rationale and examples
+- [**IMPLEMENTATION-PLAN.md**](docs/IMPLEMENTATION-PLAN.md) - Complete iteration roadmap (35+ micro-releases)
 - [**CONTRIBUTING.md**](CONTRIBUTING.md) - How to contribute to this project
 
 ---
@@ -398,7 +398,7 @@ The MIT License provides maximum flexibility for community contributions and ado
 - Performance Optimization
 - User Onboarding
 
-See [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) for complete roadmap with 35+ iterations.
+See [IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) for complete roadmap with 35+ iterations.
 
 ---
 
