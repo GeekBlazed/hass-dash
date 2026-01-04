@@ -27,3 +27,8 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+**/*--IGNORE*
+UI/floorplan.yaml
+UI/devices.yaml
+UI/climate.yaml
