@@ -2,8 +2,10 @@ import { Container } from 'inversify';
 import 'reflect-metadata';
 import type { IConfigService } from '../interfaces/IConfigService';
 import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
+import type { IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
 import { ConfigService } from '../services/ConfigService';
 import { FeatureFlagService } from '../services/FeatureFlagService';
+import { HomeAssistantWebSocketClient } from '../services/HomeAssistantWebSocketClient';
 import { TYPES } from './types';
 
 /**
@@ -30,6 +32,11 @@ container.bind<IConfigService>(TYPES.IConfigService).to(ConfigService).inSinglet
 container
   .bind<IFeatureFlagService>(TYPES.IFeatureFlagService)
   .to(FeatureFlagService)
+  .inSingletonScope();
+
+container
+  .bind<IHomeAssistantClient>(TYPES.IHomeAssistantClient)
+  .to(HomeAssistantWebSocketClient)
   .inSingletonScope();
 
 // Export the configured container
