@@ -6,7 +6,6 @@
     "bradlc.vscode-tailwindcss",
     
     // TypeScript
-    "yoavbls.pretty-ts-errors",
     "dsznajder.es7-react-js-snippets",
     
     // Testing
@@ -18,9 +17,6 @@
     "github.vscode-pull-request-github",
     
     // Code Quality
-    "usernamehw.errorlens",
-    
-    // Utilities
     "christian-kohler.path-intellisense",
     "christian-kohler.npm-intellisense",
     "formulahendry.auto-rename-tag",
