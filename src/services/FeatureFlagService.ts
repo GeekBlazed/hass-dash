@@ -47,7 +47,12 @@ export class FeatureFlagService implements IFeatureFlagService {
     // Fall back to environment variable
     const envKey = `${this.FEATURE_PREFIX}${normalizedFlag}`;
     const value = import.meta.env[envKey];
-    return value === 'true' || value === true;
+
+    if (typeof value === 'string') {
+      return value.trim().toLowerCase() === 'true';
+    }
+
+    return value === true;
   }
 
   /**
