@@ -29,6 +29,6 @@ coverage
 *.sw?
 
 **/*--IGNORE*
-UI/floorplan.yaml
-UI/devices.yaml
-UI/climate.yaml
+UI/*
+!UI/*-example.yaml
+!UI/*-prototype.yaml
