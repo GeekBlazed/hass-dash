@@ -7,7 +7,7 @@
 **Tech Stack:** React 19.2, TypeScript (strict), Vite 7.2, Tailwind CSS 4  
 **Architecture:** SOLID principles with InversifyJS for dependency injection  
 **License:** MIT  
-**Current Status:** Iteration 0.5 Complete - Feature Flag System ✅
+**Current Status:** Foundation complete (DI + feature flags + dashboard scaffold) ✅
 
 This is a visual, user-friendly front-end companion to Home Assistant. The application will provide a 2D spatial interface for monitoring and controlling smart home devices through various overlay systems (lighting, climate, surveillance, AV, networking).
 
@@ -16,7 +16,8 @@ This is a visual, user-friendly front-end companion to Home Assistant. The appli
 - ✅ Vite + React + TypeScript setup with strict mode
 - ✅ Tailwind CSS 4 with dark mode support
 - ✅ ESLint + Prettier configuration
-- ✅ Welcome screen (see [App.tsx](../src/App.tsx))
+- ✅ Dashboard-first UI (see [App.tsx](../src/App.tsx) and [Dashboard.tsx](../src/components/dashboard/Dashboard.tsx))
+- ✅ Basic UI primitives (Radix Dialog/Switch/Dropdown; see `src/components/ui/*`)
 - ✅ Environment variable support
 - ✅ Vitest testing framework with React Testing Library
 - ✅ Coverage reporting with 96%+ actual coverage
@@ -26,6 +27,7 @@ This is a visual, user-friendly front-end companion to Home Assistant. The appli
 - ✅ Feature flag system with runtime overrides
 - ✅ Custom React hooks (useFeatureFlag, useFeatureFlags)
 - ✅ Debug panel component for feature flag management
+- ✅ Component showcase (feature-flagged) for UI primitives
 
 **Not Yet Implemented:**
 
@@ -37,12 +39,13 @@ See [IMPLEMENTATION-PLAN.md](../docs/IMPLEMENTATION-PLAN.md) for detailed roadma
 
 ---
 
-## Working with Iteration 0.5
+## Current Codebase State
 
 **Current Codebase State:**
 
 - Basic Vite + React scaffold with TypeScript strict mode
-- Welcome screen ([App.tsx](../src/App.tsx)) showing project info and links
+- Dashboard-first UI ([App.tsx](../src/App.tsx))
+- Component showcase for UI primitives (feature-flagged)
 - Tailwind CSS 4 configured with custom theme colors (see [tailwind.config.js](../tailwind.config.js))
 - Environment variables in `.env.example` with feature flags
 - ESLint with flat config using typescript-eslint
@@ -57,6 +60,46 @@ See [IMPLEMENTATION-PLAN.md](../docs/IMPLEMENTATION-PLAN.md) for detailed roadma
 - **DebugPanel component** for visualizing and toggling feature flags
 - No state management library yet (Zustand coming in Phase 1)
 
+---
+
+## Prototype Floorplan (UI folder)
+
+This repo also contains a **standalone HTML prototype** that is separate from the React/Vite app.
+
+**Primary prototype file:**
+
+- `UI/floorplan-prototype.html` – single-file prototype (HTML + CSS + JS)
+
+**How to run the prototype (recommended):**
+
+1. Start the dev server: `pnpm dev`
+2. Navigate to: `http://localhost:5173/UI/floorplan-prototype.html`
+
+Notes:
+
+- The prototype uses `fetch(...)` to load YAML, so opening the file directly via `file://` may fail due to browser CORS restrictions.
+
+**Prototype data inputs (YAML):**
+
+- `UI/floorplan.yaml` – room geometry + labels used to render the SVG floorplan
+- `UI/devices.yaml` – device marker positions/labels
+- `UI/climate.yaml` – per-room climate values used by the Climate panel/overlay
+- `UI/lighting.yaml` – lights + scenes used by the Lighting panel/overlay
+
+**Prototype interaction model (important):**
+
+- Sidebar panels are mutually exclusive and shown/hidden using the `.is-hidden` class (e.g., Agenda vs Climate vs Lighting).
+- “Quick actions” are the entry points that toggle which sidebar panel is active.
+- The SVG floorplan is layered using `<g>` groups; overlays are turned on/off by showing/hiding the corresponding layer.
+- Lighting controls in the prototype are **local-only**: toggles update an in-memory model and re-render the UI (they do not persist to YAML and do not call Home Assistant).
+- `UI/lighting.yaml` is treated as optional; if it is missing/unparseable, or if no lights are currently on, the Lighting panel should display: “There are no lights on.”
+
+**When working on floorplan/overlay/panel UI:**
+
+- If the request mentions “prototype”, “floorplan-prototype”, “UI/\*.yaml”, or “panels in the sidebar”, the target is almost always `UI/floorplan-prototype.html` (not the React app under `src/`).
+- Keep the prototype as a single-file artifact unless there’s an explicit request to modularize.
+- Do not introduce new colors/tokens in the prototype; it intentionally mirrors the Tailwind theme values from `tailwind.config.js` using CSS variables.
+
 **DI Container Setup:**
 
 The project now has a fully functional dependency injection system using InversifyJS:
@@ -65,6 +108,7 @@ The project now has a fully functional dependency injection system using Inversi
 // src/core/types.ts - Define type identifiers
 export const TYPES = {
   IConfigService: Symbol.for('IConfigService'),
+  IFeatureFlagService: Symbol.for('IFeatureFlagService'),
 };
 
 // src/interfaces/IConfigService.ts - Define interface
@@ -186,13 +230,13 @@ service.disable('FLOOR_PLAN');
 3. **Write tests first or alongside implementation** - 80% coverage is mandatory
 4. Follow SOLID principles even before DI container exists
 
-**Dependencies to Add in Future Iterations:**
+**Dependencies Planned for Future Iterations:**
 
-- `inversify` + `reflect-metadata` (Iteration 0.4)
 - `zustand` + `immer` (Phase 1)
 - `konva` + `react-konva` (Phase 3)
 - `axios` (Phase 2)
 - `@playwright/test` (Phase 5)
+- `vite-plugin-pwa` (Phase 5)
 
 ---
 
@@ -204,25 +248,44 @@ service.disable('FLOOR_PLAN');
 
 ```javascript
 colors: {
+  accent: {
+    DEFAULT: '#ffb65c',
+    light: '#ffc97d',
+    dark: '#e5a352',
+  },
+  panel: {
+    bg: '#090909',
+    'bg-warm': '#1a1713',
+    surface: '#121212',
+    card: '#151515',
+    border: '#1f1f1f',
+    'border-light': '#2a2a2a',
+  },
+  text: {
+    primary: '#eae7df',
+    secondary: '#b9b6af',
+    muted: '#8a8885',
+  },
+
+  // Legacy mappings for compatibility
   primary: {
-    light: '#5c6bc0',
-    DEFAULT: '#3f51b5',
-    dark: '#303f9f',
+    light: '#ffc97d',
+    DEFAULT: '#ffb65c',
+    dark: '#e5a352',
   },
   surface: {
-    light: '#ffffff',
-    DEFAULT: '#f5f5f5',
-    dark: '#121212',
+    light: '#1a1713',
+    DEFAULT: '#121212',
+    dark: '#090909',
   },
 }
 ```
 
-**Usage Examples from Welcome Screen:**
+**Usage Examples (Dashboard):**
 
-- `text-primary` - Uses #3f51b5
-- `dark:text-primary-light` - Uses #5c6bc0 in dark mode
-- `bg-primary hover:bg-primary-dark` - Button states
-- `from-surface-light to-gray-100` - Gradient backgrounds
+- `bg-warm-gradient` - Warm dark background gradient
+- `text-text-primary` / `text-text-secondary` / `text-text-muted` - Typography tokens
+- `bg-panel-card` / `border-panel-border` - Surface and border tokens
 
 **Dark Mode:**
 
@@ -237,9 +300,14 @@ All environment variables must be prefixed with `VITE_` to be exposed to the cli
 **Current Variables ([.env.example](../.env.example)):**
 
 ```bash
-VITE_APP_VERSION=0.1.0          # Shown in welcome screen
-VITE_FEATURE_FLOOR_PLAN=false   # All features currently disabled
-VITE_HA_BASE_URL=               # Not configured yet
+VITE_APP_VERSION=0.1.0
+
+# Feature Flags
+VITE_FEATURE_DEBUG_PANEL=false
+VITE_FEATURE_COMPONENT_SHOWCASE=false
+VITE_FEATURE_FLOOR_PLAN=false
+VITE_FEATURE_HA_CONNECTION=false
+VITE_FEATURE_OVERLAYS=false
 ```
 
 **Access in Code:**
@@ -389,29 +457,26 @@ MyService.test.ts; // Service tests
 
 ### Import Organization
 
-**IMPORTANT:** Path aliases (`@/`) are NOT YET configured. Use relative imports until Iteration 0.4.
+**IMPORTANT:** Path aliases (`@/`) are NOT configured. Use relative imports.
 
 ```typescript
-// Current (Iteration 0.1): Use relative imports
+// Current: Use relative imports
 import { useState, useEffect } from 'react';
 import App from './App';
 import './index.css';
 
-// Future (Iteration 0.4+): After DI setup
+// Recommended ordering for non-trivial modules
 // 1. External dependencies
 import { injectable, inject } from 'inversify';
 import { useState, useEffect } from 'react';
 
 // 2. Internal interfaces (alphabetically)
-import type { IHomeAssistantClient } from '@/interfaces/IHomeAssistantClient';
-import type { IWeatherService } from '@/interfaces/IWeatherService';
+import type { IConfigService } from '../interfaces/IConfigService';
+import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
 
 // 3. Internal implementations
-import { TYPES } from '@/core/types';
-
-// 4. Types and constants
-import type { Weather } from '@/types/Weather';
-import { API_ENDPOINTS } from '@/constants/api';
+import { container } from '../core/di-container';
+import { TYPES } from '../core/types';
 
 // 5. Styles
 import './MyComponent.css';
@@ -419,14 +484,21 @@ import './MyComponent.css';
 
 ### File Structure
 
-**Current (Iteration 0.1):**
+**Current:**
 
 ```
 src/
-├── App.tsx           # Main app component (welcome screen)
-├── main.tsx          # Entry point
-├── index.css         # Global styles (Tailwind imports)
-└── assets/           # Static assets
+├── App.tsx                 # Root component (Dashboard-first)
+├── main.tsx                # Entry point
+├── index.css               # Global styles (Tailwind imports)
+├── components/             # React components
+│   ├── dashboard/          # Dashboard UI
+│   └── ui/                 # UI primitives (e.g., Button, Dialog)
+├── core/                   # DI container + type identifiers
+├── hooks/                  # Custom hooks (feature flags)
+├── interfaces/             # Service interfaces
+├── services/               # Service implementations
+└── assets/                 # Static assets
 ```
 
 **Future (Phase 1+):**
@@ -800,7 +872,7 @@ Every commit should pass:
 ```bash
 # Development
 pnpm dev              # Start dev server
-pnpm build           # Production build (tsc + vite build)
+pnpm build            # Production build (tsc -b + vite build)
 pnpm preview         # Preview production build
 
 # Testing

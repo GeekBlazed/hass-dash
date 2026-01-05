@@ -234,6 +234,61 @@
         overflow: auto;
       }
 
+      .lighting-panel {
+        position: relative;
+        width: auto;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .lighting-panel__empty {
+        padding: 10px 8px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(18, 18, 18, 0.2);
+        color: var(--text-muted);
+        font-size: 12px;
+        letter-spacing: 0.2px;
+      }
+
+      .lighting-panel #lighting-list {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .lighting-panel .lighting-item {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2px;
+        padding: 10px 8px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(18, 18, 18, 0.2);
+        margin-bottom: 10px;
+      }
+
+      .lighting-panel .lighting-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .lighting-panel .lighting-name {
+        color: var(--text-primary);
+        font-size: 13px;
+        line-height: 1.25;
+        letter-spacing: 0.2px;
+      }
+
+      .lighting-panel .lighting-meta {
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 1.25;
+        letter-spacing: 0.2px;
+      }
+
       .climate-panel {
         flex: 1;
         overflow: auto;
@@ -773,6 +828,43 @@
         display: none;
       }
 
+      .light-toggle.is-hidden {
+        display: none;
+      }
+
+      .light-toggle {
+        cursor: pointer;
+        pointer-events: auto;
+        color: rgba(234, 231, 223, 0.85);
+      }
+
+      .light-toggle.is-on {
+        color: rgba(255, 201, 125, 0.95);
+      }
+
+      .light-toggle:focus {
+        outline: none;
+      }
+
+      .light-toggle:focus-visible .light-toggle-bg {
+        filter: drop-shadow(0 0 10px rgba(255, 201, 125, 0.45));
+      }
+
+      .light-toggle-bg {
+        fill: rgba(18, 18, 18, 0.32);
+        stroke: rgba(255, 255, 255, 0.1);
+        vector-effect: non-scaling-stroke;
+      }
+
+      .light-toggle.is-on .light-toggle-bg {
+        fill: rgba(255, 182, 92, 0.18);
+        stroke: rgba(255, 201, 125, 0.28);
+      }
+
+      .light-toggle-icon {
+        opacity: 0.95;
+      }
+
       .node-dot {
         fill: var(--node-blue);
         stroke: rgba(0, 0, 0, 0.45);
@@ -849,6 +941,13 @@
         min-height: min-content;
         position: relative;
         overflow: hidden;
+      }
+
+      .tile.lighting-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 0;
       }
 
       .tile::before {
@@ -1102,7 +1201,14 @@
             </div>
 
             <div class="quick-actions" aria-label="Quick actions">
-              <a class="qa" href="#top" aria-label="Lighting (prototype)">
+              <button
+                class="qa"
+                type="button"
+                id="lighting-toggle"
+                aria-label="Lighting"
+                aria-controls="lighting-panel"
+                aria-expanded="false"
+              >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     fill="currentColor"
@@ -1110,7 +1216,7 @@
                   />
                 </svg>
                 <div class="label">Lighting</div>
-              </a>
+              </button>
               <button
                 class="qa"
                 type="button"
@@ -1214,6 +1320,17 @@
                 <div class="time">All Day</div>
               </div>
             </div>
+
+            <section
+              id="lighting-panel"
+              class="tile lighting-panel is-hidden"
+              aria-label="Lighting"
+            >
+              <ul id="lighting-list" aria-label="Lights currently on"></ul>
+              <div class="lighting-panel__empty is-hidden" id="lighting-empty">
+                There are no lights on.
+              </div>
+            </section>
 
             <section
               id="media-window"
@@ -1393,9 +1510,18 @@
                       stroke-width="1.2"
                     />
                   </symbol>
+
+                  <!-- Light bulb icon (used for room toggle buttons) -->
+                  <symbol id="lightBulb" viewBox="0 0 24 24">
+                    <path
+                      d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-20C8.13 1 5 4.13 5 8c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-3.26C17.81 12.47 19 10.38 19 8c0-3.87-3.13-7-7-7z"
+                      fill="currentColor"
+                    />
+                  </symbol>
                 </defs>
                 <g id="walls-layer"></g>
                 <g id="labels-layer"></g>
+                <g id="lights-layer"></g>
                 <g id="nodes-layer"></g>
                 <g id="devices-layer"></g>
               </svg>
@@ -1700,10 +1826,11 @@
           return { minX, minY, maxX, maxY };
         }
 
-        function renderFloorplan(doc, devicesDoc, climateDoc) {
+        function renderFloorplan(doc, devicesDoc, climateDoc, lightingModel) {
           const svg = document.getElementById('floorplan-svg');
           const wallsLayer = document.getElementById('walls-layer');
           const labelsLayer = document.getElementById('labels-layer');
+          const lightsLayer = document.getElementById('lights-layer');
           const nodesLayer = document.getElementById('nodes-layer');
           const devicesLayer = document.getElementById('devices-layer');
           if (
@@ -1873,6 +2000,9 @@
           if (nodesLayer instanceof SVGGElement) {
             while (nodesLayer.firstChild) nodesLayer.removeChild(nodesLayer.firstChild);
           }
+          if (lightsLayer instanceof SVGGElement) {
+            while (lightsLayer.firstChild) lightsLayer.removeChild(lightsLayer.firstChild);
+          }
           if (devicesLayer instanceof SVGGElement) {
             while (devicesLayer.firstChild) devicesLayer.removeChild(devicesLayer.firstChild);
           }
@@ -1976,6 +2106,80 @@
 
             wallsLayer.appendChild(g);
             labelsLayer.appendChild(labelGroup);
+
+            // Lighting toggle buttons live on a dedicated overlay layer.
+            if (lightsLayer instanceof SVGGElement && lightingModel?.byRoomId instanceof Map) {
+              const roomLights = lightingModel.byRoomId.get(room.id);
+              if (Array.isArray(roomLights) && roomLights.length) {
+                const [cx, cy] = centroid(room.points);
+
+                const toggle = svgEl('g', {
+                  class: 'light-toggle',
+                  'data-room-id': room.id,
+                  'data-cx': cx,
+                  'data-cy': cy,
+                  tabindex: '0',
+                  role: 'button',
+                  'aria-label': `Toggle lights: ${room.name}`,
+                });
+
+                const bg = svgEl('rect', {
+                  class: 'light-toggle-bg',
+                  x: -0.6,
+                  y: -0.45,
+                  width: 1.2,
+                  height: 0.9,
+                  rx: 0.25,
+                  ry: 0.25,
+                });
+                toggle.appendChild(bg);
+
+                const icon = svgEl('use', {
+                  class: 'light-toggle-icon',
+                  href: '#lightBulb',
+                  'xlink:href': '#lightBulb',
+                  x: -0.25,
+                  y: -0.25,
+                  width: 0.5,
+                  height: 0.5,
+                });
+                toggle.appendChild(icon);
+
+                const computeRoomOn = () =>
+                  roomLights.some((l) => String(l.state || '').toLowerCase() === 'on');
+
+                const applyToggleState = () => {
+                  toggle.classList.toggle('is-on', computeRoomOn());
+                };
+
+                const toggleRoomLights = () => {
+                  const currentlyOn = computeRoomOn();
+                  const next = currentlyOn ? 'off' : 'on';
+                  for (const l of roomLights) {
+                    l.state = next;
+                  }
+                  applyToggleState();
+                  applyLightingPanel(lightingModel);
+                };
+
+                toggle.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  suppressRoomClick = true;
+                  toggleRoomLights();
+                  toggle.focus({ preventScroll: true });
+                });
+                toggle.addEventListener('keydown', (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    suppressRoomClick = true;
+                    toggleRoomLights();
+                  }
+                });
+
+                applyToggleState();
+                lightsLayer.appendChild(toggle);
+              }
+            }
           }
 
           if (nodesLayer instanceof SVGGElement) {
@@ -2171,6 +2375,41 @@
                   'y',
                   String(-devicePinHeightInUserUnits - deviceLabelGapInUserUnits)
                 );
+              }
+            }
+
+            const lightToggles = svg.querySelectorAll('.light-toggle');
+            for (const g of lightToggles) {
+              if (!(g instanceof SVGGElement)) continue;
+
+              const cx = Number(g.getAttribute('data-cx'));
+              const cy = Number(g.getAttribute('data-cy'));
+              if (!Number.isFinite(cx) || !Number.isFinite(cy)) continue;
+
+              const bgW = 34 * unitsPerPx;
+              const bgH = 26 * unitsPerPx;
+              const bgR = 10 * unitsPerPx;
+              const iconSize = 18 * unitsPerPx;
+              const yOffset = 28 * unitsPerPx;
+
+              g.setAttribute('transform', `translate(${cx} ${cy + yOffset})`);
+
+              const bg = g.querySelector('.light-toggle-bg');
+              if (bg instanceof SVGRectElement) {
+                bg.setAttribute('width', String(bgW));
+                bg.setAttribute('height', String(bgH));
+                bg.setAttribute('x', String(-bgW / 2));
+                bg.setAttribute('y', String(-bgH / 2));
+                bg.setAttribute('rx', String(bgR));
+                bg.setAttribute('ry', String(bgR));
+              }
+
+              const icon = g.querySelector('.light-toggle-icon');
+              if (icon instanceof SVGUseElement) {
+                icon.setAttribute('width', String(iconSize));
+                icon.setAttribute('height', String(iconSize));
+                icon.setAttribute('x', String(-iconSize / 2));
+                icon.setAttribute('y', String(-iconSize / 2));
               }
             }
           };
@@ -2575,6 +2814,11 @@
           const agendaEl = document.getElementById('agenda');
           const mediaEl = document.getElementById('media-window');
           const climateEl = document.getElementById('climate-panel');
+          const lightingEl = document.getElementById('lighting-panel');
+
+          if (lightingEl instanceof HTMLElement && !lightingEl.classList.contains('is-hidden')) {
+            return 'lighting';
+          }
 
           if (mediaEl instanceof HTMLElement && !mediaEl.classList.contains('is-hidden')) {
             return 'media';
@@ -2595,15 +2839,18 @@
           const agendaEl = document.getElementById('agenda');
           const mediaEl = document.getElementById('media-window');
           const climateEl = document.getElementById('climate-panel');
+          const lightingEl = document.getElementById('lighting-panel');
 
           const agendaToggle = document.getElementById('agenda-toggle');
           const mediaToggle = document.getElementById('media-toggle');
           const climateToggle = document.getElementById('climate-toggle');
+          const lightingToggle = document.getElementById('lighting-toggle');
 
           if (
             !(agendaEl instanceof HTMLElement) ||
             !(mediaEl instanceof HTMLElement) ||
-            !(climateEl instanceof HTMLElement)
+            !(climateEl instanceof HTMLElement) ||
+            !(lightingEl instanceof HTMLElement)
           ) {
             return;
           }
@@ -2611,10 +2858,12 @@
           const showAgenda = panel === 'agenda';
           const showMedia = panel === 'media';
           const showClimate = panel === 'climate';
+          const showLighting = panel === 'lighting';
 
           agendaEl.classList.toggle('is-hidden', !showAgenda);
           mediaEl.classList.toggle('is-hidden', !showMedia);
           climateEl.classList.toggle('is-hidden', !showClimate);
+          lightingEl.classList.toggle('is-hidden', !showLighting);
 
           if (agendaToggle instanceof HTMLButtonElement) {
             agendaToggle.setAttribute('aria-expanded', showAgenda ? 'true' : 'false');
@@ -2625,8 +2874,12 @@
           if (climateToggle instanceof HTMLButtonElement) {
             climateToggle.setAttribute('aria-expanded', showClimate ? 'true' : 'false');
           }
+          if (lightingToggle instanceof HTMLButtonElement) {
+            lightingToggle.setAttribute('aria-expanded', showLighting ? 'true' : 'false');
+          }
 
           setClimateOverlayVisible(showClimate);
+          setLightingOverlayVisible(showLighting);
         }
 
         function setClimateOverlayVisible(visible) {
@@ -2636,6 +2889,18 @@
           const roomClimate = svg.querySelectorAll('.room-climate');
           for (const el of roomClimate) {
             if (el instanceof SVGTextElement) {
+              el.classList.toggle('is-hidden', !visible);
+            }
+          }
+        }
+
+        function setLightingOverlayVisible(visible) {
+          const svg = document.getElementById('floorplan-svg');
+          if (!(svg instanceof SVGSVGElement)) return;
+
+          const toggles = svg.querySelectorAll('.light-toggle');
+          for (const el of toggles) {
+            if (el instanceof SVGGElement) {
               el.classList.toggle('is-hidden', !visible);
             }
           }
@@ -2665,6 +2930,18 @@
           });
         }
 
+        function enableLightingToggle() {
+          const toggleButton = document.getElementById('lighting-toggle');
+          if (!(toggleButton instanceof HTMLButtonElement)) {
+            return;
+          }
+
+          toggleButton.addEventListener('click', () => {
+            const visible = getVisibleSidebarPanel();
+            setSidebarPanel(visible === 'lighting' ? null : 'lighting');
+          });
+        }
+
         function enableAgendaToggle() {
           const toggleButton = document.getElementById('agenda-toggle');
           if (!(toggleButton instanceof HTMLButtonElement)) {
@@ -2680,6 +2957,7 @@
         (async function init() {
           enableMediaToggle();
           enableClimateToggle();
+          enableLightingToggle();
           enableAgendaToggle();
 
           const initialPanel = getVisibleSidebarPanel();
@@ -2708,10 +2986,12 @@
                 { text, source },
                 { text: devicesText, source: devicesSource },
                 { text: climateText, source: climateSource },
+                { text: lightingText, source: lightingSource },
               ] = await Promise.all([
                 loadYamlText('./floorplan.yaml', ''),
                 loadYamlText('./devices.yaml', 'devices-yaml'),
                 loadYamlText('./climate.yaml', ''),
+                loadYamlText('./lighting.yaml', ''),
               ]);
 
               if (!String(text || '').trim()) {
@@ -2747,6 +3027,18 @@
                   console.warn('climate.yaml present but could not be parsed; ignoring.', err);
                 }
               }
+
+              const normalizedLighting = normalizeYamlText(lightingText);
+              let lightingDoc = null;
+              if (String(normalizedLighting || '').trim() && !isProbablyHtml(normalizedLighting)) {
+                try {
+                  lightingDoc = parseYamlLite(normalizedLighting);
+                } catch {
+                  lightingDoc = null;
+                }
+              }
+
+              const lightingModel = normalizeLightingDoc(lightingDoc);
               const floorsCount = Array.isArray(doc?.floors) ? doc.floors.length : 0;
 
               if (floorsCount === 0) {
@@ -2760,10 +3052,15 @@
 
               hideEmptyMessage();
 
-              const result = renderFloorplan(doc, devicesDoc, climateDoc);
+              const result = renderFloorplan(doc, devicesDoc, climateDoc, lightingModel);
               if (result?.baseViewBox) {
                 enablePanZoom(result.baseViewBox, result.initialView);
               }
+
+              // Ensure map overlays reflect initial visible panel state.
+              const visiblePanel = getVisibleSidebarPanel();
+              setClimateOverlayVisible(visiblePanel === 'climate');
+              setLightingOverlayVisible(visiblePanel === 'lighting');
 
               // Ensure map overlay reflects current sidebar state (and not just the initial DOM classes).
               setClimateOverlayVisible(getVisibleSidebarPanel() === 'climate');
@@ -2771,6 +3068,8 @@
               if (climateDoc) {
                 applyClimatePanel(climateDoc);
               }
+
+              applyLightingPanel(lightingModel);
               const roomsCount = result?.roomsCount ?? 0;
               const devicesCount = result?.devicesCount ?? 0;
               const floorId = result?.floorId ?? 'unknown';
@@ -2793,6 +3092,7 @@
                 `source: ${source}\n` +
                 `devices: ${devicesSource}\n` +
                 `climate: ${climateSource}\n` +
+                `lighting: ${lightingSource}\n` +
                 `default_floor_id: ${defaultFloorId || '(none)'}${defaultFloorNote}\n` +
                 `floors: ${floorsCount}  floor: ${floorId}\n` +
                 `rooms: ${roomsCount}\n` +
@@ -2818,6 +3118,72 @@
 
           await loadAndRender();
         })();
+
+        function normalizeLightingDoc(lightingDoc) {
+          const rawLights = Array.isArray(lightingDoc?.lights) ? lightingDoc.lights : [];
+
+          const lights = rawLights
+            .filter((l) => l && typeof l === 'object')
+            .map((l) => {
+              const id = String(l.id || '').trim();
+              const name = String(l.name || l.id || '').trim();
+              const state = String(l.state || '')
+                .trim()
+                .toLowerCase();
+              const roomId = id.startsWith('light.') ? id.slice('light.'.length) : '';
+              return {
+                id,
+                name,
+                roomId,
+                state: state === 'on' ? 'on' : 'off',
+              };
+            })
+            .filter((l) => l.id && l.name && l.roomId);
+
+          const byRoomId = new Map();
+          for (const light of lights) {
+            const arr = byRoomId.get(light.roomId) || [];
+            arr.push(light);
+            byRoomId.set(light.roomId, arr);
+          }
+
+          return { lights, byRoomId };
+        }
+
+        function applyLightingPanel(lightingModel) {
+          const listEl = document.getElementById('lighting-list');
+          const emptyEl = document.getElementById('lighting-empty');
+          if (!(listEl instanceof HTMLElement) || !(emptyEl instanceof HTMLElement)) return;
+
+          while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+
+          const lights = Array.isArray(lightingModel?.lights) ? lightingModel.lights : [];
+          const onLights = lights.filter((l) => String(l.state || '').toLowerCase() === 'on');
+
+          if (!onLights.length) {
+            emptyEl.classList.remove('is-hidden');
+            return;
+          }
+
+          emptyEl.classList.add('is-hidden');
+
+          for (const light of onLights) {
+            const item = document.createElement('li');
+            item.className = 'lighting-item';
+
+            const name = document.createElement('div');
+            name.className = 'lighting-name';
+            name.textContent = light.name;
+
+            const meta = document.createElement('div');
+            meta.className = 'lighting-meta';
+            meta.textContent = light.roomId.replace(/_/g, ' ');
+
+            item.appendChild(name);
+            item.appendChild(meta);
+            listEl.appendChild(item);
+          }
+        }
 
         function applyClimatePanel(climateDoc) {
           const defaults =
