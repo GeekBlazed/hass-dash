@@ -1,6 +1,6 @@
 import { Container } from 'inversify';
 import 'reflect-metadata';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { IConfigService } from '../interfaces/IConfigService';
 import { ConfigService } from '../services/ConfigService';
 import { TYPES } from './types';
@@ -43,6 +43,8 @@ describe('DI Container', () => {
   });
 
   it('should resolve service with working methods', () => {
+    vi.stubEnv('VITE_APP_VERSION', '0.1.0');
+
     const container = new Container();
     container.bind<IConfigService>(TYPES.IConfigService).to(ConfigService);
 
@@ -57,5 +59,7 @@ describe('DI Container', () => {
 
     const config = configService.getConfig('APP_VERSION');
     expect(config).toBeDefined();
+
+    vi.unstubAllEnvs();
   });
 });

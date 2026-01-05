@@ -10,8 +10,14 @@ describe('ConfigService', () => {
 
   describe('getAppVersion', () => {
     it('should return version from environment variable', () => {
-      const version = configService.getAppVersion();
-      expect(version).toBe('0.1.0');
+      vi.stubEnv('VITE_APP_VERSION', '9.9.9');
+
+      const service = new ConfigService();
+      const version = service.getAppVersion();
+
+      expect(version).toBe('9.9.9');
+
+      vi.unstubAllEnvs();
     });
 
     it('should return default version when env variable is not set', () => {
@@ -68,8 +74,14 @@ describe('ConfigService', () => {
 
   describe('getConfig', () => {
     it('should return config value for existing key', () => {
-      const version = configService.getConfig('APP_VERSION');
-      expect(version).toBeDefined();
+      vi.stubEnv('VITE_APP_VERSION', '1.2.3');
+
+      const service = new ConfigService();
+      const version = service.getConfig('APP_VERSION');
+
+      expect(version).toBe('1.2.3');
+
+      vi.unstubAllEnvs();
     });
 
     it('should return undefined for non-existent key', () => {
@@ -78,9 +90,13 @@ describe('ConfigService', () => {
     });
 
     it('should handle keys with VITE_ prefix', () => {
+      vi.stubEnv('VITE_APP_VERSION', '4.5.6');
+
       const value1 = configService.getConfig('VITE_APP_VERSION');
       const value2 = configService.getConfig('APP_VERSION');
       expect(value1).toBe(value2);
+
+      vi.unstubAllEnvs();
     });
 
     it('should return string values', () => {
