@@ -1,8 +1,18 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 describe('App', () => {
+  beforeEach(() => {
+    // Keep App tests deterministic regardless of local .env settings.
+    vi.stubEnv('VITE_FEATURE_COMPONENT_SHOWCASE', 'false');
+    vi.stubEnv('VITE_FEATURE_DEBUG_PANEL', 'false');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('renders the dashboard', () => {
     render(<App />);
 
