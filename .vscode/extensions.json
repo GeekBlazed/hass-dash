@@ -5,9 +5,6 @@
     "dbaeumer.vscode-eslint",
     "bradlc.vscode-tailwindcss",
     
-    // TypeScript
-    "dsznajder.es7-react-js-snippets",
-    
     // Testing
     "vitest.explorer",
     "ms-playwright.playwright",

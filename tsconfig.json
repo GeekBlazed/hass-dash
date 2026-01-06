@@ -3,6 +3,10 @@
   "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
   "compilerOptions": {
     "forceConsistentCasingInFileNames": true,
-    "strict": true
+    "strict": true,
+
+    /* Decorators - Needed for esbuild/Vite dep scanning with InversifyJS */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   }
 }
