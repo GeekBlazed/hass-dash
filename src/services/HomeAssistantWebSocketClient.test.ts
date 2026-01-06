@@ -34,8 +34,16 @@ class MockWebSocket {
     this.onmessage?.({ data: JSON.stringify(message) });
   }
 
+  serverSendRaw(data: string): void {
+    this.onmessage?.({ data });
+  }
+
   serverError(): void {
     this.onerror?.({});
+  }
+
+  serverClose(code = 1000, reason = ''): void {
+    this.onclose?.({ code, reason });
   }
 }
 
@@ -55,6 +63,98 @@ describe('HomeAssistantWebSocketClient', () => {
     MockWebSocket.instances = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).WebSocket = MockWebSocket;
+  });
+
+  it('connect() throws when missing websocket url and token', async () => {
+    const missingUrl = createConfigStub({
+      VITE_HA_ACCESS_TOKEN: 'token',
+    });
+
+    await expect(new HomeAssistantWebSocketClient(missingUrl).connect()).rejects.toThrow(
+      'Home Assistant WebSocket URL is not configured'
+    );
+
+    const missingToken = createConfigStub({
+      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
+    });
+
+    await expect(new HomeAssistantWebSocketClient(missingToken).connect()).rejects.toThrow(
+      'Home Assistant access token is not configured'
+    );
+  });
+
+  it('connect() derives websocket url from HA_BASE_URL when HA_WEBSOCKET_URL is not set', async () => {
+    const config = createConfigStub({
+      VITE_HA_BASE_URL: 'https://example/',
+      VITE_HA_ACCESS_TOKEN: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config);
+    const connectPromise = client.connect();
+
+    const socket = MockWebSocket.instances[0];
+    expect(socket.url).toBe('wss://example/api/websocket');
+
+    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
+    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
+    await expect(connectPromise).resolves.toBeUndefined();
+  });
+
+  it('connect() rejects on auth_invalid and on malformed JSON during auth handshake', async () => {
+    const config = createConfigStub({
+      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
+      VITE_HA_ACCESS_TOKEN: 'token',
+    });
+
+    const client1 = new HomeAssistantWebSocketClient(config);
+    const p1 = client1.connect();
+    const s1 = MockWebSocket.instances[0];
+    s1.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
+    s1.serverSend({ type: 'auth_invalid', message: 'bad token' });
+    await expect(p1).rejects.toThrow('bad token');
+
+    const client2 = new HomeAssistantWebSocketClient(config);
+    const p2 = client2.connect();
+    const s2 = MockWebSocket.instances[1];
+    s2.serverSendRaw('not-json');
+    await expect(p2).rejects.toBeDefined();
+  });
+
+  it('connect() rejects on socket error and on socket close before auth completes', async () => {
+    const config = createConfigStub({
+      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
+      VITE_HA_ACCESS_TOKEN: 'token',
+    });
+
+    const client1 = new HomeAssistantWebSocketClient(config);
+    const p1 = client1.connect();
+    const s1 = MockWebSocket.instances[0];
+    s1.serverError();
+    await expect(p1).rejects.toThrow('Failed to connect to Home Assistant WebSocket');
+
+    const client2 = new HomeAssistantWebSocketClient(config);
+    const p2 = client2.connect();
+    const s2 = MockWebSocket.instances[1];
+    s2.serverClose(1006, 'handshake failed');
+    await expect(p2).rejects.toThrow('WebSocket closed before auth completed (1006: handshake failed)');
+  });
+
+  it('connect() returns early when already connected', async () => {
+    const config = createConfigStub({
+      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
+      VITE_HA_ACCESS_TOKEN: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config);
+    const connectPromise = client.connect();
+
+    const socket = MockWebSocket.instances[0];
+    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
+    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
+    await connectPromise;
+
+    await expect(client.connect()).resolves.toBeUndefined();
+    expect(MockWebSocket.instances).toHaveLength(1);
   });
 
   it('connect() authenticates on auth_required and resolves on auth_ok', async () => {
@@ -123,6 +223,26 @@ describe('HomeAssistantWebSocketClient', () => {
     expect(states[0].entity_id).toBe('light.kitchen');
   });
 
+  it('commands reject when not connected, and pending commands reject on disconnect', async () => {
+    const config = createConfigStub({
+      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
+      VITE_HA_ACCESS_TOKEN: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config);
+    await expect(client.getStates()).rejects.toThrow('Home Assistant client is not connected');
+
+    const connectPromise = client.connect();
+    const socket = MockWebSocket.instances[0];
+    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
+    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
+    await connectPromise;
+
+    const pending = client.getStates();
+    client.disconnect();
+    await expect(pending).rejects.toThrow('WebSocket disconnected');
+  });
+
   it('subscribeToEvents() invokes handler for matching subscription id and can unsubscribe', async () => {
     const config = createConfigStub({
       VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
@@ -181,6 +301,40 @@ describe('HomeAssistantWebSocketClient', () => {
     socket.serverSend({ id: unsubscribeSent.id, type: 'result', success: true, result: null });
 
     await expect(unsubscribePromise).resolves.toBeUndefined();
+  });
+
+  it('subscribeToEvents() omits event_type when null and still resolves unsubscribe if it cannot reach server', async () => {
+    const config = createConfigStub({
+      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
+      VITE_HA_ACCESS_TOKEN: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config);
+    const connectPromise = client.connect();
+
+    const socket = MockWebSocket.instances[0];
+    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
+    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
+    await connectPromise;
+
+    const handler = vi.fn();
+    const subscriptionPromise = client.subscribeToEvents(null, handler);
+
+    const subscribeSent = JSON.parse(socket.sent[socket.sent.length - 1]) as {
+      id: number;
+      type: string;
+      event_type?: string;
+    };
+
+    expect(subscribeSent.type).toBe('subscribe_events');
+    expect(subscribeSent.event_type).toBeUndefined();
+
+    socket.serverSend({ id: subscribeSent.id, type: 'result', success: true, result: null });
+    const subscription = await subscriptionPromise;
+
+    client.disconnect();
+
+    await expect(subscription.unsubscribe()).resolves.toBeUndefined();
   });
 
   it('getServices() normalizes WS mapping into domain array', async () => {
@@ -315,5 +469,58 @@ describe('HomeAssistantWebSocketClient', () => {
       message: 'Service not found',
       code: 'service_not_found',
     });
+  });
+
+  it('sendCommand() rejects with default error when HA error has no string message, and ignores invalid JSON post-connect', async () => {
+    const config = createConfigStub({
+      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
+      VITE_HA_ACCESS_TOKEN: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config);
+    const connectPromise = client.connect();
+
+    const socket = MockWebSocket.instances[0];
+    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
+    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
+    await connectPromise;
+
+    const statesPromise = client.getStates();
+
+    const lastSent = JSON.parse(socket.sent[socket.sent.length - 1]) as {
+      id: number;
+      type: string;
+    };
+
+    socket.serverSend({
+      id: lastSent.id,
+      type: 'result',
+      success: false,
+      error: { code: 'unknown', message: 123, data: { details: 'nope' } },
+    });
+
+    await expect(statesPromise).rejects.toMatchObject({
+      message: 'Home Assistant command failed',
+    });
+
+    expect(() => socket.serverSendRaw('not-json')).not.toThrow();
+
+    // Messages that don't match a pending request or subscription should be ignored.
+    expect(() =>
+      socket.serverSend({ id: 999, type: 'result', success: true, result: { ok: true } })
+    ).not.toThrow();
+    expect(() =>
+      socket.serverSend({
+        id: 999,
+        type: 'event',
+        event: {
+          event_type: 'state_changed',
+          data: { entity_id: 'light.kitchen', old_state: null, new_state: null },
+          time_fired: '2026-01-01T00:00:00+00:00',
+          origin: 'LOCAL',
+          context: { id: '1', parent_id: null, user_id: null },
+        },
+      })
+    ).not.toThrow();
   });
 });

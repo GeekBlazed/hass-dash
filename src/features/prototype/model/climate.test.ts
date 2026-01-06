@@ -8,6 +8,35 @@ describe('normalizeClimate', () => {
     expect(model.areas).toEqual([]);
   });
 
+  it('uses defaults when thermostat shape is invalid and filters invalid areas', () => {
+    const model = normalizeClimate({
+      thermostat: { default: 'nope' },
+      areas: [
+        'bad',
+        { area_id: 'kitchen', temp: 'hot' },
+        { area_id: null, temp: 70 },
+        { area_id: 'office' },
+      ],
+    });
+
+    expect(model.thermostat.name).toBe('Home Temperature');
+    expect(model.areas).toEqual([]);
+  });
+
+  it('falls back to default humidity when measured_humidity is null', () => {
+    const model = normalizeClimate({
+      thermostat: {
+        default: {
+          measured_temperature: 72,
+          measured_humidity: null,
+        },
+      },
+    });
+
+    expect(model.thermostat.measuredTemperature).toBe(72);
+    expect(model.thermostat.measuredHumidity).toBe(47);
+  });
+
   it('normalizes thermostat and areas', () => {
     const model = normalizeClimate({
       thermostat: {
@@ -33,5 +62,8 @@ describe('normalizeClimate', () => {
     expect(getAreaTemperature(model, 'kitchen')).toBe(80);
     expect(getAreaHumidity(model, 'kitchen')).toBeUndefined();
     expect(getAreaHumidity(model, 'bedroom')).toBe(54);
+
+    expect(getAreaTemperature(model, 'missing')).toBeUndefined();
+    expect(getAreaHumidity(model, 'missing')).toBeUndefined();
   });
 });
