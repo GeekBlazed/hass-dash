@@ -47,11 +47,7 @@ export const useAppStore = create<AppState>()(
           );
         },
         clearAllFeatureFlagOverrides: () => {
-          set((state) =>
-            produce(state, (draft) => {
-              draft.featureFlagOverrides = {};
-            })
-          );
+          set({ featureFlagOverrides: {} });
         },
       }),
       {
@@ -62,9 +58,6 @@ export const useAppStore = create<AppState>()(
           featureFlagOverrides: state.featureFlagOverrides,
         }),
       }
-    ),
-    {
-      name: 'hass-dash:app',
-    }
+    )
   )
 );

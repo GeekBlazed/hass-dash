@@ -3,7 +3,7 @@ import { useAppStore } from './useAppStore';
 
 describe('useAppStore', () => {
   beforeEach(() => {
-    localStorage.removeItem('hass-dash:app');
+    useAppStore.persist.clearStorage();
     useAppStore.setState({ theme: 'system', featureFlagOverrides: {} });
   });
 
@@ -16,7 +16,8 @@ describe('useAppStore', () => {
     expect(useAppStore.getState().theme).toBe('dark');
 
     const storage = useAppStore.persist.getOptions().storage;
-    const raw = await Promise.resolve(storage.getItem('hass-dash:app'));
+    expect(storage).toBeDefined();
+    const raw = await Promise.resolve(storage?.getItem('hass-dash:app'));
     expect(raw).not.toBeNull();
 
     const parsed =
