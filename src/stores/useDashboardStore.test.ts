@@ -3,16 +3,15 @@ import { useDashboardStore } from './useDashboardStore';
 
 describe('useDashboardStore', () => {
   beforeEach(() => {
-    localStorage.clear();
     useDashboardStore.persist.clearStorage();
     useDashboardStore.setState({
-      activePanel: null,
+      activePanel: 'climate',
       stageView: { x: 0, y: 0, scale: 1 },
     });
   });
 
-  it('defaults to no active panel', () => {
-    expect(useDashboardStore.getState().activePanel).toBeNull();
+  it('defaults to climate panel', () => {
+    expect(useDashboardStore.getState().activePanel).toBe('climate');
   });
 
   it('can set active panel', () => {

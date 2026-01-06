@@ -1,4 +1,13 @@
+import { useDashboardStore } from '../../../stores/useDashboardStore';
+
 export function DashboardQuickActions() {
+  const activePanel = useDashboardStore((state) => state.activePanel);
+  const setActivePanel = useDashboardStore((state) => state.setActivePanel);
+
+  const togglePanel = (panel: Exclude<typeof activePanel, null>) => {
+    setActivePanel(activePanel === panel ? null : panel);
+  };
+
   return (
     <div className="quick-actions" aria-label="Quick actions">
       <button
@@ -7,7 +16,8 @@ export function DashboardQuickActions() {
         id="lighting-toggle"
         aria-label="Lighting"
         aria-controls="lighting-panel"
-        aria-expanded="false"
+        aria-expanded={activePanel === 'lighting'}
+        onClick={() => togglePanel('lighting')}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -23,7 +33,8 @@ export function DashboardQuickActions() {
         id="climate-toggle"
         aria-label="Climate"
         aria-controls="climate-panel"
-        aria-expanded="true"
+        aria-expanded={activePanel === 'climate'}
+        onClick={() => togglePanel('climate')}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -39,7 +50,8 @@ export function DashboardQuickActions() {
         id="media-toggle"
         aria-label="Media"
         aria-controls="media-window"
-        aria-expanded="false"
+        aria-expanded={activePanel === 'media'}
+        onClick={() => togglePanel('media')}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -76,7 +88,8 @@ export function DashboardQuickActions() {
         id="agenda-toggle"
         aria-label="Agenda"
         aria-controls="agenda"
-        aria-expanded="false"
+        aria-expanded={activePanel === 'agenda'}
+        onClick={() => togglePanel('agenda')}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path

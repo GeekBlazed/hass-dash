@@ -3,8 +3,7 @@ import { useAppStore } from './useAppStore';
 
 describe('useAppStore', () => {
   beforeEach(() => {
-    localStorage.clear();
-    useAppStore.persist.clearStorage();
+    localStorage.removeItem('hass-dash:app');
     useAppStore.setState({ theme: 'system', featureFlagOverrides: {} });
   });
 
@@ -12,12 +11,20 @@ describe('useAppStore', () => {
     expect(useAppStore.getState().theme).toBe('system');
   });
 
-  it('can set theme and persist it', () => {
+  it('can set theme and persist it', async () => {
     useAppStore.getState().setTheme('dark');
     expect(useAppStore.getState().theme).toBe('dark');
 
-    const raw = localStorage.getItem('hass-dash:app');
-    expect(raw).toContain('dark');
+    const storage = useAppStore.persist.getOptions().storage;
+    const raw = await Promise.resolve(storage.getItem('hass-dash:app'));
+    expect(raw).not.toBeNull();
+
+    const parsed =
+      typeof raw === 'string'
+        ? (JSON.parse(raw) as { state?: { theme?: string } })
+        : (raw as { state?: { theme?: string } });
+
+    expect(parsed.state?.theme).toBe('dark');
   });
 
   it('normalizes feature flag override keys', () => {

@@ -29,7 +29,7 @@ export const useDashboardStore = create<DashboardState>()(
   devtools(
     persist(
       (set) => ({
-        activePanel: null,
+        activePanel: 'climate',
         setActivePanel: (panel) => {
           set({ activePanel: panel });
         },

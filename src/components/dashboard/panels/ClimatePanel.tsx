@@ -1,6 +1,10 @@
-export function ClimatePanel() {
+export function ClimatePanel({ isHidden = false }: { isHidden?: boolean }) {
   return (
-    <section id="climate-panel" className="tile climate-panel" aria-label="Climate controls">
+    <section
+      id="climate-panel"
+      className={`tile climate-panel${isHidden ? 'is-hidden' : ''}`}
+      aria-label="Climate controls"
+    >
       <div className="thermostat" aria-label="Thermostat">
         <div className="thermostat__temp" id="thermostat-temp">
           71°F

@@ -1,6 +1,10 @@
-export function MediaPanel() {
+export function MediaPanel({ isHidden = true }: { isHidden?: boolean }) {
   return (
-    <section id="media-window" className="tile media-window is-hidden" aria-label="Media player">
+    <section
+      id="media-window"
+      className={`tile media-window${isHidden ? 'is-hidden' : ''}`}
+      aria-label="Media player"
+    >
       <div className="media-window__header" aria-label="Media window header">
         <div className="media-window__title">
           <span className="media-window__pill">
