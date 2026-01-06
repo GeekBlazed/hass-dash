@@ -332,6 +332,121 @@ Then swap implementations later:
 
 ---
 
+## Prototype UI component inventory (prototype → React)
+
+This section is a concrete inventory of the UI “pieces” that exist in the single-file prototype, separated into:
+
+- **Reusable / extendable primitives** (worth turning into components or shared patterns)
+- **Unique / prototype-only elements** (keep as-is during parity; can be refactored later)
+
+The intent is to avoid guesswork and keep the React port faithful while still being component-driven.
+
+### Reusable / extendable primitives
+
+#### Layout + surfaces
+
+- **Viewport wrapper**: `.viewport`
+  - Centers the frame with outer padding (prototype-only in the long run, but useful as a dev harness).
+- **Frame (glass shell)**: `.frame` (+ `::before`, `::after`)
+  - The rounded “glass” container and lighting/vignette overlays.
+- **App grid**: `.app`
+  - Two-column layout (sidebar + stage) with responsive stacking.
+- **Panel surface**: `.sidebar`, `.stage`
+  - Shared glass surface treatment (radius, border, blur, shadow).
+
+#### Sidebar building blocks
+
+- **Brand header**: `.brand` (+ `.title`)
+  - Icon + title + divider.
+- **Weather summary card**: `.weather` (+ `.temp`, `.desc`, `.meta`)
+  - Icon + primary value + supporting lines.
+- **Quick action button**: `.qa`
+  - A11y: uses `aria-controls` + `aria-expanded`.
+  - Visual states:
+    - hover
+    - focus-visible
+    - selected (`.qa[aria-expanded='true']`)
+
+#### Panels / cards
+
+- **Tile container**: `.tile` (+ `.tile::before`)
+  - Shared card container used by Lighting/Media/Climate.
+- **Scrollable panel body**: `.agenda`, `#lighting-list`, `.media-window`, `.climate-panel`
+  - Pattern: fixed region with `overflow: auto` inside the sidebar.
+- **List item card**:
+  - Agenda: `.agenda .item` (+ `.name`, `.time`)
+  - Lighting: `.lighting-panel .lighting-item` (+ `.lighting-name`, `.lighting-meta`)
+- **Empty state callout**: `.lighting-panel__empty`
+- **Media control primitives** (even if the prototype uses them only in Media):
+  - Control bar: `.controls`
+  - Button grid: `.buttons` + `.btn`
+  - Scrubber: `.scrub`
+- **Pill / chip**:
+  - Media: `.media-window__pill`
+  - Climate: `.climate-panel__pill`
+
+#### Floorplan + overlays
+
+- **Floorplan container**: `.floorplan`
+  - Owns padding/inset around the SVG.
+- **Empty overlay**: `.floorplan-empty` and children (`__panel`, `__title`, `__body`, `__actions`, `__btn`)
+- **Map controls (floating overlay)**:
+  - Palette: `.map-controls`
+  - Toggle button: `.map-controls-toggle`
+  - Buttons: `.map-controls__btn`, `.map-controls__close`
+  - Slider: `.map-controls__slider`
+
+#### SVG interaction primitives (YAML-driven)
+
+- **Interactive room group**: `.room`
+  - States: hover, active (`.is-active`), focus-visible.
+- **Room shape / label**: `.room-shape`, `.room-label`
+- **Room climate label**: `.room-climate` (+ `.is-hidden`)
+- **Room label group state styling**: `.room-label-group.is-hover|is-focus|is-active`
+- **Room light toggle (lighting overlay)**:
+  - `.light-toggle` (+ `.is-hidden`, `.is-on`)
+  - `.light-toggle-bg`, `.light-toggle-icon`
+- **Node marker**: `.node-dot`, `.node-label`
+- **Device marker**: `.device-marker`, `.device-pin`, `.device-label`
+
+### Unique / prototype-only elements
+
+- **SVG `<defs>` assets** (filters/gradients/symbols): `#roomInnerGlow`, `#softGlow`, `#devicePin`, `#lightBulb`, gradients, etc.
+  - Treat as “assets” rather than React components during parity.
+- **Map controls “Launch view values” readout**: `#map-launch-*`
+  - Prototype/debug telemetry; keep if useful, otherwise safe to drop later.
+- **Status debug output block**: `.status-block` / `#floorplan-status`
+  - Prototype-only; currently hidden by CSS.
+- **Security/Cameras quick actions** are placeholders
+  - Styled as `.qa`, but they don’t open panels in the prototype.
+
+### Proposed React component breakdown (parity-oriented)
+
+These names are suggestions to keep the port organized; they should still follow the prototype UX exactly.
+
+- `PrototypeShell` (layout wrapper)
+- `PrototypeSidebar`
+  - `BrandHeader`
+  - `WeatherSummary`
+  - `QuickActions`
+    - `QuickActionButton`
+  - `SidebarPanelHost` (mutually exclusive panel container)
+    - `AgendaPanel`
+    - `LightingPanel`
+      - `LightingList`
+      - `LightingListItem`
+      - `EmptyState`
+    - `ClimatePanel`
+      - `ThermostatSummary`
+      - `TemperatureRange`
+    - `MediaPanel` (if kept)
+- `PrototypeStage`
+  - `FloorplanCanvas` (SVG wrapper)
+    - `FloorplanEmptyOverlay`
+  - `MapControls` + `MapControlsToggle`
+
+---
+
 ## Suggested incremental PR breakdown
 
 1. Feature flag + empty `PrototypeShell`
