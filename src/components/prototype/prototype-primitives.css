@@ -64,7 +64,6 @@
     border-radius: 18px;
     background: var(--proto-panel-bg);
     border: 1px solid var(--proto-border);
-    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     box-shadow: var(--proto-shadow);
     min-height: 0;
