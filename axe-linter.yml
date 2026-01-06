@@ -1,0 +1,9 @@
+rules:
+  # heading-order: false # Disable this rule
+exclude:
+  - 'tests/**/*.html' # Skip files in the tests directory
+global-components:
+  AxeButton: button # Treat <AxeButton> as a <button>
+global-libraries:
+  - 'react-native' # Enable linting for React Native components
+  - '@mui/material' # Enable linting for Material UI components

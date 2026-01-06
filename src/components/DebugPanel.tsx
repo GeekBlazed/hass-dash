@@ -140,7 +140,10 @@ export function DebugPanel() {
   };
 
   return (
-    <div className="mt-8 rounded-lg border-2 border-blue-500/30 bg-blue-50 p-4 dark:bg-blue-900/20">
+    <div
+      className="mt-8 rounded-lg border-2 border-blue-500/30 bg-blue-50 p-4 dark:bg-blue-900/20"
+      style={{ backgroundColor: 'blue' }}
+    >
       <div className="mb-3 flex items-center gap-2">
         <span className="text-2xl">🚩</span>
         <h2 className="text-lg font-bold text-blue-900 dark:text-blue-100">Feature Flags</h2>

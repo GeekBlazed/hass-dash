@@ -7,6 +7,7 @@ describe('App', () => {
     // Keep App tests deterministic regardless of local .env settings.
     vi.stubEnv('VITE_FEATURE_COMPONENT_SHOWCASE', 'false');
     vi.stubEnv('VITE_FEATURE_DEBUG_PANEL', 'false');
+    vi.stubEnv('VITE_FEATURE_PROTOTYPE_UI', 'false');
   });
 
   afterEach(() => {
@@ -20,6 +21,15 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /Home/i })).toBeInTheDocument();
     // Dashboard should show "Welcome back" subheading
     expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+  });
+
+  it('renders the prototype UI when enabled', () => {
+    vi.stubEnv('VITE_FEATURE_PROTOTYPE_UI', 'true');
+
+    render(<App />);
+
+    expect(screen.getByTestId('prototype-shell')).toBeInTheDocument();
+    expect(screen.queryByText(/Welcome back/i)).not.toBeInTheDocument();
   });
 
   it('renders quick action buttons', () => {
