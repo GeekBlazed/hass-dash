@@ -194,7 +194,7 @@ export function Dashboard() {
                   All Along the Wa...
                 </div>
                 <div className="artist" id="media-artist">
-                  Jimmi Hendrix
+                  Jimi Hendrix
                 </div>
               </div>
 

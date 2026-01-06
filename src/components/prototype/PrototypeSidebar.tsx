@@ -256,7 +256,7 @@ export function PrototypeSidebar({
           <div className="bg-panel-surface/20 rounded-[14px] border border-white/5 p-3">
             <div className="text-text-primary font-medium">Spotify</div>
             <div className="text-text-muted mt-2 text-sm">All Along the Wa...</div>
-            <div className="text-text-muted text-sm">Jimmi Hendrix</div>
+            <div className="text-text-muted text-sm">Jimi Hendrix</div>
           </div>
         </section>
 
