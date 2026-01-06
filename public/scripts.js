@@ -2,6 +2,9 @@
   const SVG_NS = 'http://www.w3.org/2000/svg';
   let suppressRoomClick = false;
 
+  const INIT_MARKER_ATTR = 'data-hassdash-prototype-init';
+  const BOUND_MARKER_ATTR = 'data-hassdash-prototype-bound';
+
   function stripComments(line) {
     const idx = line.indexOf('#');
     if (idx === -1) return line;
@@ -1264,6 +1267,9 @@
       return;
     }
 
+    if (toggleButton.hasAttribute(BOUND_MARKER_ATTR)) return;
+    toggleButton.setAttribute(BOUND_MARKER_ATTR, 'true');
+
     toggleButton.addEventListener('click', () => {
       const visible = getVisibleSidebarPanel();
       setSidebarPanel(visible === 'media' ? 'agenda' : 'media');
@@ -1275,6 +1281,9 @@
     if (!(toggleButton instanceof HTMLButtonElement)) {
       return;
     }
+
+    if (toggleButton.hasAttribute(BOUND_MARKER_ATTR)) return;
+    toggleButton.setAttribute(BOUND_MARKER_ATTR, 'true');
 
     toggleButton.addEventListener('click', () => {
       const visible = getVisibleSidebarPanel();
@@ -1288,6 +1297,9 @@
       return;
     }
 
+    if (toggleButton.hasAttribute(BOUND_MARKER_ATTR)) return;
+    toggleButton.setAttribute(BOUND_MARKER_ATTR, 'true');
+
     toggleButton.addEventListener('click', () => {
       const visible = getVisibleSidebarPanel();
       setSidebarPanel(visible === 'lighting' ? null : 'lighting');
@@ -1300,13 +1312,30 @@
       return;
     }
 
+    if (toggleButton.hasAttribute(BOUND_MARKER_ATTR)) return;
+    toggleButton.setAttribute(BOUND_MARKER_ATTR, 'true');
+
     toggleButton.addEventListener('click', () => {
       const visible = getVisibleSidebarPanel();
       setSidebarPanel(visible === 'agenda' ? null : 'agenda');
     });
   }
 
-  (async function init() {
+  function dashboardDomReady() {
+    return (
+      document.getElementById('floorplan-svg') instanceof SVGSVGElement &&
+      document.getElementById('lighting-toggle') instanceof HTMLButtonElement &&
+      document.getElementById('climate-toggle') instanceof HTMLButtonElement
+    );
+  }
+
+  async function init() {
+    const root = document.getElementById('root');
+    if (root && root.getAttribute(INIT_MARKER_ATTR) === 'true') {
+      return;
+    }
+    if (root) root.setAttribute(INIT_MARKER_ATTR, 'true');
+
     enableMediaToggle();
     enableClimateToggle();
     enableLightingToggle();
@@ -1340,10 +1369,10 @@
           { text: climateText, source: climateSource },
           { text: lightingText, source: lightingSource },
         ] = await Promise.all([
-          loadYamlText('./UI/floorplan.yaml', ''),
-          loadYamlText('./UI/devices.yaml', ''),
-          loadYamlText('./UI/climate.yaml', ''),
-          loadYamlText('./UI/lighting.yaml', ''),
+          loadYamlText('/UI/floorplan.yaml', ''),
+          loadYamlText('/UI/devices.yaml', ''),
+          loadYamlText('/UI/climate.yaml', ''),
+          loadYamlText('/UI/lighting.yaml', ''),
         ]);
 
         if (!String(text || '').trim()) {
@@ -1467,7 +1496,35 @@
     }
 
     await loadAndRender();
-  })();
+  }
+
+  function boot() {
+    if (dashboardDomReady()) {
+      void init();
+      return;
+    }
+
+    // In React, this script runs before the app renders.
+    // Poll briefly until the Dashboard DOM exists.
+    let attempts = 0;
+    const maxAttempts = 300;
+    const tick = () => {
+      if (dashboardDomReady()) {
+        void init();
+        return;
+      }
+      attempts++;
+      if (attempts >= maxAttempts) return;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else {
+    boot();
+  }
 
   function normalizeLightingDoc(lightingDoc) {
     const rawLights = Array.isArray(lightingDoc?.lights) ? lightingDoc.lights : [];
