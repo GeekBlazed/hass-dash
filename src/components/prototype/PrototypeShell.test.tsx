@@ -49,10 +49,10 @@ describe('PrototypeShell', () => {
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
         const url = typeof input === 'string' ? input : input.toString();
-        if (url.endsWith('/prototype/lighting.yaml')) {
+        if (url.endsWith('/UI/lighting.yaml')) {
           return new Response(mockLightingYaml, { status: 200 });
         }
-        if (url.endsWith('/prototype/climate.yaml')) {
+        if (url.endsWith('/UI/climate.yaml')) {
           return new Response(mockClimateYaml, { status: 200 });
         }
         return new Response('', { status: 404 });

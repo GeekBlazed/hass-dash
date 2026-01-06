@@ -99,6 +99,7 @@
       background-color 140ms ease,
       border-color 140ms ease;
 
+    -webkit-user-select: none;
     user-select: none;
     color: inherit;
     font: inherit;
