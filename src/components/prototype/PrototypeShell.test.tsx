@@ -212,10 +212,7 @@ describe('PrototypeShell', () => {
 
       const shell = screen.getByTestId('prototype-shell');
       expect(shell).toHaveClass('overflow-hidden');
-      expect(shell).toHaveStyle({
-        maxHeight: 'calc(100vh - 16px)',
-        maxWidth: 'calc(100vw - 16px)',
-      });
+      expect(shell).toHaveClass('prototype-shell-clamp');
     } finally {
       Object.defineProperty(window, 'innerWidth', {
         configurable: true,

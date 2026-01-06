@@ -29,6 +29,6 @@ coverage
 *.sw?
 
 **/*--IGNORE*
-UI/*
-!UI/*-example.yaml
-!UI/*-prototype.yaml
+**/UI/*
+!**/UI/*-example.yaml
+!**/UI/*-prototype.yaml
