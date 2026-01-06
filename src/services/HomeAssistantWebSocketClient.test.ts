@@ -136,7 +136,9 @@ describe('HomeAssistantWebSocketClient', () => {
     const p2 = client2.connect();
     const s2 = MockWebSocket.instances[1];
     s2.serverClose(1006, 'handshake failed');
-    await expect(p2).rejects.toThrow('WebSocket closed before auth completed (1006: handshake failed)');
+    await expect(p2).rejects.toThrow(
+      'WebSocket closed before auth completed (1006: handshake failed)'
+    );
   });
 
   it('connect() returns early when already connected', async () => {
