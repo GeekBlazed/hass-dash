@@ -58,8 +58,8 @@ export function Dashboard() {
   };
 
   return (
-    <div className="bg-warm-gradient min-h-screen">
-      <div className="mx-auto flex min-h-screen max-w-7xl">
+    <div className="bg-warm-gradient h-dvh overflow-hidden">
+      <div className="mx-auto flex h-dvh max-w-7xl">
         {/* Left Sidebar */}
         <aside className="flex w-72 flex-col px-8 py-10">
           {/* Logo / Home */}
@@ -87,7 +87,7 @@ export function Dashboard() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex flex-1 flex-col px-8 py-10">
+        <main className="flex min-h-0 flex-1 flex-col px-8 py-10">
           {/* Header with Weather */}
           <div className="mb-8 flex items-start justify-between">
             <div>

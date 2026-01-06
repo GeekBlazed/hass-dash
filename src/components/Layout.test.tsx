@@ -72,7 +72,7 @@ describe('Layout', () => {
     );
 
     const layoutRoot = container.firstChild as HTMLElement;
-    expect(layoutRoot).toHaveClass('min-h-screen');
+    expect(layoutRoot).toHaveClass('min-h-dvh');
     expect(layoutRoot).toHaveClass('flex');
     expect(layoutRoot).toHaveClass('flex-col');
   });
