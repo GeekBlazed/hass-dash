@@ -111,7 +111,7 @@ Use it to switch the app between:
 
 Create a new top-level feature component (example naming):
 
-- `src/components/prototype/PrototypeShell.tsx`
+- `src/components/prototype--IGNORE/PrototypeShell.tsx` (reference implementation)
 
 Structure:
 
