@@ -2,8 +2,20 @@
   const SVG_NS = 'http://www.w3.org/2000/svg';
   let suppressRoomClick = false;
 
+  const HOTWIRE_LIGHT_ENTITY_IDS = new Set(['light.norad_corner_torch']);
+
   const INIT_MARKER_ATTR = 'data-hassdash-prototype-init';
   const BOUND_MARKER_ATTR = 'data-hassdash-prototype-bound';
+
+  function dispatchLightToggle(entityId) {
+    if (!HOTWIRE_LIGHT_ENTITY_IDS.has(String(entityId || ''))) return;
+
+    window.dispatchEvent(
+      new CustomEvent('hass-dash:toggle-light', {
+        detail: { entityId: String(entityId) },
+      })
+    );
+  }
 
   function stripComments(line) {
     const idx = line.indexOf('#');
@@ -515,6 +527,7 @@
             const next = currentlyOn ? 'off' : 'on';
             for (const l of roomLights) {
               l.state = next;
+              dispatchLightToggle(l.id);
             }
             applyToggleState();
             applyLightingPanel(lightingModel);
@@ -1537,7 +1550,17 @@
         const state = String(l.state || '')
           .trim()
           .toLowerCase();
-        const roomId = id.startsWith('light.') ? id.slice('light.'.length) : '';
+        const explicitRoomId = typeof l.room_id === 'string' ? String(l.room_id).trim() : '';
+
+        // Hotwire: the NORAD real-world light entity doesn't share the room id.
+        // Assign it to the NORAD room so the in-map light toggle button exists.
+        const roomId =
+          explicitRoomId ||
+          (id === 'light.norad_corner_torch'
+            ? 'norad'
+            : id.startsWith('light.')
+              ? id.slice('light.'.length)
+              : '');
         return {
           id,
           name,

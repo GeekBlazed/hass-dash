@@ -17,10 +17,8 @@ describe('App', () => {
   it('renders the dashboard', () => {
     render(<App />);
 
-    // Dashboard should display the Home heading
-    expect(screen.getByRole('heading', { name: /Home/i })).toBeInTheDocument();
-    // Dashboard should show "Welcome back" subheading
-    expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+    // Dashboard renders the prototype-style application shell
+    expect(screen.getByRole('application', { name: /floorplan prototype/i })).toBeInTheDocument();
   });
 
   it('renders the prototype UI when enabled', () => {
@@ -29,45 +27,26 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByTestId('prototype-shell')).toBeInTheDocument();
-    expect(screen.queryByText(/Welcome back/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('application', { name: /floorplan prototype/i })
+    ).not.toBeInTheDocument();
   });
 
   it('renders quick action buttons', () => {
     render(<App />);
 
     // Quick action buttons should be present
-    expect(screen.getByRole('button', { name: /All Off/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Bright/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Warm/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Scenes/i })).toBeInTheDocument();
-  });
-
-  it('renders room cards', () => {
-    render(<App />);
-
-    // Room cards should be present
-    expect(screen.getByText(/Living Room/i)).toBeInTheDocument();
-    expect(screen.getByText(/Kitchen/i)).toBeInTheDocument();
-    expect(screen.getByText(/Bedroom/i)).toBeInTheDocument();
-    expect(screen.getByText(/Office/i)).toBeInTheDocument();
-    expect(screen.getByText(/Bathroom/i)).toBeInTheDocument();
-    expect(screen.getByText(/Garage/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Lighting/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Climate/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Media/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Agenda/i })).toBeInTheDocument();
   });
 
   it('renders weather display', () => {
     render(<App />);
 
-    // Weather should show temperature (4.8°C)
-    expect(screen.getByText(/4\.8°C/i)).toBeInTheDocument();
-  });
-
-  it('renders dashboard stats', () => {
-    render(<App />);
-
-    // Stats footer should be present
-    expect(screen.getByText(/6 Rooms/i)).toBeInTheDocument();
-    expect(screen.getByText(/12 Devices/i)).toBeInTheDocument();
-    expect(screen.getByText(/3 Active/i)).toBeInTheDocument();
+    // Weather block should include humidity line
+    expect(screen.getByText(/Humidity:/i)).toBeInTheDocument();
   });
 
   it('has proper semantic structure', () => {
@@ -83,7 +62,7 @@ describe('App', () => {
 
     // All buttons should be accessible
     const buttons = screen.getAllByRole('button');
-    expect(buttons.length).toBeGreaterThanOrEqual(10); // 4 actions + 6 rooms
+    expect(buttons.length).toBeGreaterThanOrEqual(4); // quick actions at minimum
 
     // Each button should be focusable
     buttons.forEach((button) => {

@@ -1,6 +1,9 @@
+import { HaLightHotwireBridge } from './HaLightHotwireBridge';
+
 export function Dashboard() {
   return (
     <div className="viewport">
+      <HaLightHotwireBridge />
       {/* component */}
       <div className="frame" role="application" aria-label="Floorplan prototype">
         {/* component */}

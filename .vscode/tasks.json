@@ -201,6 +201,17 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
+		},
+		{
+			"label": "pnpm: test:run",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"test:run"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
 		}
 	]
 }
