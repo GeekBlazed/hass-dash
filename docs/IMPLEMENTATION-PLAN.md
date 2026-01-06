@@ -106,9 +106,14 @@ feature/floor-plan-base → PR → merge → auto-deploy
 
 Each iteration is a **single PR** that can be merged and deployed immediately.
 
+**Checklist legend:**
+
+- ✅ Completed (implemented in `main`)
+- [ ] Pending / not implemented yet
+
 ### Phase 0: Foundation (Week 1)
 
-#### Iteration 0.1: Project Scaffolding ✅ NEXT
+#### Iteration 0.1: Project Scaffolding ✅ COMPLETED
 
 **Goal:** Developer can clone, build, and see "Hello World"  
 **Time:** 4-6 hours  
@@ -116,16 +121,16 @@ Each iteration is a **single PR** that can be merged and deployed immediately.
 
 **Tasks:**
 
-- [ ] Initialize Vite project with React + TypeScript template
-- [ ] Configure TypeScript (strict mode)
-- [ ] Set up ESLint + Prettier
+- ✅ Initialize Vite project with React + TypeScript template
+- ✅ Configure TypeScript (strict mode)
+- ✅ Set up ESLint + Prettier
 - [ ] Configure Husky pre-commit hooks
-- [ ] Create basic App.tsx with welcome screen
-- [ ] Add basic styling (Tailwind CSS setup)
-- [ ] Create package.json with all scripts
-- [ ] Write README section: "Running Locally"
-- [ ] Add .env.example file
-- [ ] **Acceptance:** `pnpm dev` shows welcome screen in browser
+- ✅ Create basic `App.tsx` with initial UI
+- ✅ Add basic styling (Tailwind CSS setup)
+- ✅ Create package.json with all scripts
+- ✅ Write README section: "Running Locally"
+- ✅ Add `.env.example` file
+- ✅ **Acceptance:** `pnpm dev` shows the app UI in browser
 
 **Welcome Screen Must Include:**
 
@@ -175,12 +180,12 @@ package.json
 
 **Tasks:**
 
-- [ ] Configure Vitest
-- [ ] Add example unit test (App.test.tsx)
-- [ ] Configure coverage thresholds (80%)
-- [ ] Add test scripts to package.json
-- [ ] Update CI to run tests (GitHub Actions)
-- [ ] **Acceptance:** `pnpm test` passes, coverage report generated
+- ✅ Configure Vitest
+- ✅ Add example unit test (App.test.tsx)
+- ✅ Configure coverage thresholds (80%)
+- ✅ Add test scripts to package.json
+- ✅ Update CI to run tests (GitHub Actions)
+- ✅ **Acceptance:** `pnpm test` passes, coverage report generated
 
 **Feature Flags:** None (testing infrastructure)
 
@@ -194,10 +199,10 @@ package.json
 
 **Tasks:**
 
-- [ ] Create `.github/workflows/ci.yml`
-- [ ] Configure build checks (lint, test, build)
+- ✅ Create `.github/workflows/ci.yml`
+- ✅ Configure build checks (lint, test, build)
 - [ ] Set up deployment (GitHub Pages or Netlify)
-- [ ] Add status badges to README
+- ✅ Add status badges to README
 - [ ] **Acceptance:** PR triggers checks, merge deploys to live URL
 
 **Feature Flags:** None (infrastructure)
@@ -212,13 +217,13 @@ package.json
 
 **Tasks:**
 
-- [ ] Install InversifyJS + reflect-metadata
-- [ ] Create `src/core/di-container.ts`
-- [ ] Create example interface + implementation
-- [ ] Create example service consumer (component)
-- [ ] Add unit tests for DI setup
-- [ ] Document DI patterns in code comments
-- [ ] **Acceptance:** Example service injected and used in component
+- ✅ Install InversifyJS + reflect-metadata
+- ✅ Create `src/core/di-container.ts`
+- ✅ Create example interface + implementation
+- ✅ Create example service consumer (component)
+- ✅ Add unit tests for DI setup
+- ✅ Document DI patterns in code comments
+- ✅ **Acceptance:** Example service injected and used in component
 
 **Feature Flags:** None (architectural foundation)
 
@@ -251,13 +256,13 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create `IFeatureFlagService` interface
-- [ ] Implement FeatureFlagService
-- [ ] Create `useFeatureFlag` React hook
-- [ ] Add feature flag UI to welcome screen (debug panel)
-- [ ] Document feature flag usage
-- [ ] Add tests for flag service
-- [ ] **Acceptance:** Flags can be toggled, UI responds
+- ✅ Create `IFeatureFlagService` interface
+- ✅ Implement FeatureFlagService
+- ✅ Create `useFeatureFlag` React hook
+- ✅ Add feature flag UI (debug panel)
+- ✅ Document feature flag usage
+- ✅ Add tests for flag service
+- ✅ **Acceptance:** Flags can be toggled, UI responds
 
 **Feature Flags:**
 
@@ -277,13 +282,13 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create Layout component structure
-- [ ] Add Header with app title and menu icon
-- [ ] Add main content area (empty, centered welcome message)
-- [ ] Add Footer with version and links
-- [ ] Implement light/dark mode toggle (functional)
-- [ ] Add responsive breakpoints
-- [ ] **Acceptance:** Shell renders on all device sizes, theme toggles work
+- ✅ Create Layout component structure
+- ✅ Add Header with app title and menu icon
+- ✅ Add main content area (empty, centered welcome message)
+- ✅ Add Footer with version and links
+- ✅ Implement light/dark mode toggle (functional)
+- ✅ Add responsive breakpoints
+- ✅ **Acceptance:** Shell renders on all device sizes, theme toggles work
 
 **Feature Flags:**
 
@@ -299,13 +304,13 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Install Radix UI primitives
-- [ ] Configure Tailwind theme (colors, spacing)
-- [ ] Create example Dialog component
-- [ ] Create example Button component
-- [ ] Document component usage patterns
-- [ ] Add storybook-style component showcase page
-- [ ] **Acceptance:** Components render, work accessibly
+- ✅ Install Radix UI primitives
+- ✅ Configure Tailwind theme (colors, spacing)
+- ✅ Create example Dialog component
+- ✅ Create example Button component
+- ✅ Document component usage patterns
+- ✅ Add storybook-style component showcase page
+- ✅ **Acceptance:** Components render, work accessibly
 
 **Feature Flags:**
 
@@ -394,9 +399,9 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Add/confirm feature flag for parity UI (`VITE_FEATURE_PROTOTYPE_UI`)
+- ✅ Add/confirm feature flag for parity UI (`VITE_FEATURE_PROTOTYPE_UI`)
 - [ ] Wire feature flag to switch between current `Dashboard` and parity implementation
-- [ ] Scaffold the component tree under `src/components/dashboard/` using existing Tailwind tokens only
+- ✅ Scaffold the component tree under `src/components/dashboard/` using existing Tailwind tokens only
 - [ ] Add RTL tests for:
   - panel switching behavior
   - overlay visibility rules (climate vs lighting)
@@ -790,11 +795,11 @@ class ConfigService implements IConfigService {
 **Theme:** Foundation & Core Infrastructure  
 **Deliverables:**
 
-- Working app with welcome screen ✅
-- HA connection established ✅
-- Basic floor plan rendering ✅
-- First overlay (lighting) ✅
-- PWA installable ✅
+- ✅ Working app with initial UI
+- [ ] HA connection established
+- [ ] Basic floor plan rendering
+- [ ] First overlay (lighting)
+- [ ] PWA installable
 
 **Marketing:**
 
