@@ -54,7 +54,7 @@ export function PrototypeShell() {
 
     const load = async (): Promise<void> => {
       try {
-        const res = await fetch('/UI/lighting.yaml', { signal: controller.signal });
+        const res = await fetch('/data/lighting.yaml', { signal: controller.signal });
         if (!res.ok) throw new Error(`Failed to load lighting.yaml (${res.status})`);
         const text = await res.text();
         const doc = parseYaml(text);
@@ -84,7 +84,7 @@ export function PrototypeShell() {
 
     const load = async (): Promise<void> => {
       try {
-        const res = await fetch('/UI/climate.yaml', { signal: controller.signal });
+        const res = await fetch('/data/climate.yaml', { signal: controller.signal });
         if (!res.ok) throw new Error(`Failed to load climate.yaml (${res.status})`);
         const text = await res.text();
         const doc = parseYaml(text);
