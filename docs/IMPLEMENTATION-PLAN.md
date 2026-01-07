@@ -111,7 +111,7 @@ Each iteration is a **single PR** that can be merged and deployed immediately.
 - ✅ Completed (implemented in `main`)
 - [ ] Pending / not implemented yet
 
-### Phase 0: Foundation (Week 1)
+### Phase 0: Foundation (Week 1) ✅ COMPLETED
 
 #### Iteration 0.1: Project Scaffolding ✅ COMPLETED
 
@@ -201,9 +201,9 @@ package.json
 
 - ✅ Create `.github/workflows/ci.yml`
 - ✅ Configure build checks (lint, test, build)
-- [ ] Set up deployment (GitHub Pages or Netlify)
+- ✅ Set up deployment (GitHub Pages or Netlify)
 - ✅ Add status badges to README
-- [ ] **Acceptance:** PR triggers checks, merge deploys to live URL
+- ✅ **Acceptance:** PR triggers checks, merge deploys to live URL
 
 **Feature Flags:** None (infrastructure)
 
@@ -326,17 +326,17 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Install Zustand + Immer
-- [ ] Create `useAppStore` for global settings
-- [ ] Store theme preference (light/dark)
-- [ ] Store feature flag overrides (dev mode)
-- [ ] Create a dedicated dashboard/parity UI store (e.g., `useDashboardStore`) for:
+- ✅ Install Zustand + Immer
+- ✅ Create `useAppStore` for global settings
+- ✅ Store theme preference (light/dark)
+- ✅ Store feature flag overrides (dev mode)
+- ✅ Create a dedicated dashboard/parity UI store (e.g., `useDashboardStore`) for:
   - active panel state (`agenda | climate | lighting | media | null`)
   - stage view state (`x`, `y`, `scale`) for pan/zoom
   - local-only prototype models (lighting/climate) while HA is not integrated
-- [ ] Add persistence middleware (localStorage)
-- [ ] Add dev tools integration
-- [ ] **Acceptance:** Settings persist across page refresh
+- ✅ Add persistence middleware (localStorage)
+- ✅ Add dev tools integration
+- ✅ **Acceptance:** Settings persist across page refresh
 
 **Feature Flags:** None (core functionality)
 
