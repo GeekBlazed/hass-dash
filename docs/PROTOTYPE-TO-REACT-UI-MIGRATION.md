@@ -1,6 +1,6 @@
 # Prototype → React UI Migration Plan
 
-This document outlines a practical, incremental path to take the working single-file prototype in `UI/floorplan-prototype.html` and implement the same UI in the production React/Vite app under `src/`.
+This document outlines a practical, incremental path to take the working single-file prototype in `UI--IGNORE/floorplan-prototype.html` and implement the same UI in the production React/Vite app under `src/`.
 
 The goal is **UI parity** (layout, panel switching behavior, and overlay visibility), while keeping the architecture consistent with this repo (TypeScript strict, feature flags, DI, tests).
 
@@ -82,7 +82,7 @@ This keeps the production app maintainable and makes it easy to evolve the data 
 
 #### Acceptance Criteria (Step 1)
 
-- You can point to a stable “spec” version of `UI/floorplan-prototype.html`.
+- You can point to a stable “spec” version of `UI--IGNORE/floorplan-prototype.html`.
 
 ---
 
@@ -111,7 +111,7 @@ Use it to switch the app between:
 
 Create a new top-level feature component (example naming):
 
-- `src/components/prototype/PrototypeShell.tsx`
+- `src/components/prototype--IGNORE/PrototypeShell.tsx` (reference implementation)
 
 Structure:
 
@@ -241,8 +241,8 @@ You have two viable options:
 
 #### Option A (recommended for dev parity): serve YAML from `public/`
 
-- Copy the prototype YAML into `public/prototype/` (or similar)
-- Fetch via `fetch('/prototype/floorplan.yaml')`
+- Copy the prototype YAML into `public/data/`
+- Fetch via `fetch('/data/floorplan.yaml')`
 
 Pros:
 
@@ -266,7 +266,7 @@ Cons:
 
 #### Note on repo rules
 
-- The repo currently ignores `UI/*` via `.gitignore`. If you want YAML committed for the React app parity stage, prefer placing them under `public/` (and keep `UI/` as prototype-only).
+- The repo currently ignores `*--IGNORE*` via `.gitignore`. If you want YAML committed for the React app parity stage, prefer placing them under `public/data/`.
 
 ---
 

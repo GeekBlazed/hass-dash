@@ -1382,10 +1382,10 @@
           { text: climateText, source: climateSource },
           { text: lightingText, source: lightingSource },
         ] = await Promise.all([
-          loadYamlText('/UI/floorplan.yaml', ''),
-          loadYamlText('/UI/devices.yaml', ''),
-          loadYamlText('/UI/climate.yaml', ''),
-          loadYamlText('/UI/lighting.yaml', ''),
+          loadYamlText('/data/floorplan.yaml', ''),
+          loadYamlText('/data/devices.yaml', ''),
+          loadYamlText('/data/climate.yaml', ''),
+          loadYamlText('/data/lighting.yaml', ''),
         ]);
 
         if (!String(text || '').trim()) {
