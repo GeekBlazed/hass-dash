@@ -3,6 +3,9 @@
     {
       "path": ".",
     },
+    {
+      "path": "../../Users/j/Downloads/ESPresense-companion-main/ESPresense-companion-main",
+    },
   ],
   "settings": {
     "typescript.tsdk": "node_modules\\typescript\\lib",
