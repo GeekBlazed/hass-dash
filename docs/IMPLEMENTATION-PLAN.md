@@ -355,12 +355,12 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create ErrorBoundary component
-- [ ] Create LoadingSpinner component
-- [ ] Create error page with retry button
-- [ ] Add to root App component
-- [ ] Test with intentional error
-- [ ] **Acceptance:** Errors caught, user can recover
+- ✅ Create ErrorBoundary component
+- ✅ Create LoadingSpinner component
+- ✅ Create error page with retry button
+- ✅ Add to root App component
+- ✅ Test with intentional error
+- ✅ **Acceptance:** Errors caught, user can recover
 
 **Feature Flags:** None (reliability feature)
 
