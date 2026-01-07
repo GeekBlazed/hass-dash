@@ -267,11 +267,11 @@ Each iteration is designed to be:
 
 **Definition of Done (Automated Checklist):**
 
-- [ ] Unit test: valid `HaEntityState` for `device_tracker.phone_jeremy` yields an update with expected `x/y/z/confidence/last_seen`.
-- [ ] Unit test: invalid JSON returns zero updates and does not throw.
-- [ ] Unit test: missing required fields (`x`/`y`/`confidence`) yields zero updates.
-- [ ] Unit test: confidence is rejected when `confidence <= minConfidence`.
-- [ ] Unit test: confidence is accepted when `confidence > minConfidence`.
+- ✅ Unit test: valid `HaEntityState` for `device_tracker.phone_jeremy` yields an update with expected `x/y/z/confidence/last_seen`.
+- ✅ Unit test: invalid JSON returns zero updates and does not throw.
+- ✅ Unit test: missing required fields (`x`/`y`/`confidence`) yields zero updates.
+- ✅ Unit test: confidence is rejected when `confidence <= minConfidence`.
+- ✅ Unit test: confidence is accepted when `confidence > minConfidence`.
 
 ### Iteration 2: Tracking Store (Latest Known Position)
 
@@ -286,9 +286,9 @@ Each iteration is designed to be:
 
 **Definition of Done (Automated Checklist):**
 
-- [ ] Unit test: `upsert()` inserts a new device location.
-- [ ] Unit test: `upsert()` overwrites the same entity id (latest wins).
-- [ ] Unit test: `clear()` resets state.
+- ✅ Unit test: `upsert()` inserts a new device location.
+- ✅ Unit test: `upsert()` overwrites the same entity id (latest wins).
+- ✅ Unit test: `clear()` resets state.
 
 ### Iteration 3: Transport Abstraction (No Real Broker Yet)
 
