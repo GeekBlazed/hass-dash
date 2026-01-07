@@ -1,15 +1,21 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useDashboardStore } from './useDashboardStore';
 
+const createInitialDashboardState = () => ({
+  activePanel: 'climate' as const,
+  stageView: { x: 0, y: 0, scale: 1 },
+  lighting: { lights: {} },
+  climate: { thermostat: {}, areas: {} },
+});
+
+const resetDashboardStore = () => {
+  useDashboardStore.persist.clearStorage();
+  useDashboardStore.setState(createInitialDashboardState());
+};
+
 describe('useDashboardStore', () => {
   beforeEach(() => {
-    useDashboardStore.persist.clearStorage();
-    useDashboardStore.setState({
-      activePanel: 'climate',
-      stageView: { x: 0, y: 0, scale: 1 },
-      lighting: { lights: {} },
-      climate: { thermostat: {}, areas: {} },
-    });
+    resetDashboardStore();
   });
 
   it('defaults to climate panel', () => {
@@ -51,6 +57,30 @@ describe('useDashboardStore', () => {
 
     useDashboardStore.getState().setLightOn('light.family_room', false);
     expect(useDashboardStore.getState().lighting.lights['light.family_room']?.state).toBe('off');
+  });
+
+  it('preserves existing light properties when toggling state', () => {
+    useDashboardStore.getState().setLightState('light.dining', {
+      name: 'Dining',
+      brightness: 200,
+      colorTemp: 3500,
+    });
+    useDashboardStore.getState().setLightOn('light.dining', true);
+    expect(useDashboardStore.getState().lighting.lights['light.dining']).toEqual({
+      id: 'light.dining',
+      name: 'Dining',
+      brightness: 200,
+      colorTemp: 3500,
+      state: 'on',
+    });
+    useDashboardStore.getState().setLightOn('light.dining', false);
+    expect(useDashboardStore.getState().lighting.lights['light.dining']).toEqual({
+      id: 'light.dining',
+      name: 'Dining',
+      brightness: 200,
+      colorTemp: 3500,
+      state: 'off',
+    });
   });
 
   it('can clear local lighting model', () => {

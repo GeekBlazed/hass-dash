@@ -87,11 +87,9 @@ export const useDashboardStore = create<DashboardState>()(
 
         stageView: DEFAULT_STAGE_VIEW,
         setStageView: (view) => {
-          set((state) =>
-            produce(state, (draft) => {
-              draft.stageView = { ...draft.stageView, ...view };
-            })
-          );
+          set((state) => ({
+            stageView: { ...state.stageView, ...view },
+          }));
         },
         resetStageView: () => {
           set({ stageView: DEFAULT_STAGE_VIEW });
@@ -114,8 +112,10 @@ export const useDashboardStore = create<DashboardState>()(
               const existing: LocalLightState =
                 draft.lighting.lights[lightId] ??
                 ({ id: lightId, state: 'off' } satisfies LocalLightState);
-              existing.state = on ? 'on' : 'off';
-              draft.lighting.lights[lightId] = existing;
+              draft.lighting.lights[lightId] = {
+                ...existing,
+                state: on ? 'on' : 'off',
+              };
             })
           );
         },
