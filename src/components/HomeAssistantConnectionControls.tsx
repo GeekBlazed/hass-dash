@@ -8,6 +8,7 @@ import type {
   HomeAssistantConnectionConfig,
   IHomeAssistantConnectionConfig,
 } from '../interfaces/IHomeAssistantConnectionConfig';
+import { validateHomeAssistantConnectionConfig } from '../utils/homeAssistantConnectionValidation';
 import { Button } from './ui/Button';
 import {
   Dialog,
@@ -24,69 +25,6 @@ type TestStatus =
   | { state: 'running' }
   | { state: 'success' }
   | { state: 'error'; message: string };
-
-function validateDraft(draft: HomeAssistantConnectionConfig): {
-  isValid: boolean;
-  errors: string[];
-  effectiveWebSocketUrl?: string;
-} {
-  const errors: string[] = [];
-
-  const token = draft.accessToken?.trim();
-  if (!token) {
-    errors.push('Access token is required.');
-  }
-
-  const baseUrl = draft.baseUrl?.trim();
-  const webSocketUrl = draft.webSocketUrl?.trim();
-
-  const isValidUrlWithProtocols = (
-    value: string,
-    allowedProtocols: Array<'http:' | 'https:' | 'ws:' | 'wss:'>
-  ): boolean => {
-    try {
-      const url = new URL(value);
-      return allowedProtocols.includes(url.protocol);
-    } catch {
-      return false;
-    }
-  };
-
-  const deriveWebSocketUrlFromBaseUrl = (url: string): string | undefined => {
-    const trimmed = url.trim();
-    if (trimmed.startsWith('https://')) {
-      return `${trimmed.replace('https://', 'wss://').replace(/\/$/, '')}/api/websocket`;
-    }
-
-    if (trimmed.startsWith('http://')) {
-      return `${trimmed.replace('http://', 'ws://').replace(/\/$/, '')}/api/websocket`;
-    }
-
-    return undefined;
-  };
-
-  let effectiveWebSocketUrl: string | undefined;
-  if (webSocketUrl) {
-    if (!isValidUrlWithProtocols(webSocketUrl, ['ws:', 'wss:'])) {
-      errors.push('WebSocket URL must start with ws:// or wss:// and be a valid URL.');
-    } else {
-      effectiveWebSocketUrl = webSocketUrl;
-    }
-  } else if (baseUrl) {
-    if (!isValidUrlWithProtocols(baseUrl, ['http:', 'https:'])) {
-      errors.push('Base URL must start with http:// or https:// and be a valid URL.');
-    } else {
-      effectiveWebSocketUrl = deriveWebSocketUrlFromBaseUrl(baseUrl);
-      if (!effectiveWebSocketUrl) {
-        errors.push('Could not derive WebSocket URL from Base URL.');
-      }
-    }
-  } else {
-    errors.push('Base URL or WebSocket URL is required.');
-  }
-
-  return { isValid: errors.length === 0, errors, effectiveWebSocketUrl };
-}
 
 export function HomeAssistantConnectionControls(): React.ReactElement | null {
   const { isEnabled } = useFeatureFlag('HA_CONNECTION');
@@ -107,7 +45,7 @@ export function HomeAssistantConnectionControls(): React.ReactElement | null {
   const [testStatus, setTestStatus] = useState<TestStatus>({ state: 'idle' });
 
   const currentValidation = connectionConfig.validate();
-  const draftValidation = validateDraft(draft);
+  const draftValidation = validateHomeAssistantConnectionConfig(draft);
 
   if (!isEnabled) return null;
 

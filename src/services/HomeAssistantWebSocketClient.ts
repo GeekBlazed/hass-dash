@@ -236,10 +236,26 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     return result as HaCallServiceResult;
   }
 
+  /**
+   * Resolve the WebSocket endpoint from the connection configuration.
+   *
+   * URL derivation and normalization (including handling base URLs, paths,
+   * protocol switching, and environment-specific differences) are delegated
+   * to {@link IHomeAssistantConnectionConfig}. This keeps the WebSocket
+   * client focused solely on the Home Assistant WS protocol and avoids
+   * coupling it to configuration/URL-building concerns.
+   */
   private getWebSocketUrl(): string | undefined {
     return this.connectionConfig.getEffectiveWebSocketUrl();
   }
 
+  /**
+   * Retrieve the access token from the connection configuration.
+   *
+   * Token sourcing and storage are encapsulated in
+   * {@link IHomeAssistantConnectionConfig} so that authentication details
+   * can evolve independently of the WebSocket transport layer.
+   */
   private getAccessToken(): string | undefined {
     return this.connectionConfig.getAccessToken();
   }
