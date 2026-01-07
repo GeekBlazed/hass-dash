@@ -111,7 +111,7 @@ Each iteration is a **single PR** that can be merged and deployed immediately.
 - ✅ Completed (implemented in `main`)
 - [ ] Pending / not implemented yet
 
-### Phase 0: Foundation (Week 1)
+### Phase 0: Foundation (Week 1) ✅ COMPLETED
 
 #### Iteration 0.1: Project Scaffolding ✅ COMPLETED
 
@@ -201,9 +201,9 @@ package.json
 
 - ✅ Create `.github/workflows/ci.yml`
 - ✅ Configure build checks (lint, test, build)
-- [ ] Set up deployment (GitHub Pages or Netlify)
+- ✅ Set up deployment (GitHub Pages or Netlify)
 - ✅ Add status badges to README
-- [ ] **Acceptance:** PR triggers checks, merge deploys to live URL
+- ✅ **Acceptance:** PR triggers checks, merge deploys to live URL
 
 **Feature Flags:** None (infrastructure)
 
