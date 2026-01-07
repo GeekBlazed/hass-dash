@@ -102,7 +102,8 @@ export const useDashboardStore = create<DashboardState>()(
           set((state) =>
             produce(state, (draft) => {
               const existing: LocalLightState =
-                draft.lighting.lights[lightId] ?? ({ id: lightId, state: 'off' } satisfies LocalLightState);
+                draft.lighting.lights[lightId] ??
+                ({ id: lightId, state: 'off' } satisfies LocalLightState);
               draft.lighting.lights[lightId] = { ...existing, ...next };
             })
           );
@@ -111,7 +112,8 @@ export const useDashboardStore = create<DashboardState>()(
           set((state) =>
             produce(state, (draft) => {
               const existing: LocalLightState =
-                draft.lighting.lights[lightId] ?? ({ id: lightId, state: 'off' } satisfies LocalLightState);
+                draft.lighting.lights[lightId] ??
+                ({ id: lightId, state: 'off' } satisfies LocalLightState);
               existing.state = on ? 'on' : 'off';
               draft.lighting.lights[lightId] = existing;
             })
