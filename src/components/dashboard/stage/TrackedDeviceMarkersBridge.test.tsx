@@ -38,7 +38,8 @@ describe('TrackedDeviceMarkersBridge', () => {
       );
 
       expect(marker).toBeTruthy();
-      expect(marker?.getAttribute('transform')).toBe('translate(1 2)');
+      // FloorplanSvg viewBox is 0 0 10 10 so yRender = 10 - y
+      expect(marker?.getAttribute('transform')).toBe('translate(1 8)');
     });
   });
 
@@ -76,7 +77,58 @@ describe('TrackedDeviceMarkersBridge', () => {
       ) as SVGGElement | null;
 
       expect(marker).toBeTruthy();
-      expect(marker?.getAttribute('transform')).toBe('translate(9 8)');
+      expect(marker?.getAttribute('transform')).toBe('translate(9 2)');
+    });
+  });
+
+  it('binds to an existing prototype marker and restores on disable', async () => {
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    const layer = document.getElementById('devices-layer');
+    expect(layer).toBeTruthy();
+
+    // Simulate scripts.js marker
+    const existing = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    existing.setAttribute('class', 'device-marker');
+    existing.setAttribute('data-device-id', 'device_tracker.phone_jeremy');
+    existing.setAttribute('transform', 'translate(2 3)');
+    layer?.appendChild(existing);
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: 1,
+      });
+    });
+
+    await waitFor(() => {
+      // viewBox 0 0 10 10 -> yRender = 10 - 2 = 8
+      expect(existing.getAttribute('transform')).toBe('translate(1 8)');
+      expect(existing.getAttribute('data-hass-dash-tracking')).toBe('true');
+    });
+
+    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'false');
+
+    // Force re-render by updating store (bridge effect depends on state + flag)
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 4, y: 5 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: 2,
+      });
+    });
+
+    await waitFor(() => {
+      expect(existing.getAttribute('data-hass-dash-tracking')).toBe(null);
+      expect(existing.getAttribute('transform')).toBe('translate(2 3)');
     });
   });
 });

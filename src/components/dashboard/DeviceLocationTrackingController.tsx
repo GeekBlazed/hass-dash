@@ -19,6 +19,15 @@ export function DeviceLocationTrackingController({
   const entityService = entityServiceOverride ?? diEntityService;
 
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (trackingEnabled && !haEnabled) {
+      console.warn(
+        'DEVICE_TRACKING is enabled but HA_CONNECTION is disabled. Device tracking will not start.'
+      );
+    }
+  }, [trackingEnabled, haEnabled]);
+
+  useEffect(() => {
     if (!trackingEnabled || !haEnabled) return;
 
     const service = new DeviceLocationTrackingService(entityService, {
@@ -27,7 +36,10 @@ export function DeviceLocationTrackingController({
       },
     });
 
-    void service.start();
+    void service.start().catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Device location tracking failed to start: ${message}`);
+    });
 
     return () => {
       void service.stop();

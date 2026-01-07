@@ -322,6 +322,9 @@
     const vbW = maxX - minX + pad * 2;
     const vbH = maxY - minY + pad * 2;
     svg.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+    // Persist the base viewBox used for coordinate transforms. Pan/zoom mutates the
+    // live viewBox, but our Y-flip should remain stable within the original space.
+    svg.setAttribute('data-base-viewbox', `${vbX} ${vbY} ${vbW} ${vbH}`);
 
     // YAML coordinates treat positive Y as north/up.
     // SVG increases Y downward, so we flip within the computed viewBox.
@@ -338,9 +341,22 @@
 
     const originGps = doc?.gps && typeof doc.gps === 'object' ? doc.gps : null;
     const devices = Array.isArray(devicesDoc?.devices) ? devicesDoc.devices : [];
+
+    // Devices can be defined with GPS (for the original prototype), or without GPS
+    // when Home Assistant provides live x/y tracking. When GPS is missing, we still
+    // render the marker (to preserve label/color) but place it off-canvas until a
+    // live update moves it.
+    const offCanvasX = vbX - vbW * 5;
+    const offCanvasY = vbY - vbH * 5;
+
     const devicesNormalized = devices
       .filter((d) => d)
       .map((d) => {
+        const id = String(d.id || d.label || '').trim();
+        const label = String(d.label || d.id || '').trim();
+        const color = String(d.color || '').trim();
+        if (!id || !label) return null;
+
         const fallbackGps = [
           d.latitude ?? d.lat ?? d.lattitude,
           d.longitude ?? d.lon ?? d.lng ?? d.longtitude,
@@ -348,14 +364,25 @@
         ];
         const deviceGps = Array.isArray(d.gps) ? d.gps : fallbackGps;
         const local = gpsToLocalMeters(deviceGps, originGps);
-        if (!local) return null;
+
+        if (local && Number.isFinite(local.x) && Number.isFinite(local.y)) {
+          return {
+            id,
+            label,
+            color,
+            x: local.x,
+            y: local.y,
+            z: local.z,
+          };
+        }
+
         return {
-          id: String(d.id || d.label || '').trim(),
-          label: String(d.label || d.id || '').trim(),
-          color: String(d.color || '').trim(),
-          x: local.x,
-          y: local.y,
-          z: local.z,
+          id,
+          label,
+          color,
+          x: offCanvasX,
+          y: offCanvasY,
+          z: 0,
         };
       })
       .filter((d) => d && d.id && d.label && Number.isFinite(d.x) && Number.isFinite(d.y));
@@ -905,6 +932,38 @@
     };
 
     applyInitialView();
+
+    // On first load, the SVG can briefly report 0x0 size while layout settles.
+    // If we bail out then, device labels may render at a browser default font size
+    // (appearing gigantic) until the user zooms/pans. Schedule a post-layout sync
+    // and also react to future resizes.
+    const scheduleLabelSizeSync = () => {
+      window.requestAnimationFrame(() => {
+        updateRoomLabelSizes(14);
+      });
+    };
+
+    scheduleLabelSizeSync();
+
+    if (typeof window.ResizeObserver === 'function') {
+      const ro = new ResizeObserver(() => {
+        scheduleLabelSizeSync();
+      });
+      ro.observe(svg);
+
+      // Ensure we clean up if this gets re-initialized.
+      window.addEventListener(
+        'beforeunload',
+        () => {
+          try {
+            ro.disconnect();
+          } catch {
+            // ignore
+          }
+        },
+        { once: true }
+      );
+    }
 
     window.addEventListener('resize', () => {
       updateRoomLabelSizes(14);
