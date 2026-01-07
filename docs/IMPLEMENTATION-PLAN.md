@@ -451,7 +451,7 @@ class ConfigService implements IConfigService {
 
 ---
 
-### Phase 2: Home Assistant Connection (Week 3-4)
+### Phase 2: Home Assistant Connection (Week 3-4) ✅ COMPLETED
 
 #### Iteration 2.1: Environment Configuration ✅ COMPLETED
 
@@ -474,7 +474,7 @@ class ConfigService implements IConfigService {
 
 ---
 
-#### Iteration 2.2: HTTP Client Service
+#### Iteration 2.2: HTTP Client Service ✅ COMPLETED
 
 **Goal:** REST API calls to Home Assistant  
 **Time:** 3-4 hours  
@@ -482,13 +482,13 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create `IHttpClient` interface
-- [ ] Implement HomeAssistantHttpClient (Axios)
-- [ ] Add authentication interceptor
-- [ ] Add error handling interceptor
-- [ ] Create mock implementation for testing
-- [ ] Add connection test endpoint (`/api/`)
-- [ ] **Acceptance:** Can successfully call HA API
+- ✅ Create `IHttpClient` interface
+- ✅ Implement `HomeAssistantHttpClient` (Fetch)
+- ✅ Add authentication header (Bearer token)
+- ✅ Add error handling for non-2xx + JSON parsing
+- ✅ Create mock implementations for testing (interface stubs in unit tests)
+- ✅ Add connection test coverage (HA smoke test + entity REST fetch)
+- ✅ **Acceptance:** Can successfully call HA API
 
 **Feature Flags:**
 
@@ -496,7 +496,7 @@ class ConfigService implements IConfigService {
 
 ---
 
-#### Iteration 2.3: WebSocket Service
+#### Iteration 2.3: WebSocket Service ✅ COMPLETED
 
 **Goal:** Real-time data from Home Assistant  
 **Time:** 4-5 hours  
@@ -504,13 +504,13 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create `IWebSocketService` interface
-- [ ] Implement HomeAssistantWebSocketService
-- [ ] Add authentication flow
-- [ ] Add reconnection logic
-- [ ] Add connection status to UI
-- [ ] Create event subscription system
-- [ ] **Acceptance:** WebSocket connects, reconnects on disconnect
+- ✅ Create `IWebSocketService` interface
+- ✅ Implement `HomeAssistantWebSocketService`
+- ✅ Add authentication flow
+- ✅ Add reconnection logic
+- ✅ Add connection/config status to UI (connection controls + debug panel)
+- ✅ Create event subscription system
+- ✅ **Acceptance:** WebSocket connects, reconnects on disconnect
 
 **Feature Flags:**
 
@@ -518,7 +518,7 @@ class ConfigService implements IConfigService {
 
 ---
 
-#### Iteration 2.4: Entity Service
+#### Iteration 2.4: Entity Service ✅ COMPLETED
 
 **Goal:** Fetch and cache HA entities  
 **Time:** 4-5 hours  
@@ -526,13 +526,13 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create `IEntityService` interface
-- [ ] Implement entity fetch via HTTP
-- [ ] Subscribe to entity updates via WebSocket
-- [ ] Store entities in Zustand store
-- [ ] Create debug view showing entity list
-- [ ] Add filtering and search
-- [ ] **Acceptance:** Entities display in debug panel, update in real-time
+- ✅ Create `IEntityService` interface
+- ✅ Implement entity fetch via HTTP
+- ✅ Subscribe to entity updates via WebSocket
+- ✅ Store entities in Zustand store
+- ✅ Create debug view showing entity list
+- ✅ Add filtering and search
+- ✅ **Acceptance:** Entities display in debug panel, update in real-time
 
 **Feature Flags:**
 
