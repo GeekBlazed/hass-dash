@@ -326,17 +326,17 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Install Zustand + Immer
-- [ ] Create `useAppStore` for global settings
-- [ ] Store theme preference (light/dark)
-- [ ] Store feature flag overrides (dev mode)
-- [ ] Create a dedicated dashboard/parity UI store (e.g., `useDashboardStore`) for:
+- ✅ Install Zustand + Immer
+- ✅ Create `useAppStore` for global settings
+- ✅ Store theme preference (light/dark)
+- ✅ Store feature flag overrides (dev mode)
+- ✅ Create a dedicated dashboard/parity UI store (e.g., `useDashboardStore`) for:
   - active panel state (`agenda | climate | lighting | media | null`)
   - stage view state (`x`, `y`, `scale`) for pan/zoom
   - local-only prototype models (lighting/climate) while HA is not integrated
-- [ ] Add persistence middleware (localStorage)
-- [ ] Add dev tools integration
-- [ ] **Acceptance:** Settings persist across page refresh
+- ✅ Add persistence middleware (localStorage)
+- ✅ Add dev tools integration
+- ✅ **Acceptance:** Settings persist across page refresh
 
 **Feature Flags:** None (core functionality)
 
