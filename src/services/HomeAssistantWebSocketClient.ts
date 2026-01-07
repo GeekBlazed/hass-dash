@@ -1,7 +1,7 @@
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../core/types';
-import type { IConfigService } from '../interfaces/IConfigService';
 import type { IHaSubscription, IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
+import type { IHomeAssistantConnectionConfig } from '../interfaces/IHomeAssistantConnectionConfig';
 import type {
   HaCallServiceParams,
   HaCallServiceResult,
@@ -32,10 +32,13 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
   private pending = new Map<number, PendingRequest>();
   private subscriptions = new Map<number, SubscriptionHandler>();
 
-  private readonly configService: IConfigService;
+  private readonly connectionConfig: IHomeAssistantConnectionConfig;
 
-  constructor(@inject(TYPES.IConfigService) configService: IConfigService) {
-    this.configService = configService;
+  constructor(
+    @inject(TYPES.IHomeAssistantConnectionConfig)
+    connectionConfig: IHomeAssistantConnectionConfig
+  ) {
+    this.connectionConfig = connectionConfig;
   }
 
   isConnected(): boolean {
@@ -234,26 +237,11 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
   }
 
   private getWebSocketUrl(): string | undefined {
-    const direct = this.configService.getConfig('HA_WEBSOCKET_URL');
-    if (direct) return direct;
-
-    const baseUrl = this.configService.getConfig('HA_BASE_URL');
-    if (!baseUrl) return undefined;
-
-    // Derive ws(s):// from http(s)://
-    if (baseUrl.startsWith('https://')) {
-      return `${baseUrl.replace('https://', 'wss://').replace(/\/$/, '')}/api/websocket`;
-    }
-
-    if (baseUrl.startsWith('http://')) {
-      return `${baseUrl.replace('http://', 'ws://').replace(/\/$/, '')}/api/websocket`;
-    }
-
-    return undefined;
+    return this.connectionConfig.getEffectiveWebSocketUrl();
   }
 
   private getAccessToken(): string | undefined {
-    return this.configService.getConfig('HA_ACCESS_TOKEN');
+    return this.connectionConfig.getAccessToken();
   }
 
   private attachCommandHandlers(socket: WebSocket): void {

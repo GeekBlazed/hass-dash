@@ -5,9 +5,11 @@ import type { IConfigService } from '../interfaces/IConfigService';
 import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
 import type { IFloorplanDataSource } from '../interfaces/IFloorplanDataSource';
 import type { IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
+import type { IHomeAssistantConnectionConfig } from '../interfaces/IHomeAssistantConnectionConfig';
 import type { ILightingDataSource } from '../interfaces/ILightingDataSource';
 import { ConfigService } from '../services/ConfigService';
 import { FeatureFlagService } from '../services/FeatureFlagService';
+import { HomeAssistantConnectionConfigService } from '../services/HomeAssistantConnectionConfigService';
 import { HomeAssistantWebSocketClient } from '../services/HomeAssistantWebSocketClient';
 import { PublicClimateYamlDataSource } from '../services/PublicClimateYamlDataSource';
 import { PublicFloorplanYamlDataSource } from '../services/PublicFloorplanYamlDataSource';
@@ -43,6 +45,11 @@ container
 container
   .bind<IHomeAssistantClient>(TYPES.IHomeAssistantClient)
   .to(HomeAssistantWebSocketClient)
+  .inSingletonScope();
+
+container
+  .bind<IHomeAssistantConnectionConfig>(TYPES.IHomeAssistantConnectionConfig)
+  .to(HomeAssistantConnectionConfigService)
   .inSingletonScope();
 
 // Prototype data sources (local-only, swappable later for HA)
