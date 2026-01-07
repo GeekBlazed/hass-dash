@@ -453,7 +453,7 @@ class ConfigService implements IConfigService {
 
 ### Phase 2: Home Assistant Connection (Week 3-4)
 
-#### Iteration 2.1: Environment Configuration
+#### Iteration 2.1: Environment Configuration ✅ COMPLETED
 
 **Goal:** HA connection settings via .env  
 **Time:** 2 hours  
@@ -461,12 +461,12 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create `IConnectionConfig` interface
-- [ ] Implement validation for HA URL and token
-- [ ] Create settings form (feature-flagged)
-- [ ] Store connection details securely
-- [ ] Add connection status indicator
-- [ ] **Acceptance:** User can input HA URL and see validation
+- ✅ Create `IHomeAssistantConnectionConfig` interface
+- ✅ Implement validation for HA URL and token
+- ✅ Create settings form (feature-flagged)
+- ✅ Store connection details securely
+- ✅ Add connection status indicator
+- ✅ **Acceptance:** User can input HA URL and see validation
 
 **Feature Flags:**
 

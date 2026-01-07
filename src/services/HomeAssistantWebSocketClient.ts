@@ -1,7 +1,10 @@
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../core/types';
-import type { IConfigService } from '../interfaces/IConfigService';
 import type { IHaSubscription, IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
+import type {
+  HomeAssistantConnectionConfig,
+  IHomeAssistantConnectionConfig,
+} from '../interfaces/IHomeAssistantConnectionConfig';
 import type {
   HaCallServiceParams,
   HaCallServiceResult,
@@ -15,6 +18,7 @@ import type {
   HaWsEventMessage,
   HaWsResultMessage,
 } from '../types/home-assistant';
+import { validateHomeAssistantConnectionConfig } from '../utils/homeAssistantConnectionValidation';
 
 type PendingRequest = {
   resolve: (value: unknown) => void;
@@ -32,10 +36,13 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
   private pending = new Map<number, PendingRequest>();
   private subscriptions = new Map<number, SubscriptionHandler>();
 
-  private readonly configService: IConfigService;
+  private readonly connectionConfig: IHomeAssistantConnectionConfig;
 
-  constructor(@inject(TYPES.IConfigService) configService: IConfigService) {
-    this.configService = configService;
+  constructor(
+    @inject(TYPES.IHomeAssistantConnectionConfig)
+    connectionConfig: IHomeAssistantConnectionConfig
+  ) {
+    this.connectionConfig = connectionConfig;
   }
 
   isConnected(): boolean {
@@ -56,6 +63,32 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
       throw new Error('Home Assistant access token is not configured (VITE_HA_ACCESS_TOKEN)');
     }
 
+    await this.connectInternal(wsUrl, token);
+  }
+
+  async connectWithConfig(config: HomeAssistantConnectionConfig): Promise<void> {
+    if (this.connected) return;
+
+    const validation = validateHomeAssistantConnectionConfig(config);
+    if (!validation.isValid) {
+      throw new Error(validation.errors[0] ?? 'Invalid Home Assistant configuration');
+    }
+
+    const wsUrl = validation.effectiveWebSocketUrl;
+    const token = config.accessToken;
+
+    // validation guarantees these
+    if (!wsUrl) {
+      throw new Error('Home Assistant WebSocket URL is not configured');
+    }
+    if (!token) {
+      throw new Error('Home Assistant access token is not configured');
+    }
+
+    await this.connectInternal(wsUrl, token);
+  }
+
+  private async connectInternal(wsUrl: string, token: string): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       let settled = false;
       const socket = new WebSocket(wsUrl);
@@ -233,27 +266,28 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     return result as HaCallServiceResult;
   }
 
+  /**
+   * Resolve the WebSocket endpoint from the connection configuration.
+   *
+   * URL derivation and normalization (including handling base URLs, paths,
+   * protocol switching, and environment-specific differences) are delegated
+   * to {@link IHomeAssistantConnectionConfig}. This keeps the WebSocket
+   * client focused solely on the Home Assistant WS protocol and avoids
+   * coupling it to configuration/URL-building concerns.
+   */
   private getWebSocketUrl(): string | undefined {
-    const direct = this.configService.getConfig('HA_WEBSOCKET_URL');
-    if (direct) return direct;
-
-    const baseUrl = this.configService.getConfig('HA_BASE_URL');
-    if (!baseUrl) return undefined;
-
-    // Derive ws(s):// from http(s)://
-    if (baseUrl.startsWith('https://')) {
-      return `${baseUrl.replace('https://', 'wss://').replace(/\/$/, '')}/api/websocket`;
-    }
-
-    if (baseUrl.startsWith('http://')) {
-      return `${baseUrl.replace('http://', 'ws://').replace(/\/$/, '')}/api/websocket`;
-    }
-
-    return undefined;
+    return this.connectionConfig.getEffectiveWebSocketUrl();
   }
 
+  /**
+   * Retrieve the access token from the connection configuration.
+   *
+   * Token sourcing and storage are encapsulated in
+   * {@link IHomeAssistantConnectionConfig} so that authentication details
+   * can evolve independently of the WebSocket transport layer.
+   */
   private getAccessToken(): string | undefined {
-    return this.configService.getConfig('HA_ACCESS_TOKEN');
+    return this.connectionConfig.getAccessToken();
   }
 
   private attachCommandHandlers(socket: WebSocket): void {
