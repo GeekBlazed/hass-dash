@@ -1,9 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { useAppStore } from '../stores/useAppStore';
 import { Header } from './Header';
 
 describe('Header', () => {
+  beforeEach(() => {
+    useAppStore.setState({ theme: 'system', featureFlagOverrides: {} });
+  });
+
   it('should render app title', () => {
     render(<Header />);
     expect(screen.getByText('HassDash')).toBeInTheDocument();
@@ -27,10 +32,20 @@ describe('Header', () => {
     render(<Header />);
 
     const button = screen.getByRole('button', { name: /switch to/i });
+    const labelBefore = button.getAttribute('aria-label');
+
     await user.click(button);
 
-    // Verify localStorage.setItem was called
-    expect(localStorage.setItem).toHaveBeenCalled();
+    const labelAfter = button.getAttribute('aria-label');
+    expect(labelAfter).not.toBe(labelBefore);
+
+    // Verify the document theme class changes as the user toggles
+    if (labelAfter === 'Switch to light mode') {
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    }
+    if (labelAfter === 'Switch to dark mode') {
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+    }
   });
 
   it('should render menu button when onMenuClick provided', () => {
@@ -84,15 +99,11 @@ describe('Header', () => {
     expect(button).toBeInTheDocument();
   });
 
-  it('should load theme from localStorage if available', () => {
-    localStorage.setItem('theme', 'dark');
-
+  it('should load theme from app store if available', () => {
+    useAppStore.setState({ theme: 'dark', featureFlagOverrides: {} });
     render(<Header />);
 
     const button = screen.getByLabelText('Switch to light mode');
     expect(button).toBeInTheDocument();
-
-    // Cleanup
-    localStorage.removeItem('theme');
   });
 });

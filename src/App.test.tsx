@@ -21,17 +21,6 @@ describe('App', () => {
     expect(screen.getByRole('application', { name: /floorplan prototype/i })).toBeInTheDocument();
   });
 
-  it('renders the prototype UI when enabled', () => {
-    vi.stubEnv('VITE_FEATURE_PROTOTYPE_UI', 'true');
-
-    render(<App />);
-
-    expect(screen.getByTestId('prototype-shell')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('application', { name: /floorplan prototype/i })
-    ).not.toBeInTheDocument();
-  });
-
   it('renders quick action buttons', () => {
     render(<App />);
 

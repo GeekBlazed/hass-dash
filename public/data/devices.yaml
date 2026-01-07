@@ -1,0 +1,12 @@
+# Devices to track - when long and lat are provided we can show the device on the floorplan
+devices:
+  - id: jeremy_phone
+    type: Person
+    label: Jeremy
+    color: rgb(0, 128, 255) # blue
+    gps: [29.81553, -95.53826, 33.53] # lat, long, elevation in meters
+  - id: kari_phone
+    type: Person
+    label: Kari
+    color: rgb(128, 0, 128) # purple
+    gps: [29.81550, -95.53808, 33.53] # lat, long, elevation in meters

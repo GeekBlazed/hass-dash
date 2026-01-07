@@ -62,29 +62,16 @@ See [IMPLEMENTATION-PLAN.md](../docs/IMPLEMENTATION-PLAN.md) for detailed roadma
 
 ---
 
-## Prototype Floorplan (UI folder)
+## Prototype Data (public/data)
 
-This repo also contains a **standalone HTML prototype** that is separate from the React/Vite app.
-
-**Primary prototype file:**
-
-- `UI/floorplan-prototype.html` – single-file prototype (HTML + CSS + JS)
-
-**How to run the prototype (recommended):**
-
-1. Start the dev server: `pnpm dev`
-2. Navigate to: `http://localhost:5173/UI/floorplan-prototype.html`
-
-Notes:
-
-- The prototype uses `fetch(...)` to load YAML, so opening the file directly via `file://` may fail due to browser CORS restrictions.
+Prototype YAML used by the React parity UI lives under `public/data/` and is loaded via `fetch('/data/*.yaml')`.
 
 **Prototype data inputs (YAML):**
 
-- `UI/floorplan.yaml` – room geometry + labels used to render the SVG floorplan
-- `UI/devices.yaml` – device marker positions/labels
-- `UI/climate.yaml` – per-room climate values used by the Climate panel/overlay
-- `UI/lighting.yaml` – lights + scenes used by the Lighting panel/overlay
+- `public/data/floorplan.yaml` – room geometry + labels used to render the SVG floorplan
+- `public/data/devices.yaml` – device marker positions/labels
+- `public/data/climate.yaml` – per-room climate values used by the Climate panel/overlay
+- `public/data/lighting.yaml` – lights + scenes used by the Lighting panel/overlay
 
 **Prototype interaction model (important):**
 
@@ -92,11 +79,11 @@ Notes:
 - “Quick actions” are the entry points that toggle which sidebar panel is active.
 - The SVG floorplan is layered using `<g>` groups; overlays are turned on/off by showing/hiding the corresponding layer.
 - Lighting controls in the prototype are **local-only**: toggles update an in-memory model and re-render the UI (they do not persist to YAML and do not call Home Assistant).
-- `UI/lighting.yaml` is treated as optional; if it is missing/unparseable, or if no lights are currently on, the Lighting panel should display: “There are no lights on.”
+- `public/data/lighting.yaml` is treated as optional; if it is missing/unparseable, or if no lights are currently on, the Lighting panel should display: “There are no lights on.”
 
 **When working on floorplan/overlay/panel UI:**
 
-- If the request mentions “prototype”, “floorplan-prototype”, “UI/\*.yaml”, or “panels in the sidebar”, the target is almost always `UI/floorplan-prototype.html` (not the React app under `src/`).
+- If the request mentions “prototype”, “floorplan-prototype”, “data/\*.yaml”, or “panels in the sidebar”, the target is almost always the React parity UI under `src/components/prototype/`.
 - Keep the prototype as a single-file artifact unless there’s an explicit request to modularize.
 - Do not introduce new colors/tokens in the prototype; it intentionally mirrors the Tailwind theme values from `tailwind.config.js` using CSS variables.
 

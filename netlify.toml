@@ -1,0 +1,13 @@
+[build]
+  command = "pnpm build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  PNPM_VERSION = "9.0.0"
+
+# SPA fallback (React Router-style). Safe even if you aren't using routing yet.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

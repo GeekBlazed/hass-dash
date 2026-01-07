@@ -1,4 +1,5 @@
 # Implementation Plan - Ship-It-Today Model
+
 <!-- markdownlint-disable MD036 MD060 -->
 
 **Project:** Home Assistant Dashboard (hass-dash)  
@@ -105,9 +106,14 @@ feature/floor-plan-base → PR → merge → auto-deploy
 
 Each iteration is a **single PR** that can be merged and deployed immediately.
 
+**Checklist legend:**
+
+- ✅ Completed (implemented in `main`)
+- [ ] Pending / not implemented yet
+
 ### Phase 0: Foundation (Week 1)
 
-#### Iteration 0.1: Project Scaffolding ✅ NEXT
+#### Iteration 0.1: Project Scaffolding ✅ COMPLETED
 
 **Goal:** Developer can clone, build, and see "Hello World"  
 **Time:** 4-6 hours  
@@ -115,16 +121,16 @@ Each iteration is a **single PR** that can be merged and deployed immediately.
 
 **Tasks:**
 
-- [ ] Initialize Vite project with React + TypeScript template
-- [ ] Configure TypeScript (strict mode)
-- [ ] Set up ESLint + Prettier
+- ✅ Initialize Vite project with React + TypeScript template
+- ✅ Configure TypeScript (strict mode)
+- ✅ Set up ESLint + Prettier
 - [ ] Configure Husky pre-commit hooks
-- [ ] Create basic App.tsx with welcome screen
-- [ ] Add basic styling (Tailwind CSS setup)
-- [ ] Create package.json with all scripts
-- [ ] Write README section: "Running Locally"
-- [ ] Add .env.example file
-- [ ] **Acceptance:** `pnpm dev` shows welcome screen in browser
+- ✅ Create basic `App.tsx` with initial UI
+- ✅ Add basic styling (Tailwind CSS setup)
+- ✅ Create package.json with all scripts
+- ✅ Write README section: "Running Locally"
+- ✅ Add `.env.example` file
+- ✅ **Acceptance:** `pnpm dev` shows the app UI in browser
 
 **Welcome Screen Must Include:**
 
@@ -174,12 +180,12 @@ package.json
 
 **Tasks:**
 
-- [ ] Configure Vitest
-- [ ] Add example unit test (App.test.tsx)
-- [ ] Configure coverage thresholds (80%)
-- [ ] Add test scripts to package.json
-- [ ] Update CI to run tests (GitHub Actions)
-- [ ] **Acceptance:** `pnpm test` passes, coverage report generated
+- ✅ Configure Vitest
+- ✅ Add example unit test (App.test.tsx)
+- ✅ Configure coverage thresholds (80%)
+- ✅ Add test scripts to package.json
+- ✅ Update CI to run tests (GitHub Actions)
+- ✅ **Acceptance:** `pnpm test` passes, coverage report generated
 
 **Feature Flags:** None (testing infrastructure)
 
@@ -193,10 +199,10 @@ package.json
 
 **Tasks:**
 
-- [ ] Create `.github/workflows/ci.yml`
-- [ ] Configure build checks (lint, test, build)
+- ✅ Create `.github/workflows/ci.yml`
+- ✅ Configure build checks (lint, test, build)
 - [ ] Set up deployment (GitHub Pages or Netlify)
-- [ ] Add status badges to README
+- ✅ Add status badges to README
 - [ ] **Acceptance:** PR triggers checks, merge deploys to live URL
 
 **Feature Flags:** None (infrastructure)
@@ -211,13 +217,13 @@ package.json
 
 **Tasks:**
 
-- [ ] Install InversifyJS + reflect-metadata
-- [ ] Create `src/core/di-container.ts`
-- [ ] Create example interface + implementation
-- [ ] Create example service consumer (component)
-- [ ] Add unit tests for DI setup
-- [ ] Document DI patterns in code comments
-- [ ] **Acceptance:** Example service injected and used in component
+- ✅ Install InversifyJS + reflect-metadata
+- ✅ Create `src/core/di-container.ts`
+- ✅ Create example interface + implementation
+- ✅ Create example service consumer (component)
+- ✅ Add unit tests for DI setup
+- ✅ Document DI patterns in code comments
+- ✅ **Acceptance:** Example service injected and used in component
 
 **Feature Flags:** None (architectural foundation)
 
@@ -233,7 +239,7 @@ class ConfigService implements IConfigService {
   getAppVersion(): string {
     return import.meta.env.VITE_APP_VERSION || '0.1.0';
   }
-  
+
   isFeatureEnabled(flag: string): boolean {
     return import.meta.env[`VITE_FEATURE_${flag}`] === 'true';
   }
@@ -250,13 +256,13 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create `IFeatureFlagService` interface
-- [ ] Implement FeatureFlagService
-- [ ] Create `useFeatureFlag` React hook
-- [ ] Add feature flag UI to welcome screen (debug panel)
-- [ ] Document feature flag usage
-- [ ] Add tests for flag service
-- [ ] **Acceptance:** Flags can be toggled, UI responds
+- ✅ Create `IFeatureFlagService` interface
+- ✅ Implement FeatureFlagService
+- ✅ Create `useFeatureFlag` React hook
+- ✅ Add feature flag UI (debug panel)
+- ✅ Document feature flag usage
+- ✅ Add tests for flag service
+- ✅ **Acceptance:** Flags can be toggled, UI responds
 
 **Feature Flags:**
 
@@ -276,13 +282,13 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create Layout component structure
-- [ ] Add Header with app title and menu icon
-- [ ] Add main content area (empty, centered welcome message)
-- [ ] Add Footer with version and links
-- [ ] Implement light/dark mode toggle (functional)
-- [ ] Add responsive breakpoints
-- [ ] **Acceptance:** Shell renders on all device sizes, theme toggles work
+- ✅ Create Layout component structure
+- ✅ Add Header with app title and menu icon
+- ✅ Add main content area (empty, centered welcome message)
+- ✅ Add Footer with version and links
+- ✅ Implement light/dark mode toggle (functional)
+- ✅ Add responsive breakpoints
+- ✅ **Acceptance:** Shell renders on all device sizes, theme toggles work
 
 **Feature Flags:**
 
@@ -298,13 +304,13 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Install Radix UI primitives
-- [ ] Configure Tailwind theme (colors, spacing)
-- [ ] Create example Dialog component
-- [ ] Create example Button component
-- [ ] Document component usage patterns
-- [ ] Add storybook-style component showcase page
-- [ ] **Acceptance:** Components render, work accessibly
+- ✅ Install Radix UI primitives
+- ✅ Configure Tailwind theme (colors, spacing)
+- ✅ Create example Dialog component
+- ✅ Create example Button component
+- ✅ Document component usage patterns
+- ✅ Add storybook-style component showcase page
+- ✅ **Acceptance:** Components render, work accessibly
 
 **Feature Flags:**
 
@@ -324,6 +330,10 @@ class ConfigService implements IConfigService {
 - [ ] Create `useAppStore` for global settings
 - [ ] Store theme preference (light/dark)
 - [ ] Store feature flag overrides (dev mode)
+- [ ] Create a dedicated dashboard/parity UI store (e.g., `useDashboardStore`) for:
+  - active panel state (`agenda | climate | lighting | media | null`)
+  - stage view state (`x`, `y`, `scale`) for pan/zoom
+  - local-only prototype models (lighting/climate) while HA is not integrated
 - [ ] Add persistence middleware (localStorage)
 - [ ] Add dev tools integration
 - [ ] **Acceptance:** Settings persist across page refresh
@@ -348,6 +358,87 @@ class ConfigService implements IConfigService {
 - [ ] **Acceptance:** Errors caught, user can recover
 
 **Feature Flags:** None (reliability feature)
+
+---
+
+#### Iteration 1.5: Dashboard UI Parity (React Component Architecture)
+
+**Goal:** Make the main dashboard UI match the prototype parity spec in a component-driven way
+
+**Time:** 1 day
+
+**Deliverable:** Dashboard refactor plan + component scaffolding aligned with the Prototype → React UI Migration plan
+
+**Notes / Source of truth:**
+
+- See `docs/PROTOTYPE-TO-REACT-UI-MIGRATION.md` for parity requirements and UI inventory.
+- The previous parity implementation is preserved under `src/components/prototype--IGNORE/` as a reference prior to deletion.
+
+**React component inventory (authoritative for parity milestone):**
+
+- `DashboardShell` (layout wrapper)
+- `DashboardSidebar`
+  - `BrandHeader`
+  - `WeatherSummary`
+  - `QuickActions`
+    - `QuickActionButton`
+  - `SidebarPanelHost`
+    - `AgendaPanel`
+    - `LightingPanel`
+      - `LightingList`
+      - `LightingListItem`
+      - `LightingEmptyState`
+    - `ClimatePanel`
+      - `ThermostatSummary`
+      - `TemperatureRange`
+    - `MediaPanel` (optional; parity only)
+- `DashboardStage`
+  - `FloorplanCanvas` (inline SVG wrapper)
+    - `FloorplanEmptyOverlay`
+  - `MapControls` + `MapControlsToggle`
+
+**Tasks:**
+
+- ✅ Add/confirm feature flag for parity UI (`VITE_FEATURE_PROTOTYPE_UI`)
+- [ ] Wire feature flag to switch between current `Dashboard` and parity implementation
+- ✅ Scaffold the component tree under `src/components/dashboard/` using existing Tailwind tokens only
+- [ ] Add RTL tests for:
+  - panel switching behavior
+  - overlay visibility rules (climate vs lighting)
+  - lighting empty state copy
+
+**Acceptance:**
+
+- Flag-off: existing UI unchanged
+- Flag-on: component tree renders and matches parity layout at a glance
+
+---
+
+#### Iteration 1.6: Prototype Data Sources + DI Wiring (Local-Only)
+
+**Goal:** Preserve SOLID/DI architecture while parity UI is still local-only
+
+**Time:** 4-6 hours
+
+**Deliverable:** DI-backed data sources for prototype YAML/JSON that the dashboard consumes (swappable later for HA)
+
+**Tasks:**
+
+- [ ] Define interfaces:
+  - `IFloorplanDataSource`
+  - `IClimateDataSource`
+  - `ILightingDataSource`
+  - (optional) `IDevicesDataSource`
+- [ ] Implement `PublicYamlDataSource` variants that fetch from `public/data/*.yaml`
+- [ ] Register implementations in `src/core/di-container.ts`
+- [ ] Add a small React helper/hook for DI access (e.g., `useService(TYPES.IFloorplanDataSource)`)
+- [ ] Update parity dashboard components to depend on interfaces (DIP), not concrete fetch logic
+- [ ] Add unit tests for the data sources (happy path + missing/unparseable YAML)
+
+**Acceptance:**
+
+- Dashboard parity UI loads from `/data/*.yaml` via DI-provided data sources
+- Swapping to a different data source is a container binding change, not a UI rewrite
 
 ---
 
@@ -704,11 +795,11 @@ class ConfigService implements IConfigService {
 **Theme:** Foundation & Core Infrastructure  
 **Deliverables:**
 
-- Working app with welcome screen ✅
-- HA connection established ✅
-- Basic floor plan rendering ✅
-- First overlay (lighting) ✅
-- PWA installable ✅
+- ✅ Working app with initial UI
+- [ ] HA connection established
+- [ ] Basic floor plan rendering
+- [ ] First overlay (lighting)
+- [ ] PWA installable
 
 **Marketing:**
 
@@ -844,7 +935,7 @@ VITE_FEATURE_ENTITY_DEBUG=false
 ```typescript
 interface IFeatureFlagService {
   isEnabled(flag: string): boolean;
-  enable(flag: string): void;  // Dev only
+  enable(flag: string): void; // Dev only
   disable(flag: string): void; // Dev only
   getAll(): Record<string, boolean>;
 }

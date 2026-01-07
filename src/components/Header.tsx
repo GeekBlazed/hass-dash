@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useAppStore } from '../stores/useAppStore';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -9,27 +10,26 @@ interface HeaderProps {
  * Responsive design that adapts to mobile, tablet, and desktop
  */
 export function Header({ onMenuClick }: HeaderProps): React.ReactElement {
-  const [isDark, setIsDark] = useState<boolean>(() => {
-    // Check localStorage first
-    const stored = localStorage.getItem('theme');
-    if (stored) return stored === 'dark';
-    // Fall back to system preference
+  const theme = useAppStore((state) => state.theme);
+  const setTheme = useAppStore((state) => state.setTheme);
+
+  const isDark = useMemo((): boolean => {
+    if (theme === 'dark') return true;
+    if (theme === 'light') return false;
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  }, [theme]);
 
   useEffect(() => {
     // Apply theme to document
     if (isDark) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
     }
   }, [isDark]);
 
   const toggleTheme = () => {
-    setIsDark((prev) => !prev);
+    setTheme(isDark ? 'light' : 'dark');
   };
 
   return (
