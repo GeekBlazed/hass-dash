@@ -90,4 +90,13 @@ describe('Dashboard', () => {
     expect(agendaButton).toHaveAttribute('aria-expanded', 'false');
     expect(agendaPanel).toHaveClass('is-hidden');
   });
+
+  it('should include the lighting empty state copy', async () => {
+    const user = userEvent.setup();
+    render(<Dashboard />);
+
+    await user.click(screen.getByRole('button', { name: /lighting/i }));
+
+    expect(screen.getByText('There are no lights on.')).toBeInTheDocument();
+  });
 });
