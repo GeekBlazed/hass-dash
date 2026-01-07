@@ -303,9 +303,9 @@ Each iteration is designed to be:
 
 **Definition of Done (Automated Checklist):**
 
-- [ ] Unit test: emitting a valid entity update through the mock source causes a store update.
-- [ ] Unit test: low-confidence update does not update store.
-- [ ] Unit test: calling `stop()`/unsubscribe prevents further updates.
+- ✅ Unit test: emitting a valid entity update through the mock source causes a store update.
+- ✅ Unit test: low-confidence update does not update store.
+- ✅ Unit test: calling `stop()`/unsubscribe prevents further updates.
 
 ### Iteration 4: Config Plumbing (Env-backed)
 
@@ -318,8 +318,8 @@ Each iteration is designed to be:
 
 **Definition of Done (Automated Checklist):**
 
-- [ ] Unit test: missing/invalid env value falls back to default `69`.
-- [ ] Unit test: env value `69` rejects confidence `69` but accepts `70` (strict `>` behavior).
+- ✅ Unit test: missing/invalid env value falls back to default `69`.
+- ✅ Unit test: env value `69` rejects confidence `69` but accepts `70` (strict `>` behavior).
 
 ### Iteration 5: UI Wiring (Map/Floorplan Marker Updates)
 
