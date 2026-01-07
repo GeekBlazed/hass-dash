@@ -6,6 +6,7 @@ import type {
   HaEvent,
   HaRestServicesDomain,
 } from '../types/home-assistant';
+import type { HomeAssistantConnectionConfig } from './IHomeAssistantConnectionConfig';
 
 export interface IHaSubscription {
   unsubscribe(): Promise<void>;
@@ -19,6 +20,13 @@ export interface IHaSubscription {
  */
 export interface IHomeAssistantClient {
   connect(): Promise<void>;
+  /**
+   * Connect using an explicit config without mutating the global connection config service.
+   *
+   * This is primarily used for dev-only "test connection" flows where the user is editing
+   * draft values and we want to avoid persisting overrides if the component unmounts mid-test.
+   */
+  connectWithConfig?(config: HomeAssistantConnectionConfig): Promise<void>;
   disconnect(): void;
   isConnected(): boolean;
 

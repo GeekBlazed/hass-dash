@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { IConfigService } from '../interfaces/IConfigService';
+import type { IHomeAssistantConnectionConfig } from '../interfaces/IHomeAssistantConnectionConfig';
 import { HomeAssistantWebSocketClient } from './HomeAssistantWebSocketClient';
 
 class MockWebSocket {
@@ -47,14 +47,39 @@ class MockWebSocket {
   }
 }
 
-function createConfigStub(values: Record<string, string | undefined>): IConfigService {
+function createConnectionConfigStub(values: {
+  baseUrl?: string;
+  webSocketUrl?: string;
+  accessToken?: string;
+}): IHomeAssistantConnectionConfig {
+  const derive = (baseUrl: string): string | undefined => {
+    if (baseUrl.startsWith('https://')) {
+      return `${baseUrl.replace('https://', 'wss://').replace(/\/$/, '')}/api/websocket`;
+    }
+    if (baseUrl.startsWith('http://')) {
+      return `${baseUrl.replace('http://', 'ws://').replace(/\/$/, '')}/api/websocket`;
+    }
+    return undefined;
+  };
+
   return {
-    getAppVersion: () => '0.1.0',
-    isFeatureEnabled: () => false,
-    getConfig: (key: string) => {
-      const normalized = key.startsWith('VITE_') ? key : `VITE_${key}`;
-      return values[normalized];
-    },
+    getConfig: () => ({
+      baseUrl: values.baseUrl,
+      webSocketUrl: values.webSocketUrl,
+      accessToken: values.accessToken,
+    }),
+    getEffectiveWebSocketUrl: () =>
+      values.webSocketUrl ?? (values.baseUrl ? derive(values.baseUrl) : undefined),
+    getAccessToken: () => values.accessToken,
+    validate: () => ({
+      isValid: Boolean(values.accessToken) && Boolean(values.webSocketUrl || values.baseUrl),
+      errors: [],
+      effectiveWebSocketUrl:
+        values.webSocketUrl ?? (values.baseUrl ? derive(values.baseUrl) : undefined),
+    }),
+    getOverrides: () => ({}),
+    setOverrides: () => {},
+    clearOverrides: () => {},
   };
 }
 
@@ -66,16 +91,16 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('connect() throws when missing websocket url and token', async () => {
-    const missingUrl = createConfigStub({
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const missingUrl = createConnectionConfigStub({
+      accessToken: 'token',
     });
 
     await expect(new HomeAssistantWebSocketClient(missingUrl).connect()).rejects.toThrow(
       'Home Assistant WebSocket URL is not configured'
     );
 
-    const missingToken = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
+    const missingToken = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
     });
 
     await expect(new HomeAssistantWebSocketClient(missingToken).connect()).rejects.toThrow(
@@ -84,9 +109,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('connect() derives websocket url from HA_BASE_URL when HA_WEBSOCKET_URL is not set', async () => {
-    const config = createConfigStub({
-      VITE_HA_BASE_URL: 'https://example/',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      baseUrl: 'https://example/',
+      accessToken: 'token',
     });
 
     const client = new HomeAssistantWebSocketClient(config);
@@ -101,9 +126,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('connect() rejects on auth_invalid and on malformed JSON during auth handshake', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client1 = new HomeAssistantWebSocketClient(config);
@@ -121,9 +146,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('connect() rejects on socket error and on socket close before auth completes', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client1 = new HomeAssistantWebSocketClient(config);
@@ -142,9 +167,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('connect() returns early when already connected', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client = new HomeAssistantWebSocketClient(config);
@@ -160,9 +185,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('connect() authenticates on auth_required and resolves on auth_ok', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client = new HomeAssistantWebSocketClient(config);
@@ -183,9 +208,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('getStates() sends get_states and returns result', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client = new HomeAssistantWebSocketClient(config);
@@ -226,9 +251,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('commands reject when not connected, and pending commands reject on disconnect', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client = new HomeAssistantWebSocketClient(config);
@@ -246,9 +271,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('subscribeToEvents() invokes handler for matching subscription id and can unsubscribe', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client = new HomeAssistantWebSocketClient(config);
@@ -306,9 +331,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('subscribeToEvents() omits event_type when null and still resolves unsubscribe if it cannot reach server', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client = new HomeAssistantWebSocketClient(config);
@@ -340,9 +365,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('getServices() normalizes WS mapping into domain array', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client = new HomeAssistantWebSocketClient(config);
@@ -384,9 +409,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('callService() sends call_service and resolves with result wrapper', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client = new HomeAssistantWebSocketClient(config);
@@ -435,9 +460,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('callService() rejects with Error for HA error envelope', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client = new HomeAssistantWebSocketClient(config);
@@ -474,9 +499,9 @@ describe('HomeAssistantWebSocketClient', () => {
   });
 
   it('sendCommand() rejects with default error when HA error has no string message, and ignores invalid JSON post-connect', async () => {
-    const config = createConfigStub({
-      VITE_HA_WEBSOCKET_URL: 'ws://example/api/websocket',
-      VITE_HA_ACCESS_TOKEN: 'token',
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
     });
 
     const client = new HomeAssistantWebSocketClient(config);
