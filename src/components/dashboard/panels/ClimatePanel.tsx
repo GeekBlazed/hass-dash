@@ -2,7 +2,7 @@ export function ClimatePanel({ isHidden = false }: { isHidden?: boolean }) {
   return (
     <section
       id="climate-panel"
-      className={`tile climate-panel${isHidden ? 'is-hidden' : ''}`}
+      className={isHidden ? 'tile climate-panel is-hidden' : 'tile climate-panel'}
       aria-label="Climate controls"
     >
       <div className="thermostat" aria-label="Thermostat">

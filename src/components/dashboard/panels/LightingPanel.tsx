@@ -2,7 +2,7 @@ export function LightingPanel({ isHidden = true }: { isHidden?: boolean }) {
   return (
     <section
       id="lighting-panel"
-      className={`tile lighting-panel${isHidden ? 'is-hidden' : ''}`}
+      className={isHidden ? 'tile lighting-panel is-hidden' : 'tile lighting-panel'}
       aria-label="Lighting"
     >
       <ul id="lighting-list" aria-label="Lights currently on"></ul>

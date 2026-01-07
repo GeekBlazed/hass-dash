@@ -1,6 +1,6 @@
 export function AgendaPanel({ isHidden = true }: { isHidden?: boolean }) {
   return (
-    <div className={`agenda${isHidden ? 'is-hidden' : ''}`} id="agenda" aria-label="Agenda">
+    <div className={isHidden ? 'agenda is-hidden' : 'agenda'} id="agenda" aria-label="Agenda">
       <div className="item">
         <div className="name">Weekend In</div>
         <div className="time">Until 7:00 PM</div>
