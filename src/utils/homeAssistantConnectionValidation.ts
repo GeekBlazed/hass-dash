@@ -21,15 +21,21 @@ export const deriveWebSocketUrlFromBaseUrl = (baseUrl: string): string | undefin
   try {
     const url = new URL(trimmed);
 
+    let wsProtocol: 'ws:' | 'wss:' | undefined;
     if (url.protocol === 'https:') {
-      return `${trimmed.replace(/^https:\/\//i, 'wss://').replace(/\/$/, '')}/api/websocket`;
+      wsProtocol = 'wss:';
+    } else if (url.protocol === 'http:') {
+      wsProtocol = 'ws:';
+    } else {
+      return undefined;
     }
 
-    if (url.protocol === 'http:') {
-      return `${trimmed.replace(/^http:\/\//i, 'ws://').replace(/\/$/, '')}/api/websocket`;
-    }
+    url.protocol = wsProtocol;
+    url.pathname = `${url.pathname.replace(/\/$/, '')}/api/websocket`;
+    url.search = '';
+    url.hash = '';
 
-    return undefined;
+    return url.toString();
   } catch {
     return undefined;
   }

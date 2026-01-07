@@ -86,8 +86,6 @@ export function HomeAssistantConnectionControls(): React.ReactElement | null {
   const testConnection = async (): Promise<void> => {
     setTestStatus({ state: 'running' });
 
-    const previousOverrides = connectionConfig.getOverrides();
-
     try {
       if (!draftValidation.isValid) {
         setTestStatus({
@@ -97,33 +95,19 @@ export function HomeAssistantConnectionControls(): React.ReactElement | null {
         return;
       }
 
-      if (isDev) {
-        connectionConfig.setOverrides({
-          baseUrl: draft.baseUrl,
-          webSocketUrl: draft.webSocketUrl,
-          accessToken: draft.accessToken,
-        });
+      // Avoid mutating global overrides during a connection test.
+      // In dev, prefer testing the draft values directly if supported by the client.
+      if (isDev && homeAssistantClient.connectWithConfig) {
+        await homeAssistantClient.connectWithConfig(draft);
+      } else {
+        await homeAssistantClient.connect();
       }
-
-      await homeAssistantClient.connect();
       setTestStatus({ state: 'success' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setTestStatus({ state: 'error', message });
     } finally {
       homeAssistantClient.disconnect();
-
-      if (isDev) {
-        const hadAnyPreviousOverride =
-          previousOverrides.baseUrl ||
-          previousOverrides.webSocketUrl ||
-          previousOverrides.accessToken;
-        if (hadAnyPreviousOverride) {
-          connectionConfig.setOverrides(previousOverrides);
-        } else {
-          connectionConfig.clearOverrides();
-        }
-      }
     }
   };
 

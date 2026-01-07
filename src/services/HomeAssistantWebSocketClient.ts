@@ -1,7 +1,10 @@
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../core/types';
 import type { IHaSubscription, IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
-import type { IHomeAssistantConnectionConfig } from '../interfaces/IHomeAssistantConnectionConfig';
+import type {
+  HomeAssistantConnectionConfig,
+  IHomeAssistantConnectionConfig,
+} from '../interfaces/IHomeAssistantConnectionConfig';
 import type {
   HaCallServiceParams,
   HaCallServiceResult,
@@ -15,6 +18,7 @@ import type {
   HaWsEventMessage,
   HaWsResultMessage,
 } from '../types/home-assistant';
+import { validateHomeAssistantConnectionConfig } from '../utils/homeAssistantConnectionValidation';
 
 type PendingRequest = {
   resolve: (value: unknown) => void;
@@ -59,6 +63,32 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
       throw new Error('Home Assistant access token is not configured (VITE_HA_ACCESS_TOKEN)');
     }
 
+    await this.connectInternal(wsUrl, token);
+  }
+
+  async connectWithConfig(config: HomeAssistantConnectionConfig): Promise<void> {
+    if (this.connected) return;
+
+    const validation = validateHomeAssistantConnectionConfig(config);
+    if (!validation.isValid) {
+      throw new Error(validation.errors[0] ?? 'Invalid Home Assistant configuration');
+    }
+
+    const wsUrl = validation.effectiveWebSocketUrl;
+    const token = config.accessToken;
+
+    // validation guarantees these
+    if (!wsUrl) {
+      throw new Error('Home Assistant WebSocket URL is not configured');
+    }
+    if (!token) {
+      throw new Error('Home Assistant access token is not configured');
+    }
+
+    await this.connectInternal(wsUrl, token);
+  }
+
+  private async connectInternal(wsUrl: string, token: string): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       let settled = false;
       const socket = new WebSocket(wsUrl);

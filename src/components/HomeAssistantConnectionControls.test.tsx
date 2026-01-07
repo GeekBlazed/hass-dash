@@ -27,6 +27,25 @@ describe('HomeAssistantConnectionControls', () => {
     vi.clearAllMocks();
   });
 
+  const withImportMetaEnv = async (
+    overrides: Partial<Record<'DEV' | 'PROD', boolean>>,
+    fn: () => Promise<void>
+  ): Promise<void> => {
+    const meta = import.meta as unknown as { env: Record<string, unknown> };
+    const original = { ...meta.env };
+
+    try {
+      Object.assign(meta.env, overrides);
+      await fn();
+    } finally {
+      try {
+        Object.assign(meta.env, original);
+      } catch {
+        // Best-effort restore.
+      }
+    }
+  };
+
   const createConnectionConfigStub = (opts: {
     config: HomeAssistantConnectionConfig;
     validation: HomeAssistantConnectionValidationResult;
@@ -48,11 +67,17 @@ describe('HomeAssistantConnectionControls', () => {
 
   const createClientStub = (): IHomeAssistantClient => ({
     connect: vi.fn(async () => undefined),
+    connectWithConfig: vi.fn(async () => undefined),
     disconnect: vi.fn(),
+    isConnected: vi.fn(() => false),
     getStates: vi.fn(async () => []),
+    getState: vi.fn(async () => null),
     getServices: vi.fn(async () => []),
     subscribeToEvents: vi.fn(async () => ({ unsubscribe: async () => undefined })),
-    callService: vi.fn(async () => ({ context: { id: '1', parent_id: null, user_id: null } })),
+    callService: vi.fn(async () => ({
+      context: { id: '1', parent_id: null, user_id: null },
+      response: null,
+    })),
   });
 
   it('does not render when HA_CONNECTION feature flag is disabled', () => {
@@ -179,12 +204,12 @@ describe('HomeAssistantConnectionControls', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows derive error when base url is valid but cannot be derived due to casing', async () => {
+  it('accepts base URL scheme casing and can test-connect in dev mode', async () => {
     const user = userEvent.setup();
 
     useFeatureFlagMock.mockReturnValue({ isEnabled: true });
 
-    // URL is valid (https:), but helper derives only from lowercase prefixes.
+    // Ensure we accept scheme casing (URL() normalizes protocol).
     const configSvc = createConnectionConfigStub({
       config: {
         baseUrl: 'HTTPS://homeassistant.local:8123',
@@ -211,14 +236,11 @@ describe('HomeAssistantConnectionControls', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Test' }));
 
     expect(haClient.connect).not.toHaveBeenCalled();
-    expect(
-      within(dialog).getByText(/Could not derive WebSocket URL from Base URL\./i, {
-        selector: 'li',
-      })
-    ).toBeInTheDocument();
+    expect(haClient.connectWithConfig).toHaveBeenCalledTimes(1);
+    expect(within(dialog).getByText('Connected successfully.')).toBeInTheDocument();
   });
 
-  it('tests connection successfully in dev mode and restores empty overrides by clearing', async () => {
+  it('tests connection successfully in dev mode without mutating overrides', async () => {
     const user = userEvent.setup();
 
     useFeatureFlagMock.mockReturnValue({ isEnabled: true });
@@ -257,22 +279,20 @@ describe('HomeAssistantConnectionControls', () => {
 
     await user.click(within(dialog).getByRole('button', { name: 'Test' }));
 
-    expect(configSvc.setOverrides).toHaveBeenCalledWith({
+    expect(configSvc.setOverrides).not.toHaveBeenCalled();
+    expect(haClient.connect).not.toHaveBeenCalled();
+    expect(haClient.connectWithConfig).toHaveBeenCalledTimes(1);
+    expect(haClient.connectWithConfig).toHaveBeenCalledWith({
       baseUrl: 'https://example/',
       webSocketUrl: '',
       accessToken: 'token',
     });
-
-    expect(haClient.connect).toHaveBeenCalledTimes(1);
-    expect(haClient.disconnect).toHaveBeenCalledTimes(1);
-
-    // With no previous overrides, component should clear overrides at the end.
-    expect(configSvc.clearOverrides).toHaveBeenCalledTimes(1);
+    expect(configSvc.clearOverrides).not.toHaveBeenCalled();
 
     expect(within(dialog).getByText('Connected successfully.')).toBeInTheDocument();
   });
 
-  it('restores previous overrides after test when they existed', async () => {
+  it('does not mutate existing overrides during a test connection', async () => {
     const user = userEvent.setup();
 
     useFeatureFlagMock.mockReturnValue({ isEnabled: true });
@@ -315,7 +335,61 @@ describe('HomeAssistantConnectionControls', () => {
 
     await user.click(within(dialog).getByRole('button', { name: 'Test' }));
 
-    // Last call should restore previous overrides.
-    expect(configSvc.setOverrides).toHaveBeenCalledWith(previousOverrides);
+    expect(configSvc.setOverrides).not.toHaveBeenCalled();
+    expect(configSvc.clearOverrides).not.toHaveBeenCalled();
+    expect(haClient.connect).not.toHaveBeenCalled();
+    expect(haClient.connectWithConfig).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call setOverrides during testConnection in production mode', async () => {
+    await withImportMetaEnv({ DEV: false, PROD: true }, async () => {
+      const user = userEvent.setup();
+
+      useFeatureFlagMock.mockReturnValue({ isEnabled: true });
+
+      const configSvc = createConnectionConfigStub({
+        config: {
+          baseUrl: 'https://example/',
+          webSocketUrl: '',
+          accessToken: 'token',
+        },
+        validation: {
+          isValid: true,
+          errors: [],
+          effectiveWebSocketUrl: 'wss://example/api/websocket',
+        },
+      });
+
+      const haClient = createClientStub();
+
+      useServiceMock.mockImplementation((token: symbol) => {
+        if (token === TYPES.IHomeAssistantConnectionConfig) return configSvc;
+        if (token === TYPES.IHomeAssistantClient) return haClient;
+        throw new Error('Unexpected DI token');
+      });
+
+      render(<HomeAssistantConnectionControls />);
+
+      await user.click(
+        screen.getByRole('button', { name: 'Open Home Assistant connection settings' })
+      );
+
+      const dialog = screen.getByRole('dialog');
+      expect(
+        within(dialog).getByText(/Runtime overrides are disabled in production\./i)
+      ).toBeInTheDocument();
+
+      // Save should be disabled in production (guarding against override mutation).
+      expect(within(dialog).getByRole('button', { name: 'Save' })).toBeDisabled();
+
+      await user.click(within(dialog).getByRole('button', { name: 'Test' }));
+
+      expect(configSvc.setOverrides).not.toHaveBeenCalled();
+      expect(configSvc.clearOverrides).not.toHaveBeenCalled();
+      expect(haClient.connectWithConfig).not.toHaveBeenCalled();
+      expect(haClient.connect).toHaveBeenCalledTimes(1);
+
+      expect(within(dialog).getByText('Connected successfully.')).toBeInTheDocument();
+    });
   });
 });

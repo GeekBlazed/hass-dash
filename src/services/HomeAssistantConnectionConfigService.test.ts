@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IConfigService } from '../interfaces/IConfigService';
 import { HomeAssistantConnectionConfigService } from './HomeAssistantConnectionConfigService';
@@ -104,5 +104,20 @@ describe('HomeAssistantConnectionConfigService', () => {
     const svc = new HomeAssistantConnectionConfigService(createConfigStub({}));
 
     expect(svc.getOverrides()).toEqual({});
+  });
+
+  it('getOverrides() returns empty object when window is undefined (SSR)', () => {
+    const svc = new HomeAssistantConnectionConfigService(createConfigStub({}));
+
+    // Simulate an SSR/non-browser environment where `window` does not exist.
+    // We also remove/poison sessionStorage to ensure the code path doesn't touch it.
+    vi.stubGlobal('window', undefined as unknown as Window);
+    vi.stubGlobal('sessionStorage', undefined as unknown as Storage);
+
+    try {
+      expect(svc.getOverrides()).toEqual({});
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
