@@ -5,6 +5,7 @@ import type {
   HomeAssistantConnectionConfig,
   IHomeAssistantConnectionConfig,
 } from '../interfaces/IHomeAssistantConnectionConfig';
+import type { IWebSocketService } from '../interfaces/IWebSocketService';
 import type {
   HaCallServiceParams,
   HaCallServiceResult,
@@ -12,9 +13,6 @@ import type {
   HaEntityState,
   HaEvent,
   HaRestServicesDomain,
-  HaWsAuthInvalidMessage,
-  HaWsAuthOkMessage,
-  HaWsAuthRequiredMessage,
   HaWsEventMessage,
   HaWsResultMessage,
 } from '../types/home-assistant';
@@ -27,22 +25,38 @@ type PendingRequest = {
 
 type SubscriptionHandler = (event: HaEvent<unknown>) => void;
 
+type SubscriptionRecord = {
+  eventType: string | null;
+  handler: SubscriptionHandler;
+};
+
 @injectable()
 export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
-  private socket: WebSocket | null = null;
   private connected = false;
   private nextId = 1;
 
   private pending = new Map<number, PendingRequest>();
-  private subscriptions = new Map<number, SubscriptionHandler>();
+  private subscriptions = new Map<number, SubscriptionRecord>();
 
   private readonly connectionConfig: IHomeAssistantConnectionConfig;
+  private readonly webSocketService: IWebSocketService;
 
   constructor(
     @inject(TYPES.IHomeAssistantConnectionConfig)
-    connectionConfig: IHomeAssistantConnectionConfig
+    connectionConfig: IHomeAssistantConnectionConfig,
+    @inject(TYPES.IWebSocketService)
+    webSocketService: IWebSocketService
   ) {
     this.connectionConfig = connectionConfig;
+    this.webSocketService = webSocketService;
+
+    this.webSocketService.subscribe((data) => {
+      this.handleMessageData(data);
+    });
+
+    this.webSocketService.subscribeConnectionStatus((connected) => {
+      this.handleConnectionStatusChange(connected);
+    });
   }
 
   isConnected(): boolean {
@@ -89,85 +103,7 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
   }
 
   private async connectInternal(wsUrl: string, token: string): Promise<void> {
-    await new Promise<void>((resolve, reject) => {
-      let settled = false;
-      const socket = new WebSocket(wsUrl);
-      this.socket = socket;
-
-      const cleanup = () => {
-        socket.onopen = null;
-        socket.onclose = null;
-        socket.onerror = null;
-        socket.onmessage = null;
-      };
-
-      const fail = (error: unknown) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(error);
-      };
-
-      const succeed = () => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        this.connected = true;
-        this.attachCommandHandlers(socket);
-        resolve();
-      };
-
-      socket.onerror = () => {
-        fail(
-          new Error(
-            `Failed to connect to Home Assistant WebSocket (${wsUrl}). ` +
-              'Check that the URL resolves, the port is reachable, and your HA/proxy supports WebSocket upgrade.'
-          )
-        );
-      };
-
-      socket.onclose = (event) => {
-        this.connected = false;
-        this.socket = null;
-        this.rejectAllPending(new Error('WebSocket disconnected'));
-
-        if (!settled) {
-          const reason = event.reason ? `: ${event.reason}` : '';
-          fail(new Error(`WebSocket closed before auth completed (${event.code}${reason})`));
-        }
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const message = JSON.parse(String(event.data)) as unknown;
-
-          if (this.isAuthRequired(message)) {
-            socket.send(
-              JSON.stringify({
-                type: 'auth',
-                access_token: token,
-              })
-            );
-            return;
-          }
-
-          if (this.isAuthOk(message)) {
-            succeed();
-            return;
-          }
-
-          if (this.isAuthInvalid(message)) {
-            fail(new Error(message.message));
-          }
-        } catch (error) {
-          fail(error);
-        }
-      };
-
-      socket.onopen = () => {
-        // Auth is initiated by the server via auth_required.
-      };
-    });
+    await this.webSocketService.connect(wsUrl, token);
   }
 
   disconnect(): void {
@@ -175,13 +111,7 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     this.subscriptions.clear();
     this.rejectAllPending(new Error('WebSocket disconnected'));
 
-    if (this.socket) {
-      try {
-        this.socket.close();
-      } finally {
-        this.socket = null;
-      }
-    }
+    this.webSocketService.disconnect();
   }
 
   async getStates(): Promise<HaEntityState[]> {
@@ -228,8 +158,11 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     // subscribe_events returns null in `result` on success.
     void result;
 
-    this.subscriptions.set(subscriptionId, (event) => {
-      handler(event as HaEvent<TData>);
+    this.subscriptions.set(subscriptionId, {
+      eventType,
+      handler: (event) => {
+        handler(event as HaEvent<TData>);
+      },
     });
 
     return {
@@ -290,37 +223,73 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     return this.connectionConfig.getAccessToken();
   }
 
-  private attachCommandHandlers(socket: WebSocket): void {
-    socket.onmessage = (event) => {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(String(event.data)) as unknown;
-      } catch {
-        return;
+  private handleMessageData(data: string): void {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(data) as unknown;
+    } catch {
+      return;
+    }
+
+    if (this.isWsResult(parsed)) {
+      const pending = this.pending.get(parsed.id);
+      if (!pending) return;
+
+      this.pending.delete(parsed.id);
+
+      if (parsed.success) {
+        pending.resolve(parsed.result);
+      } else {
+        pending.reject(this.toCommandError(parsed.error));
       }
 
-      if (this.isWsResult(parsed)) {
-        const pending = this.pending.get(parsed.id);
-        if (!pending) return;
+      return;
+    }
 
-        this.pending.delete(parsed.id);
+    if (this.isWsEvent(parsed)) {
+      const subscription = this.subscriptions.get(parsed.id);
+      if (subscription) {
+        subscription.handler(parsed.event as HaEvent<unknown>);
+      }
+    }
+  }
 
-        if (parsed.success) {
-          pending.resolve(parsed.result);
-        } else {
-          pending.reject(this.toCommandError(parsed.error));
-        }
+  private handleConnectionStatusChange(connected: boolean): void {
+    if (this.connected === connected) return;
+    this.connected = connected;
 
-        return;
+    if (!connected) {
+      this.rejectAllPending(new Error('WebSocket disconnected'));
+      return;
+    }
+
+    void this.resubscribeAll();
+  }
+
+  private async resubscribeAll(): Promise<void> {
+    if (!this.connected) return;
+
+    const attempts = Array.from(this.subscriptions.entries(), ([subscriptionId, record]) => {
+      const command: Record<string, unknown> = {
+        id: subscriptionId,
+        type: 'subscribe_events',
+      };
+
+      if (record.eventType) {
+        command.event_type = record.eventType;
       }
 
-      if (this.isWsEvent(parsed)) {
-        const handler = this.subscriptions.get(parsed.id);
-        if (handler) {
-          handler(parsed.event as HaEvent<unknown>);
-        }
+      return this.sendRawCommand(subscriptionId, command);
+    });
+
+    const results = await Promise.allSettled(attempts);
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        // subscribe_events returns null in `result` on success.
+        void result.value;
       }
-    };
+      // If resubscribe fails, we rely on the transport reconnect loop to retry.
+    }
   }
 
   private toCommandError(error: unknown): Error {
@@ -358,11 +327,10 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     return id;
   }
 
-  private ensureConnected(): WebSocket {
-    if (!this.socket || !this.connected) {
+  private ensureConnected(): void {
+    if (!this.connected || !this.webSocketService.isConnected()) {
       throw new Error('Home Assistant client is not connected');
     }
-    return this.socket;
   }
 
   private async sendCommand(command: Record<string, unknown>): Promise<unknown> {
@@ -371,38 +339,20 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
   }
 
   private async sendRawCommand(id: number, command: Record<string, unknown>): Promise<unknown> {
-    const socket = this.ensureConnected();
+    this.ensureConnected();
 
     const result = await new Promise<unknown>((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      socket.send(JSON.stringify(command));
+
+      try {
+        this.webSocketService.send(JSON.stringify(command));
+      } catch (error) {
+        this.pending.delete(id);
+        reject(error);
+      }
     });
 
     return result;
-  }
-
-  private isAuthRequired(message: unknown): message is HaWsAuthRequiredMessage {
-    return (
-      typeof message === 'object' &&
-      message !== null &&
-      (message as { type?: unknown }).type === 'auth_required'
-    );
-  }
-
-  private isAuthOk(message: unknown): message is HaWsAuthOkMessage {
-    return (
-      typeof message === 'object' &&
-      message !== null &&
-      (message as { type?: unknown }).type === 'auth_ok'
-    );
-  }
-
-  private isAuthInvalid(message: unknown): message is HaWsAuthInvalidMessage {
-    return (
-      typeof message === 'object' &&
-      message !== null &&
-      (message as { type?: unknown }).type === 'auth_invalid'
-    );
   }
 
   private isWsResult(message: unknown): message is HaWsResultMessage {

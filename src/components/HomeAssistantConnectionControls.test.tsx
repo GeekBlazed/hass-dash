@@ -392,4 +392,218 @@ describe('HomeAssistantConnectionControls', () => {
       expect(within(dialog).getByText('Connected successfully.')).toBeInTheDocument();
     });
   });
+
+  it('saves overrides in dev mode and resets test status to idle', async () => {
+    await withImportMetaEnv({ DEV: true, PROD: false }, async () => {
+      const user = userEvent.setup();
+
+      useFeatureFlagMock.mockReturnValue({ isEnabled: true });
+
+      let configState: HomeAssistantConnectionConfig = {
+        baseUrl: 'https://initial/',
+        webSocketUrl: '',
+        accessToken: 'initial-token',
+      };
+
+      const configSvc: IHomeAssistantConnectionConfig = {
+        getConfig: () => configState,
+        getEffectiveWebSocketUrl: () => undefined,
+        getAccessToken: () => configState.accessToken,
+        validate: () => ({ isValid: false, errors: ['Not configured'] }),
+
+        getOverrides: () => ({}),
+        setOverrides: vi.fn((overrides: HomeAssistantConnectionConfig) => {
+          configState = { ...configState, ...overrides };
+        }),
+        clearOverrides: vi.fn(),
+      };
+
+      const haClient = createClientStub();
+
+      useServiceMock.mockImplementation((token: symbol) => {
+        if (token === TYPES.IHomeAssistantConnectionConfig) return configSvc;
+        if (token === TYPES.IHomeAssistantClient) return haClient;
+        throw new Error('Unexpected DI token');
+      });
+
+      render(<HomeAssistantConnectionControls />);
+
+      await user.click(
+        screen.getByRole('button', { name: 'Open Home Assistant connection settings' })
+      );
+
+      const dialog = screen.getByRole('dialog');
+
+      // Trigger a connection test so we can verify Save resets status to idle.
+      await user.clear(within(dialog).getByLabelText('Base URL'));
+      await user.type(within(dialog).getByLabelText('Base URL'), 'https://example/');
+      await user.clear(within(dialog).getByLabelText('WebSocket URL (optional)'));
+      await user.clear(within(dialog).getByLabelText('Access Token'));
+      await user.type(within(dialog).getByLabelText('Access Token'), 'token');
+
+      await user.click(within(dialog).getByRole('button', { name: 'Test' }));
+      expect(within(dialog).getByText('Connected successfully.')).toBeInTheDocument();
+
+      await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+      expect(configSvc.setOverrides).toHaveBeenCalledTimes(1);
+      expect(configSvc.setOverrides).toHaveBeenCalledWith({
+        baseUrl: 'https://example/',
+        webSocketUrl: '',
+        accessToken: 'token',
+      });
+
+      // Save() resets the test status.
+      expect(within(dialog).getByText('Connection test not run.')).toBeInTheDocument();
+    });
+  });
+
+  it('clears overrides in dev mode and refreshes the draft fields from config', async () => {
+    await withImportMetaEnv({ DEV: true, PROD: false }, async () => {
+      const user = userEvent.setup();
+
+      useFeatureFlagMock.mockReturnValue({ isEnabled: true });
+
+      let configState: HomeAssistantConnectionConfig = {
+        baseUrl: 'https://example/',
+        webSocketUrl: 'wss://example/api/websocket',
+        accessToken: 'token',
+      };
+
+      const clearOverrides = vi.fn(() => {
+        configState = {};
+      });
+
+      const configSvc: IHomeAssistantConnectionConfig = {
+        getConfig: () => configState,
+        getEffectiveWebSocketUrl: () => undefined,
+        getAccessToken: () => configState.accessToken,
+        validate: () => ({ isValid: true, errors: [] }),
+
+        getOverrides: () => ({ ...configState }),
+        setOverrides: vi.fn(),
+        clearOverrides,
+      };
+
+      const haClient = createClientStub();
+
+      useServiceMock.mockImplementation((token: symbol) => {
+        if (token === TYPES.IHomeAssistantConnectionConfig) return configSvc;
+        if (token === TYPES.IHomeAssistantClient) return haClient;
+        throw new Error('Unexpected DI token');
+      });
+
+      render(<HomeAssistantConnectionControls />);
+
+      await user.click(
+        screen.getByRole('button', { name: 'Open Home Assistant connection settings' })
+      );
+
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByLabelText('Base URL')).toHaveValue('https://example/');
+      expect(within(dialog).getByLabelText('WebSocket URL (optional)')).toHaveValue(
+        'wss://example/api/websocket'
+      );
+      expect(within(dialog).getByLabelText('Access Token')).toHaveValue('token');
+
+      // Change draft (executes onChange callbacks), then clear.
+      await user.clear(within(dialog).getByLabelText('Base URL'));
+      await user.type(within(dialog).getByLabelText('Base URL'), 'https://changed/');
+
+      await user.click(within(dialog).getByRole('button', { name: 'Clear' }));
+      expect(clearOverrides).toHaveBeenCalledTimes(1);
+
+      // Draft should be reset from getConfig() (now empty).
+      expect(within(dialog).getByLabelText('Base URL')).toHaveValue('');
+      expect(within(dialog).getByLabelText('WebSocket URL (optional)')).toHaveValue('');
+      expect(within(dialog).getByLabelText('Access Token')).toHaveValue('');
+    });
+  });
+
+  it('falls back to connect() in dev mode if connectWithConfig is not implemented', async () => {
+    await withImportMetaEnv({ DEV: true, PROD: false }, async () => {
+      const user = userEvent.setup();
+
+      useFeatureFlagMock.mockReturnValue({ isEnabled: true });
+
+      const configSvc = createConnectionConfigStub({
+        config: {
+          baseUrl: 'https://example/',
+          webSocketUrl: '',
+          accessToken: 'token',
+        },
+        validation: {
+          isValid: true,
+          errors: [],
+          effectiveWebSocketUrl: 'wss://example/api/websocket',
+        },
+      });
+
+      const haClient: IHomeAssistantClient = {
+        ...createClientStub(),
+        connectWithConfig: undefined,
+      };
+
+      useServiceMock.mockImplementation((token: symbol) => {
+        if (token === TYPES.IHomeAssistantConnectionConfig) return configSvc;
+        if (token === TYPES.IHomeAssistantClient) return haClient;
+        throw new Error('Unexpected DI token');
+      });
+
+      render(<HomeAssistantConnectionControls />);
+
+      await user.click(
+        screen.getByRole('button', { name: 'Open Home Assistant connection settings' })
+      );
+
+      const dialog = screen.getByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Test' }));
+
+      expect(haClient.connect).toHaveBeenCalledTimes(1);
+      expect(haClient.connectWithConfig).toBeUndefined();
+      expect(within(dialog).getByText('Connected successfully.')).toBeInTheDocument();
+    });
+  });
+
+  it('shows "Unknown error" for non-Error rejections and always disconnects', async () => {
+    await withImportMetaEnv({ DEV: false, PROD: true }, async () => {
+      const user = userEvent.setup();
+
+      useFeatureFlagMock.mockReturnValue({ isEnabled: true });
+
+      const configSvc = createConnectionConfigStub({
+        config: {
+          baseUrl: 'https://example/',
+          webSocketUrl: '',
+          accessToken: 'token',
+        },
+        validation: {
+          isValid: true,
+          errors: [],
+          effectiveWebSocketUrl: 'wss://example/api/websocket',
+        },
+      });
+
+      const haClient = createClientStub();
+      (haClient.connect as unknown as ReturnType<typeof vi.fn>).mockRejectedValue('boom');
+
+      useServiceMock.mockImplementation((token: symbol) => {
+        if (token === TYPES.IHomeAssistantConnectionConfig) return configSvc;
+        if (token === TYPES.IHomeAssistantClient) return haClient;
+        throw new Error('Unexpected DI token');
+      });
+
+      render(<HomeAssistantConnectionControls />);
+
+      await user.click(
+        screen.getByRole('button', { name: 'Open Home Assistant connection settings' })
+      );
+
+      const dialog = screen.getByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Test' }));
+
+      expect(within(dialog).getByText('Error: Unknown error')).toBeInTheDocument();
+      expect(haClient.disconnect).toHaveBeenCalledTimes(1);
+    });
+  });
 });

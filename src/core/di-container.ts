@@ -2,15 +2,21 @@ import { Container } from 'inversify';
 import 'reflect-metadata';
 import type { IClimateDataSource } from '../interfaces/IClimateDataSource';
 import type { IConfigService } from '../interfaces/IConfigService';
+import type { IEntityService } from '../interfaces/IEntityService';
 import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
 import type { IFloorplanDataSource } from '../interfaces/IFloorplanDataSource';
 import type { IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
 import type { IHomeAssistantConnectionConfig } from '../interfaces/IHomeAssistantConnectionConfig';
+import type { IHttpClient } from '../interfaces/IHttpClient';
 import type { ILightingDataSource } from '../interfaces/ILightingDataSource';
+import type { IWebSocketService } from '../interfaces/IWebSocketService';
 import { ConfigService } from '../services/ConfigService';
 import { FeatureFlagService } from '../services/FeatureFlagService';
 import { HomeAssistantConnectionConfigService } from '../services/HomeAssistantConnectionConfigService';
+import { HomeAssistantEntityService } from '../services/HomeAssistantEntityService';
+import { HomeAssistantHttpClient } from '../services/HomeAssistantHttpClient';
 import { HomeAssistantWebSocketClient } from '../services/HomeAssistantWebSocketClient';
+import { HomeAssistantWebSocketService } from '../services/HomeAssistantWebSocketService';
 import { PublicClimateYamlDataSource } from '../services/PublicClimateYamlDataSource';
 import { PublicFloorplanYamlDataSource } from '../services/PublicFloorplanYamlDataSource';
 import { PublicLightingYamlDataSource } from '../services/PublicLightingYamlDataSource';
@@ -50,6 +56,18 @@ container
 container
   .bind<IHomeAssistantConnectionConfig>(TYPES.IHomeAssistantConnectionConfig)
   .to(HomeAssistantConnectionConfigService)
+  .inSingletonScope();
+
+container
+  .bind<IWebSocketService>(TYPES.IWebSocketService)
+  .to(HomeAssistantWebSocketService)
+  .inSingletonScope();
+
+container.bind<IHttpClient>(TYPES.IHttpClient).to(HomeAssistantHttpClient).inSingletonScope();
+
+container
+  .bind<IEntityService>(TYPES.IEntityService)
+  .to(HomeAssistantEntityService)
   .inSingletonScope();
 
 // Prototype data sources (local-only, swappable later for HA)
