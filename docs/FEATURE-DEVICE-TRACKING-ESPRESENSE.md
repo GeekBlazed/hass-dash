@@ -332,8 +332,8 @@ Each iteration is designed to be:
 
 **Definition of Done (Automated Checklist):**
 
-- [ ] Component test: when the store contains a location for an entity, the corresponding marker is rendered at the expected coordinates.
-- [ ] Component test: when location updates, marker position updates.
+- ✅ Component test: when the store contains a location for an entity, the corresponding marker is rendered at the expected coordinates.
+- ✅ Component test: when location updates, marker position updates.
 
 ### Iteration 6: Integration Transport (Phase 1 Default)
 
@@ -355,8 +355,8 @@ Each iteration is designed to be:
 
 **Definition of Done (Automated Checklist):**
 
-- [ ] Integration test (mocked transport boundary) proves subscription is attempted on start.
-- [ ] Unit test: unsubscribe is called on stop/unmount.
+- ✅ Integration test (mocked transport boundary) proves subscription is attempted on start.
+- ✅ Unit test: unsubscribe is called on stop/unmount.
 
 ### Iteration 7: Hardening (Backpressure + Safety)
 

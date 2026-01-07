@@ -8,6 +8,7 @@ import type { ILightingDataSource } from '../../interfaces/ILightingDataSource';
 import { useDashboardStore } from '../../stores/useDashboardStore';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardStage } from './DashboardStage';
+import { DeviceLocationTrackingController } from './DeviceLocationTrackingController';
 import { HaLightHotwireBridge } from './HaLightHotwireBridge';
 
 export function DashboardShell() {
@@ -83,6 +84,7 @@ export function DashboardShell() {
   return (
     <div className="viewport">
       <HaLightHotwireBridge />
+      <DeviceLocationTrackingController />
       <div className="frame" role="application" aria-label="Floorplan prototype">
         <div className="app">
           <DashboardSidebar />
