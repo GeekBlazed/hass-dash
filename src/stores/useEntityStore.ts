@@ -4,6 +4,26 @@ import { devtools, persist } from 'zustand/middleware';
 
 import type { HaEntityState } from '../types/home-assistant';
 
+const MAX_PERSISTED_ENTITIES = 250;
+
+const limitPersistedEntities = (
+  entitiesById: Record<string, HaEntityState>
+): Record<string, HaEntityState> => {
+  const entries = Object.entries(entitiesById);
+  if (entries.length <= MAX_PERSISTED_ENTITIES) return entitiesById;
+
+  // Keep the most recently updated entities to maximize usefulness of LKG on reload.
+  entries.sort(([, a], [, b]) => {
+    const aStamp = a.last_updated;
+    const bStamp = b.last_updated;
+    // ISO-8601 timestamps sort lexicographically.
+    // Descending: newest first.
+    return bStamp.localeCompare(aStamp);
+  });
+
+  return Object.fromEntries(entries.slice(0, MAX_PERSISTED_ENTITIES));
+};
+
 interface EntityStateStore {
   entitiesById: Record<string, HaEntityState>;
   lastUpdatedAt: number | null;
@@ -44,7 +64,7 @@ export const useEntityStore = create<EntityStateStore>()(
         name: 'hass-dash:entities',
         version: 1,
         partialize: (state) => ({
-          entitiesById: state.entitiesById,
+          entitiesById: limitPersistedEntities(state.entitiesById),
           lastUpdatedAt: state.lastUpdatedAt,
         }),
       }

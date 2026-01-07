@@ -4,7 +4,7 @@ export interface IHttpClient {
    *
    * @param path - A path beginning with `/` (e.g. `/api/`).
    */
-  get<TResponse>(path: string): Promise<TResponse>;
+  get<TResponse>(path: string): Promise<TResponse | undefined>;
 
   /**
    * Performs an authenticated POST request against the Home Assistant REST API.
@@ -12,5 +12,5 @@ export interface IHttpClient {
    * @param path - A path beginning with `/`.
    * @param body - Request body to JSON-encode.
    */
-  post<TResponse>(path: string, body?: unknown): Promise<TResponse>;
+  post<TResponse>(path: string, body?: unknown): Promise<TResponse | undefined>;
 }

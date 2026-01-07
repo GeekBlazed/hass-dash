@@ -529,4 +529,155 @@ describe('HomeAssistantWebSocketClient', () => {
 
     expect(resent.length).toBeGreaterThanOrEqual(2);
   });
+
+  it('resubscribeAll replays subscribe_events with the same id + event_type', async () => {
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
+
+    const handler = vi.fn();
+    const subscriptionPromise = client.subscribeToEvents('state_changed', handler);
+
+    const initialSubscribe = JSON.parse(ws.sent[ws.sent.length - 1]) as {
+      id: number;
+      type: string;
+      event_type?: string;
+    };
+    expect(initialSubscribe.type).toBe('subscribe_events');
+    expect(initialSubscribe.event_type).toBe('state_changed');
+
+    ws.serverSend({ id: initialSubscribe.id, type: 'result', success: true, result: null });
+    await subscriptionPromise;
+
+    const sentBeforeReconnect = ws.sent.length;
+
+    ws.disconnect();
+    ws.serverReconnect();
+
+    let resubscribeRaw: string | undefined;
+    for (let idx = ws.sent.length - 1; idx >= sentBeforeReconnect; idx -= 1) {
+      const s = ws.sent[idx];
+      try {
+        const parsed = JSON.parse(s) as { type?: unknown; id?: unknown };
+        if (parsed.type === 'subscribe_events' && parsed.id === initialSubscribe.id) {
+          resubscribeRaw = s;
+          break;
+        }
+      } catch {
+        // Ignore unparsable messages.
+      }
+    }
+
+    expect(resubscribeRaw).toBeTruthy();
+    const resubscribe = JSON.parse(resubscribeRaw as string) as {
+      id: number;
+      type: string;
+      event_type?: string;
+    };
+
+    expect(resubscribe).toMatchObject({
+      id: initialSubscribe.id,
+      type: 'subscribe_events',
+      event_type: 'state_changed',
+    });
+
+    // Unblock the internal resubscribe loop.
+    ws.serverSend({ id: resubscribe.id, type: 'result', success: true, result: null });
+  });
+
+  it('resubscribeAll continues when a resubscribe fails (and handles null event_type)', async () => {
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
+
+    const handler1 = vi.fn();
+    const handler2 = vi.fn();
+
+    const sub1Promise = client.subscribeToEvents('state_changed', handler1);
+    const sub1 = JSON.parse(ws.sent[ws.sent.length - 1]) as {
+      id: number;
+      type: string;
+      event_type?: string;
+    };
+    ws.serverSend({ id: sub1.id, type: 'result', success: true, result: null });
+    await sub1Promise;
+
+    const sub2Promise = client.subscribeToEvents(null, handler2);
+    const sub2 = JSON.parse(ws.sent[ws.sent.length - 1]) as {
+      id: number;
+      type: string;
+      event_type?: string;
+    };
+    expect(sub2.type).toBe('subscribe_events');
+    expect('event_type' in sub2).toBe(false);
+    ws.serverSend({ id: sub2.id, type: 'result', success: true, result: null });
+    await sub2Promise;
+
+    const sentBeforeReconnect = ws.sent.length;
+
+    ws.disconnect();
+    ws.serverReconnect();
+
+    // With parallel resubscribe, we should see both resubscribe attempts issued after reconnect.
+    const resubscribeMessages = ws.sent
+      .slice(sentBeforeReconnect)
+      .map((s) => {
+        try {
+          return JSON.parse(s) as { id?: unknown; type?: unknown; event_type?: unknown };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .filter((m) => m?.type === 'subscribe_events') as Array<{
+      id: number;
+      type: 'subscribe_events';
+      event_type?: string;
+    }>;
+
+    const sub1Resubscribe = resubscribeMessages.find((m) => m.id === sub1.id);
+    const sub2Resubscribe = resubscribeMessages.find((m) => m.id === sub2.id);
+
+    expect(sub1Resubscribe).toMatchObject({
+      id: sub1.id,
+      type: 'subscribe_events',
+      event_type: 'state_changed',
+    });
+    expect(sub2Resubscribe).toBeTruthy();
+    expect(sub2Resubscribe?.id).toBe(sub2.id);
+    expect(sub2Resubscribe?.type).toBe('subscribe_events');
+    expect(sub2Resubscribe && 'event_type' in sub2Resubscribe).toBe(false);
+
+    // Simulate one resubscribe failing and the other succeeding.
+    ws.serverSend({
+      id: sub1.id,
+      type: 'result',
+      success: false,
+      error: { code: 'unknown', message: 'nope', data: null },
+    });
+    ws.serverSend({ id: sub2.id, type: 'result', success: true, result: null });
+
+    // Ensure the client still routes events for the successfully resubscribed id.
+    ws.serverSend({
+      id: sub2.id,
+      type: 'event',
+      event: {
+        event_type: 'state_changed',
+        data: { entity_id: 'light.kitchen', old_state: null, new_state: null },
+        time_fired: '2026-01-01T00:00:00+00:00',
+        origin: 'LOCAL',
+        context: { id: '1', parent_id: null, user_id: null },
+      },
+    });
+
+    expect(handler2).toHaveBeenCalled();
+  });
 });

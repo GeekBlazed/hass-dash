@@ -15,11 +15,11 @@ export class HomeAssistantHttpClient implements IHttpClient {
     this.connectionConfig = connectionConfig;
   }
 
-  async get<TResponse>(path: string): Promise<TResponse> {
+  async get<TResponse>(path: string): Promise<TResponse | undefined> {
     return this.request<TResponse>('GET', path);
   }
 
-  async post<TResponse>(path: string, body?: unknown): Promise<TResponse> {
+  async post<TResponse>(path: string, body?: unknown): Promise<TResponse | undefined> {
     return this.request<TResponse>('POST', path, body);
   }
 
@@ -27,7 +27,7 @@ export class HomeAssistantHttpClient implements IHttpClient {
     method: 'GET' | 'POST',
     path: string,
     body?: unknown
-  ): Promise<TResponse> {
+  ): Promise<TResponse | undefined> {
     const baseUrl = this.getBaseUrl();
     const token = this.connectionConfig.getAccessToken();
 
@@ -77,7 +77,7 @@ export class HomeAssistantHttpClient implements IHttpClient {
     // /api/ returns JSON, but some endpoints can return empty responses.
     const text = await response.text();
     if (!text.trim()) {
-      return undefined as TResponse;
+      return undefined;
     }
 
     try {

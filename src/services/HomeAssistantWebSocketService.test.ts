@@ -30,6 +30,10 @@ class MockWebSocket {
     this.onmessage?.({ data: JSON.stringify(message) });
   }
 
+  serverSendRaw(data: string): void {
+    this.onmessage?.({ data });
+  }
+
   serverClose(code = 1000, reason = ''): void {
     this.onclose?.({ code, reason });
   }
@@ -42,6 +46,25 @@ describe('HomeAssistantWebSocketService', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).WebSocket = MockWebSocket;
+  });
+
+  it('send() throws when not connected', () => {
+    const service = new HomeAssistantWebSocketService();
+    expect(() => service.send('hi')).toThrow('WebSocket is not connected');
+  });
+
+  it('connectOnce() rejects if wsUrl or token are not set', async () => {
+    const service = new HomeAssistantWebSocketService();
+
+    await expect(
+      (service as unknown as { connectOnce: () => Promise<void> }).connectOnce()
+    ).rejects.toThrow('WebSocket URL not set');
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any).wsUrl = 'ws://example/api/websocket';
+    await expect(
+      (service as unknown as { connectOnce: () => Promise<void> }).connectOnce()
+    ).rejects.toThrow('Access token not set');
   });
 
   it('connect() authenticates and reports connected status', async () => {
@@ -65,6 +88,104 @@ describe('HomeAssistantWebSocketService', () => {
     await expect(promise).resolves.toBeUndefined();
     expect(service.isConnected()).toBe(true);
     expect(status).toHaveBeenCalledWith(true);
+  });
+
+  it('connect() is a no-op when already connected', async () => {
+    const service = new HomeAssistantWebSocketService();
+
+    const first = service.connect('ws://example/api/websocket', 'token');
+    const socket1 = MockWebSocket.instances[0];
+    socket1.serverSend({ type: 'auth_required' });
+    socket1.serverSend({ type: 'auth_ok' });
+    await expect(first).resolves.toBeUndefined();
+    expect(MockWebSocket.instances).toHaveLength(1);
+
+    await expect(service.connect('ws://example/api/websocket', 'token')).resolves.toBeUndefined();
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it('connect() rejects on auth_invalid', async () => {
+    const service = new HomeAssistantWebSocketService();
+
+    const status = vi.fn();
+    service.subscribeConnectionStatus(status);
+
+    const promise = service.connect('ws://example/api/websocket', 'token');
+
+    const socket = MockWebSocket.instances[0];
+    socket.serverSend({ type: 'auth_required' });
+    socket.serverSend({ type: 'auth_invalid', message: 'Invalid token' });
+
+    await expect(promise).rejects.toThrow('Invalid token');
+    expect(service.isConnected()).toBe(false);
+    expect(status).not.toHaveBeenCalledWith(true);
+  });
+
+  it('connect() rejects if the socket closes before auth completes', async () => {
+    const service = new HomeAssistantWebSocketService();
+
+    const promise = service.connect('ws://example/api/websocket', 'token');
+    const socket = MockWebSocket.instances[0];
+
+    socket.serverClose(1006, 'dropped');
+
+    await expect(promise).rejects.toThrow('WebSocket closed before auth completed');
+    expect(service.isConnected()).toBe(false);
+  });
+
+  it('connect() rejects on socket error before auth', async () => {
+    const service = new HomeAssistantWebSocketService();
+
+    const promise = service.connect('ws://example/api/websocket', 'token');
+    const socket = MockWebSocket.instances[0];
+
+    socket.onerror?.({});
+
+    await expect(promise).rejects.toThrow('Failed to connect to Home Assistant WebSocket');
+    expect(service.isConnected()).toBe(false);
+  });
+
+  it('connect() rejects on invalid JSON during auth handshake', async () => {
+    const service = new HomeAssistantWebSocketService();
+
+    const promise = service.connect('ws://example/api/websocket', 'token');
+    const socket = MockWebSocket.instances[0];
+
+    socket.serverSendRaw('not-json');
+
+    await expect(promise).rejects.toBeDefined();
+    expect(service.isConnected()).toBe(false);
+  });
+
+  it('disconnect() clears pending reconnect and closes socket', async () => {
+    const service = new HomeAssistantWebSocketService();
+
+    const status = vi.fn();
+    service.subscribeConnectionStatus(status);
+
+    const connectPromise = service.connect('ws://example/api/websocket', 'token');
+    const socket1 = MockWebSocket.instances[0];
+    socket1.serverSend({ type: 'auth_required' });
+    socket1.serverSend({ type: 'auth_ok' });
+    await expect(connectPromise).resolves.toBeUndefined();
+
+    // trigger reconnect scheduling
+    socket1.serverClose(1006, 'dropped');
+    expect(service.isConnected()).toBe(false);
+
+    const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
+    service.disconnect();
+
+    // no reconnect should happen after disconnect
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(MockWebSocket.instances).toHaveLength(1);
+
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+
+    // Calling disconnect again should not emit extra status events.
+    const callsAfterFirstDisconnect = status.mock.calls.length;
+    service.disconnect();
+    expect(status.mock.calls.length).toBe(callsAfterFirstDisconnect);
   });
 
   it('reconnects after authenticated close (exponential backoff scheduling)', async () => {
@@ -100,5 +221,36 @@ describe('HomeAssistantWebSocketService', () => {
 
     // connection status should have toggled false -> true (in addition to initial true)
     expect(status).toHaveBeenCalledWith(true);
+  });
+
+  it('reconnects after a normal close (1000) when shouldReconnect is true', async () => {
+    const service = new HomeAssistantWebSocketService();
+
+    const connectPromise = service.connect('ws://example/api/websocket', 'token');
+    const socket1 = MockWebSocket.instances[0];
+    socket1.serverSend({ type: 'auth_required' });
+    socket1.serverSend({ type: 'auth_ok' });
+    await expect(connectPromise).resolves.toBeUndefined();
+
+    socket1.serverClose(1000, '');
+
+    await vi.advanceTimersByTimeAsync(500);
+    expect(MockWebSocket.instances.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('broadcasts messages to subscribers after authentication', async () => {
+    const service = new HomeAssistantWebSocketService();
+
+    const onData = vi.fn();
+    service.subscribe(onData);
+
+    const connectPromise = service.connect('ws://example/api/websocket', 'token');
+    const socket1 = MockWebSocket.instances[0];
+    socket1.serverSend({ type: 'auth_required' });
+    socket1.serverSend({ type: 'auth_ok' });
+    await expect(connectPromise).resolves.toBeUndefined();
+
+    socket1.serverSendRaw('{"type":"event","data":123}');
+    expect(onData).toHaveBeenCalledWith('{"type":"event","data":123}');
   });
 });

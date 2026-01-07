@@ -53,8 +53,15 @@ describe('DebugPanel', () => {
     vi.stubEnv('DEV', true);
 
     vi.mocked(container.get).mockImplementation((token) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const key = String((token as any)?.description ?? token);
+      const tokenKey = (() => {
+        if (typeof token === 'symbol') {
+          // `symbol.description` may be missing (older runtimes/polyfills), so fall back.
+          return token.description ?? token.toString();
+        }
+        return String(token);
+      })();
+
+      const key = tokenKey;
       if (key.includes('IEntityService')) return mockEntityService;
       return mockHaClient;
     });

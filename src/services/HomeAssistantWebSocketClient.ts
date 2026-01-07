@@ -269,7 +269,7 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
   private async resubscribeAll(): Promise<void> {
     if (!this.connected) return;
 
-    for (const [subscriptionId, record] of this.subscriptions.entries()) {
+    const attempts = Array.from(this.subscriptions.entries(), ([subscriptionId, record]) => {
       const command: Record<string, unknown> = {
         id: subscriptionId,
         type: 'subscribe_events',
@@ -279,13 +279,16 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
         command.event_type = record.eventType;
       }
 
-      try {
-        const result = await this.sendRawCommand(subscriptionId, command);
+      return this.sendRawCommand(subscriptionId, command);
+    });
+
+    const results = await Promise.allSettled(attempts);
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
         // subscribe_events returns null in `result` on success.
-        void result;
-      } catch {
-        // If resubscribe fails, we'll rely on the transport reconnect loop to retry.
+        void result.value;
       }
+      // If resubscribe fails, we rely on the transport reconnect loop to retry.
     }
   }
 

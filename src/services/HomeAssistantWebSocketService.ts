@@ -138,8 +138,12 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
           return;
         }
 
-        // If we were authenticated and lost the socket, try to reconnect.
-        if (authenticated && this.shouldReconnect) {
+        const code = (event as { code?: unknown }).code;
+        const codeNum = typeof code === 'number' ? code : 0;
+        const isExpectedClose = codeNum === 1000;
+
+        // If we were authenticated and lost the socket unexpectedly, try to reconnect.
+        if (authenticated && this.shouldReconnect && !isExpectedClose) {
           this.scheduleReconnect();
         }
       };
@@ -205,8 +209,9 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
 
     const baseDelayMs = 500;
     const maxDelayMs = 15_000;
+    const exponent = Math.min(this.reconnectAttempt, 10);
 
-    const delay = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, this.reconnectAttempt));
+    const delay = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, exponent));
     this.reconnectAttempt += 1;
 
     // In browsers: window.setTimeout returns number.

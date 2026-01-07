@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { container } from '../core/di-container';
 import { TYPES } from '../core/types';
 import { useFeatureFlags } from '../hooks/useFeatureFlag';
@@ -68,6 +68,17 @@ export function DebugPanel() {
   const [entitySearch, setEntitySearch] = useState('');
   const [entityDomain, setEntityDomain] = useState<string>('');
   const [entityLiveEnabled, setEntityLiveEnabled] = useState(false);
+  const [entityLiveSubscription, setEntityLiveSubscription] = useState<null | {
+    unsubscribe: () => Promise<void>;
+  }>(null);
+
+  useEffect(() => {
+    return () => {
+      if (entityLiveSubscription) {
+        void entityLiveSubscription.unsubscribe();
+      }
+    };
+  }, [entityLiveSubscription]);
 
   const entityList = useMemo(() => {
     const all = Object.values(entitiesById);
@@ -204,14 +215,33 @@ export function DebugPanel() {
   };
 
   const enableEntityLiveUpdates = async (): Promise<void> => {
+    if (entityLiveEnabled) return;
     setEntityLiveEnabled(true);
 
     try {
-      await entityService.subscribeToStateChanges((next) => {
+      const subscription = await entityService.subscribeToStateChanges((next) => {
         upsertEntity(next);
       });
+
+      setEntityLiveSubscription(subscription);
     } catch {
       setEntityLiveEnabled(false);
+      setEntityLiveSubscription(null);
+    }
+  };
+
+  const disableEntityLiveUpdates = async (): Promise<void> => {
+    setEntityLiveEnabled(false);
+
+    const subscription = entityLiveSubscription;
+    setEntityLiveSubscription(null);
+
+    if (subscription) {
+      try {
+        await subscription.unsubscribe();
+      } catch {
+        // ignore
+      }
     }
   };
 
@@ -370,12 +400,11 @@ export function DebugPanel() {
 
               <button
                 type="button"
-                onClick={enableEntityLiveUpdates}
-                disabled={entityLiveEnabled}
+                onClick={entityLiveEnabled ? disableEntityLiveUpdates : enableEntityLiveUpdates}
                 className="rounded bg-blue-500 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Enable live entity updates"
               >
-                {entityLiveEnabled ? 'Live' : 'Enable Live'}
+                {entityLiveEnabled ? 'Disable Live' : 'Enable Live'}
               </button>
             </div>
           </div>

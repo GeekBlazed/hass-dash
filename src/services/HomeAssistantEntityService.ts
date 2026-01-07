@@ -21,13 +21,19 @@ export class HomeAssistantEntityService implements IEntityService {
 
   async fetchStates(): Promise<HaEntityState[]> {
     // REST endpoint: GET /api/states
-    return this.httpClient.get<HaEntityState[]>('/api/states');
+    const states = await this.httpClient.get<HaEntityState[]>('/api/states');
+    if (!states) {
+      throw new Error('Home Assistant returned an empty response for GET /api/states');
+    }
+    return states;
   }
 
   async subscribeToStateChanges(
     handler: (newState: HaEntityState) => void
   ): Promise<{ unsubscribe: () => Promise<void> }> {
-    await this.haClient.connect();
+    if (!this.haClient.isConnected()) {
+      await this.haClient.connect();
+    }
 
     return this.haClient.subscribeToEvents<HaStateChangedEventData>('state_changed', (event) => {
       const data = event.data;
