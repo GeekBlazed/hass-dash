@@ -272,7 +272,7 @@ class ConfigService implements IConfigService {
 
 ---
 
-### Phase 1: Core Infrastructure (Week 2-3)
+### Phase 1: Core Infrastructure (Week 2-3) ✅ COMPLETED
 
 #### Iteration 1.1: Layout & Navigation Shell
 
@@ -433,16 +433,16 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Define interfaces:
-  - `IFloorplanDataSource`
-  - `IClimateDataSource`
-  - `ILightingDataSource`
-  - (optional) `IDevicesDataSource`
-- [ ] Implement `PublicYamlDataSource` variants that fetch from `public/data/*.yaml`
-- [ ] Register implementations in `src/core/di-container.ts`
-- [ ] Add a small React helper/hook for DI access (e.g., `useService(TYPES.IFloorplanDataSource)`)
-- [ ] Update parity dashboard components to depend on interfaces (DIP), not concrete fetch logic
-- [ ] Add unit tests for the data sources (happy path + missing/unparseable YAML)
+- ✅ Define interfaces:
+  - ✅ `IFloorplanDataSource`
+  - ✅ `IClimateDataSource`
+  - ✅ `ILightingDataSource`
+  - [ ] (optional) `IDevicesDataSource`
+- ✅ Implement `PublicYamlDataSource` variants that fetch from `public/data/*.yaml`
+- ✅ Register implementations in `src/core/di-container.ts`
+- ✅ Add a small React helper/hook for DI access (e.g., `useService(TYPES.IFloorplanDataSource)`)
+- ✅ Update parity dashboard components to depend on interfaces (DIP), not concrete fetch logic
+- ✅ Add unit tests for the data sources (happy path + missing/unparseable YAML)
 
 **Acceptance:**
 

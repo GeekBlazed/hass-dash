@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
-import { container } from '../../core/di-container';
+import { useEffect } from 'react';
 import { TYPES } from '../../core/types';
+import { useService } from '../../hooks/useService';
 import type { IHomeAssistantClient } from '../../interfaces/IHomeAssistantClient';
 
 type HassDashToggleLightEvent = CustomEvent<{ entityId?: string }>;
@@ -8,10 +8,7 @@ type HassDashToggleLightEvent = CustomEvent<{ entityId?: string }>;
 const HOTWIRE_ENTITY_ID = 'light.norad_corner_torch';
 
 export function HaLightHotwireBridge() {
-  const homeAssistantClient = useMemo(
-    () => container.get<IHomeAssistantClient>(TYPES.IHomeAssistantClient),
-    []
-  );
+  const homeAssistantClient = useService<IHomeAssistantClient>(TYPES.IHomeAssistantClient);
 
   useEffect(() => {
     let disposed = false;
