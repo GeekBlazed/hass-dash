@@ -340,6 +340,11 @@ class ConfigService implements IConfigService {
 
 **Feature Flags:** None (core functionality)
 
+**Backlog / Follow-ups:**
+
+- [ ] Persisted prototype model size: `partialize` currently persists both lighting + climate models to localStorage. These may grow large; add size limits and/or cleanup for old/unused entries (these models are local-only and will be replaced by HA-backed data).
+- [ ] Add a test for state conflicts: verify that `setLightOn(id, true)` overrides any previously set `state` value from `setLightState`.
+
 ---
 
 #### Iteration 1.4: Error Boundary & Loading States
