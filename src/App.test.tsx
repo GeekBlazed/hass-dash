@@ -7,7 +7,6 @@ describe('App', () => {
     // Keep App tests deterministic regardless of local .env settings.
     vi.stubEnv('VITE_FEATURE_COMPONENT_SHOWCASE', 'false');
     vi.stubEnv('VITE_FEATURE_DEBUG_PANEL', 'false');
-    vi.stubEnv('VITE_FEATURE_PROTOTYPE_UI', 'false');
   });
 
   afterEach(() => {

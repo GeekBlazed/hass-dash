@@ -83,6 +83,23 @@ describe('useDashboardStore', () => {
     });
   });
 
+  it('setLightOn overrides previously set state value', () => {
+    useDashboardStore.getState().setLightState('light.porch', {
+      name: 'Porch',
+      state: 'off',
+      brightness: 10,
+    });
+
+    useDashboardStore.getState().setLightOn('light.porch', true);
+
+    expect(useDashboardStore.getState().lighting.lights['light.porch']).toEqual({
+      id: 'light.porch',
+      name: 'Porch',
+      brightness: 10,
+      state: 'on',
+    });
+  });
+
   it('can clear local lighting model', () => {
     useDashboardStore.getState().setLightOn('light.studio', true);
     useDashboardStore.getState().clearLighting();

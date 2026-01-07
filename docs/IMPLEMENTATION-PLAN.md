@@ -340,6 +340,11 @@ class ConfigService implements IConfigService {
 
 **Feature Flags:** None (core functionality)
 
+**Backlog / Follow-ups:**
+
+- [ ] Persisted prototype model size: `partialize` currently persists both lighting + climate models to localStorage. These may grow large; add size limits and/or cleanup for old/unused entries (these models are local-only and will be replaced by HA-backed data).
+- [ ] Add a test for state conflicts: verify that `setLightOn(id, true)` overrides any previously set `state` value from `setLightState`.
+
 ---
 
 #### Iteration 1.4: Error Boundary & Loading States
@@ -350,12 +355,12 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create ErrorBoundary component
-- [ ] Create LoadingSpinner component
-- [ ] Create error page with retry button
-- [ ] Add to root App component
-- [ ] Test with intentional error
-- [ ] **Acceptance:** Errors caught, user can recover
+- ✅ Create ErrorBoundary component
+- ✅ Create LoadingSpinner component
+- ✅ Create error page with retry button
+- ✅ Add to root App component
+- ✅ Test with intentional error
+- ✅ **Acceptance:** Errors caught, user can recover
 
 **Feature Flags:** None (reliability feature)
 
@@ -399,13 +404,17 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- ✅ Add/confirm feature flag for parity UI (`VITE_FEATURE_PROTOTYPE_UI`)
-- [ ] Wire feature flag to switch between current `Dashboard` and parity implementation
+- ✅ Confirm parity UI is the default `Dashboard`
+- ✅ Parity UI lives in `Dashboard` now (flag no longer needed)
 - ✅ Scaffold the component tree under `src/components/dashboard/` using existing Tailwind tokens only
-- [ ] Add RTL tests for:
+- ✅ Add RTL tests for:
   - panel switching behavior
   - overlay visibility rules (climate vs lighting)
   - lighting empty state copy
+
+**Follow-ups:**
+
+- [ ] TS/Editor: if `Cannot find namespace 'JSX'` reappears, restart the TS server and verify which `tsconfig` applies to `*.test.tsx`.
 
 **Acceptance:**
 

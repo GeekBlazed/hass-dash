@@ -1,6 +1,7 @@
 import { ComponentShowcase } from './components/ComponentShowcase';
 import { Dashboard } from './components/dashboard';
 import { DebugPanel } from './components/DebugPanel';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useFeatureFlag } from './hooks/useFeatureFlag';
 
 function App() {
@@ -20,13 +21,9 @@ function App() {
   // reports it enabled.
   const showDebugPanel = envDebugPanelEnabled || debugPanelFlagEnabled;
 
-  // Show component showcase if flag enabled
-  if (showComponentShowcase) {
-    return <ComponentShowcase />;
-  }
-
-  // Main dashboard UI
-  return (
+  const content = showComponentShowcase ? (
+    <ComponentShowcase />
+  ) : (
     <>
       <Dashboard />
       {showDebugPanel && (
@@ -36,6 +33,8 @@ function App() {
       )}
     </>
   );
+
+  return <ErrorBoundary>{content}</ErrorBoundary>;
 }
 
 export default App;
