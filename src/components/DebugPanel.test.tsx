@@ -41,13 +41,30 @@ describe('DebugPanel', () => {
     callService: vi.fn(),
   };
 
+  const mockEntityService = {
+    fetchStates: vi.fn(),
+    subscribeToStateChanges: vi.fn(),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockReload.mockClear();
     // Set to development mode by default
     vi.stubEnv('DEV', true);
 
-    vi.mocked(container.get).mockReturnValue(mockHaClient);
+    vi.mocked(container.get).mockImplementation((token) => {
+      const tokenKey = (() => {
+        if (typeof token === 'symbol') {
+          // `symbol.description` may be missing (older runtimes/polyfills), so fall back.
+          return token.description ?? token.toString();
+        }
+        return String(token);
+      })();
+
+      const key = tokenKey;
+      if (key.includes('IEntityService')) return mockEntityService;
+      return mockHaClient;
+    });
   });
 
   it('should render feature flags', () => {
@@ -221,6 +238,21 @@ describe('DebugPanel', () => {
       screen.getByRole('button', { name: /home assistant connection smoke test/i })
     ).toBeInTheDocument();
     expect(screen.getAllByText(/not run yet/i)).toHaveLength(2);
+  });
+
+  it('should show Entity Debug section only when ENTITY_DEBUG flag enabled in dev mode', () => {
+    vi.stubEnv('DEV', true);
+    vi.mocked(useFeatureFlags).mockReturnValue({
+      flags: { ENTITY_DEBUG: true },
+      service: mockService,
+    });
+
+    render(<DebugPanel />);
+
+    expect(screen.getByText('Entity Debug')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /load home assistant entities/i })
+    ).toBeInTheDocument();
   });
 
   it('should not show HA smoke test section in production mode', () => {

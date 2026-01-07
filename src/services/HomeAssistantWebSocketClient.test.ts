@@ -1,49 +1,85 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IHomeAssistantConnectionConfig } from '../interfaces/IHomeAssistantConnectionConfig';
+import type { IWebSocketService, IWebSocketSubscription } from '../interfaces/IWebSocketService';
 import { HomeAssistantWebSocketClient } from './HomeAssistantWebSocketClient';
 
-class MockWebSocket {
-  static instances: MockWebSocket[] = [];
+class MockWebSocketService implements IWebSocketService {
+  connected = false;
 
-  static OPEN = 1;
-
-  readyState = MockWebSocket.OPEN;
+  connectCalls: Array<{ wsUrl: string; token: string }> = [];
   sent: string[] = [];
 
-  onopen: ((event: unknown) => void) | null = null;
-  onmessage: ((event: { data: string }) => void) | null = null;
-  onclose: ((event: unknown) => void) | null = null;
-  onerror: ((event: unknown) => void) | null = null;
+  connectError: Error | null = null;
 
-  url: string;
+  private readonly subscribers = new Set<(data: string) => void>();
+  private readonly statusSubscribers = new Set<(connected: boolean) => void>();
 
-  constructor(url: string) {
-    this.url = url;
-    MockWebSocket.instances.push(this);
+  isConnected(): boolean {
+    return this.connected;
+  }
+
+  async connect(wsUrl: string, accessToken: string): Promise<void> {
+    this.connectCalls.push({ wsUrl, token: accessToken });
+
+    if (this.connectError) {
+      throw this.connectError;
+    }
+
+    this.setConnected(true);
+  }
+
+  disconnect(): void {
+    this.setConnected(false);
   }
 
   send(data: string): void {
+    if (!this.connected) {
+      throw new Error('WebSocket is not connected');
+    }
     this.sent.push(data);
   }
 
-  close(): void {
-    this.onclose?.({});
+  subscribe(handler: (data: string) => void): IWebSocketSubscription {
+    this.subscribers.add(handler);
+    return {
+      unsubscribe: () => {
+        this.subscribers.delete(handler);
+      },
+    };
+  }
+
+  subscribeConnectionStatus(handler: (connected: boolean) => void): IWebSocketSubscription {
+    this.statusSubscribers.add(handler);
+    return {
+      unsubscribe: () => {
+        this.statusSubscribers.delete(handler);
+      },
+    };
   }
 
   serverSend(message: unknown): void {
-    this.onmessage?.({ data: JSON.stringify(message) });
+    const data = JSON.stringify(message);
+    for (const subscriber of this.subscribers) {
+      subscriber(data);
+    }
   }
 
   serverSendRaw(data: string): void {
-    this.onmessage?.({ data });
+    for (const subscriber of this.subscribers) {
+      subscriber(data);
+    }
   }
 
-  serverError(): void {
-    this.onerror?.({});
+  serverReconnect(): void {
+    this.setConnected(true);
   }
 
-  serverClose(code = 1000, reason = ''): void {
-    this.onclose?.({ code, reason });
+  private setConnected(next: boolean): void {
+    if (this.connected === next) return;
+    this.connected = next;
+    for (const subscriber of this.statusSubscribers) {
+      subscriber(next);
+    }
   }
 }
 
@@ -84,10 +120,10 @@ function createConnectionConfigStub(values: {
 }
 
 describe('HomeAssistantWebSocketClient', () => {
+  let ws: MockWebSocketService;
+
   beforeEach(() => {
-    MockWebSocket.instances = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalThis as any).WebSocket = MockWebSocket;
+    ws = new MockWebSocketService();
   });
 
   it('connect() throws when missing websocket url and token', async () => {
@@ -95,7 +131,7 @@ describe('HomeAssistantWebSocketClient', () => {
       accessToken: 'token',
     });
 
-    await expect(new HomeAssistantWebSocketClient(missingUrl).connect()).rejects.toThrow(
+    await expect(new HomeAssistantWebSocketClient(missingUrl, ws).connect()).rejects.toThrow(
       'Home Assistant WebSocket URL is not configured'
     );
 
@@ -103,7 +139,7 @@ describe('HomeAssistantWebSocketClient', () => {
       webSocketUrl: 'ws://example/api/websocket',
     });
 
-    await expect(new HomeAssistantWebSocketClient(missingToken).connect()).rejects.toThrow(
+    await expect(new HomeAssistantWebSocketClient(missingToken, ws).connect()).rejects.toThrow(
       'Home Assistant access token is not configured'
     );
   });
@@ -114,55 +150,25 @@ describe('HomeAssistantWebSocketClient', () => {
       accessToken: 'token',
     });
 
-    const client = new HomeAssistantWebSocketClient(config);
-    const connectPromise = client.connect();
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await expect(client.connect()).resolves.toBeUndefined();
 
-    const socket = MockWebSocket.instances[0];
-    expect(socket.url).toBe('wss://example/api/websocket');
-
-    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
-    await expect(connectPromise).resolves.toBeUndefined();
+    expect(ws.connectCalls).toHaveLength(1);
+    expect(ws.connectCalls[0]).toEqual({
+      wsUrl: 'wss://example/api/websocket',
+      token: 'token',
+    });
   });
 
-  it('connect() rejects on auth_invalid and on malformed JSON during auth handshake', async () => {
+  it('connect() surfaces transport connect errors', async () => {
     const config = createConnectionConfigStub({
       webSocketUrl: 'ws://example/api/websocket',
       accessToken: 'token',
     });
 
-    const client1 = new HomeAssistantWebSocketClient(config);
-    const p1 = client1.connect();
-    const s1 = MockWebSocket.instances[0];
-    s1.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-    s1.serverSend({ type: 'auth_invalid', message: 'bad token' });
-    await expect(p1).rejects.toThrow('bad token');
-
-    const client2 = new HomeAssistantWebSocketClient(config);
-    const p2 = client2.connect();
-    const s2 = MockWebSocket.instances[1];
-    s2.serverSendRaw('not-json');
-    await expect(p2).rejects.toBeDefined();
-  });
-
-  it('connect() rejects on socket error and on socket close before auth completes', async () => {
-    const config = createConnectionConfigStub({
-      webSocketUrl: 'ws://example/api/websocket',
-      accessToken: 'token',
-    });
-
-    const client1 = new HomeAssistantWebSocketClient(config);
-    const p1 = client1.connect();
-    const s1 = MockWebSocket.instances[0];
-    s1.serverError();
-    await expect(p1).rejects.toThrow('Failed to connect to Home Assistant WebSocket');
-
-    const client2 = new HomeAssistantWebSocketClient(config);
-    const p2 = client2.connect();
-    const s2 = MockWebSocket.instances[1];
-    s2.serverClose(1006, 'handshake failed');
-    await expect(p2).rejects.toThrow(
-      'WebSocket closed before auth completed (1006: handshake failed)'
+    ws.connectError = new Error('bad token');
+    await expect(new HomeAssistantWebSocketClient(config, ws).connect()).rejects.toThrow(
+      'bad token'
     );
   });
 
@@ -172,39 +178,11 @@ describe('HomeAssistantWebSocketClient', () => {
       accessToken: 'token',
     });
 
-    const client = new HomeAssistantWebSocketClient(config);
-    const connectPromise = client.connect();
-
-    const socket = MockWebSocket.instances[0];
-    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
-    await connectPromise;
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
 
     await expect(client.connect()).resolves.toBeUndefined();
-    expect(MockWebSocket.instances).toHaveLength(1);
-  });
-
-  it('connect() authenticates on auth_required and resolves on auth_ok', async () => {
-    const config = createConnectionConfigStub({
-      webSocketUrl: 'ws://example/api/websocket',
-      accessToken: 'token',
-    });
-
-    const client = new HomeAssistantWebSocketClient(config);
-    const connectPromise = client.connect();
-
-    const socket = MockWebSocket.instances[0];
-    expect(socket.url).toBe('ws://example/api/websocket');
-
-    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-
-    expect(socket.sent.length).toBe(1);
-    expect(JSON.parse(socket.sent[0])).toEqual({ type: 'auth', access_token: 'token' });
-
-    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
-
-    await expect(connectPromise).resolves.toBeUndefined();
-    expect(client.isConnected()).toBe(true);
+    expect(ws.connectCalls).toHaveLength(1);
   });
 
   it('getStates() sends get_states and returns result', async () => {
@@ -213,23 +191,18 @@ describe('HomeAssistantWebSocketClient', () => {
       accessToken: 'token',
     });
 
-    const client = new HomeAssistantWebSocketClient(config);
-    const connectPromise = client.connect();
-
-    const socket = MockWebSocket.instances[0];
-    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
-    await connectPromise;
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
 
     const statesPromise = client.getStates();
 
-    const lastSent = JSON.parse(socket.sent[socket.sent.length - 1]) as {
+    const lastSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
       id: number;
       type: string;
     };
     expect(lastSent.type).toBe('get_states');
 
-    socket.serverSend({
+    ws.serverSend({
       id: lastSent.id,
       type: 'result',
       success: true,
@@ -256,14 +229,10 @@ describe('HomeAssistantWebSocketClient', () => {
       accessToken: 'token',
     });
 
-    const client = new HomeAssistantWebSocketClient(config);
+    const client = new HomeAssistantWebSocketClient(config, ws);
     await expect(client.getStates()).rejects.toThrow('Home Assistant client is not connected');
 
-    const connectPromise = client.connect();
-    const socket = MockWebSocket.instances[0];
-    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
-    await connectPromise;
+    await client.connect();
 
     const pending = client.getStates();
     client.disconnect();
@@ -276,18 +245,13 @@ describe('HomeAssistantWebSocketClient', () => {
       accessToken: 'token',
     });
 
-    const client = new HomeAssistantWebSocketClient(config);
-    const connectPromise = client.connect();
-
-    const socket = MockWebSocket.instances[0];
-    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
-    await connectPromise;
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
 
     const handler = vi.fn();
     const subscriptionPromise = client.subscribeToEvents('state_changed', handler);
 
-    const subscribeSent = JSON.parse(socket.sent[socket.sent.length - 1]) as {
+    const subscribeSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
       id: number;
       type: string;
       event_type?: string;
@@ -296,11 +260,11 @@ describe('HomeAssistantWebSocketClient', () => {
     expect(subscribeSent.type).toBe('subscribe_events');
     expect(subscribeSent.event_type).toBe('state_changed');
 
-    socket.serverSend({ id: subscribeSent.id, type: 'result', success: true, result: null });
+    ws.serverSend({ id: subscribeSent.id, type: 'result', success: true, result: null });
 
     const subscription = await subscriptionPromise;
 
-    socket.serverSend({
+    ws.serverSend({
       id: subscribeSent.id,
       type: 'event',
       event: {
@@ -316,7 +280,7 @@ describe('HomeAssistantWebSocketClient', () => {
 
     const unsubscribePromise = subscription.unsubscribe();
 
-    const unsubscribeSent = JSON.parse(socket.sent[socket.sent.length - 1]) as {
+    const unsubscribeSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
       id: number;
       type: string;
       subscription: number;
@@ -325,7 +289,7 @@ describe('HomeAssistantWebSocketClient', () => {
     expect(unsubscribeSent.type).toBe('unsubscribe_events');
     expect(unsubscribeSent.subscription).toBe(subscribeSent.id);
 
-    socket.serverSend({ id: unsubscribeSent.id, type: 'result', success: true, result: null });
+    ws.serverSend({ id: unsubscribeSent.id, type: 'result', success: true, result: null });
 
     await expect(unsubscribePromise).resolves.toBeUndefined();
   });
@@ -336,18 +300,13 @@ describe('HomeAssistantWebSocketClient', () => {
       accessToken: 'token',
     });
 
-    const client = new HomeAssistantWebSocketClient(config);
-    const connectPromise = client.connect();
-
-    const socket = MockWebSocket.instances[0];
-    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
-    await connectPromise;
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
 
     const handler = vi.fn();
     const subscriptionPromise = client.subscribeToEvents(null, handler);
 
-    const subscribeSent = JSON.parse(socket.sent[socket.sent.length - 1]) as {
+    const subscribeSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
       id: number;
       type: string;
       event_type?: string;
@@ -356,7 +315,7 @@ describe('HomeAssistantWebSocketClient', () => {
     expect(subscribeSent.type).toBe('subscribe_events');
     expect(subscribeSent.event_type).toBeUndefined();
 
-    socket.serverSend({ id: subscribeSent.id, type: 'result', success: true, result: null });
+    ws.serverSend({ id: subscribeSent.id, type: 'result', success: true, result: null });
     const subscription = await subscriptionPromise;
 
     client.disconnect();
@@ -370,23 +329,18 @@ describe('HomeAssistantWebSocketClient', () => {
       accessToken: 'token',
     });
 
-    const client = new HomeAssistantWebSocketClient(config);
-    const connectPromise = client.connect();
-
-    const socket = MockWebSocket.instances[0];
-    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
-    await connectPromise;
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
 
     const servicesPromise = client.getServices();
 
-    const lastSent = JSON.parse(socket.sent[socket.sent.length - 1]) as {
+    const lastSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
       id: number;
       type: string;
     };
     expect(lastSent.type).toBe('get_services');
 
-    socket.serverSend({
+    ws.serverSend({
       id: lastSent.id,
       type: 'result',
       success: true,
@@ -414,13 +368,8 @@ describe('HomeAssistantWebSocketClient', () => {
       accessToken: 'token',
     });
 
-    const client = new HomeAssistantWebSocketClient(config);
-    const connectPromise = client.connect();
-
-    const socket = MockWebSocket.instances[0];
-    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
-    await connectPromise;
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
 
     const promise = client.callService({
       domain: 'light',
@@ -430,7 +379,7 @@ describe('HomeAssistantWebSocketClient', () => {
       return_response: true,
     });
 
-    const lastSent = JSON.parse(socket.sent[socket.sent.length - 1]) as {
+    const lastSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
       id: number;
       type: string;
       domain: string;
@@ -444,7 +393,7 @@ describe('HomeAssistantWebSocketClient', () => {
     expect(lastSent.domain).toBe('light');
     expect(lastSent.service).toBe('turn_on');
 
-    socket.serverSend({
+    ws.serverSend({
       id: lastSent.id,
       type: 'result',
       success: true,
@@ -465,13 +414,8 @@ describe('HomeAssistantWebSocketClient', () => {
       accessToken: 'token',
     });
 
-    const client = new HomeAssistantWebSocketClient(config);
-    const connectPromise = client.connect();
-
-    const socket = MockWebSocket.instances[0];
-    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
-    await connectPromise;
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
 
     const promise = client.callService({
       domain: 'light',
@@ -479,13 +423,13 @@ describe('HomeAssistantWebSocketClient', () => {
       target: { entity_id: 'light.nope' },
     });
 
-    const lastSent = JSON.parse(socket.sent[socket.sent.length - 1]) as {
+    const lastSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
       id: number;
       type: string;
     };
     expect(lastSent.type).toBe('call_service');
 
-    socket.serverSend({
+    ws.serverSend({
       id: lastSent.id,
       type: 'result',
       success: false,
@@ -504,22 +448,17 @@ describe('HomeAssistantWebSocketClient', () => {
       accessToken: 'token',
     });
 
-    const client = new HomeAssistantWebSocketClient(config);
-    const connectPromise = client.connect();
-
-    const socket = MockWebSocket.instances[0];
-    socket.serverSend({ type: 'auth_required', ha_version: '2026.1.0' });
-    socket.serverSend({ type: 'auth_ok', ha_version: '2026.1.0' });
-    await connectPromise;
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
 
     const statesPromise = client.getStates();
 
-    const lastSent = JSON.parse(socket.sent[socket.sent.length - 1]) as {
+    const lastSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
       id: number;
       type: string;
     };
 
-    socket.serverSend({
+    ws.serverSend({
       id: lastSent.id,
       type: 'result',
       success: false,
@@ -530,14 +469,14 @@ describe('HomeAssistantWebSocketClient', () => {
       message: 'Home Assistant command failed',
     });
 
-    expect(() => socket.serverSendRaw('not-json')).not.toThrow();
+    expect(() => ws.serverSendRaw('not-json')).not.toThrow();
 
     // Messages that don't match a pending request or subscription should be ignored.
     expect(() =>
-      socket.serverSend({ id: 999, type: 'result', success: true, result: { ok: true } })
+      ws.serverSend({ id: 999, type: 'result', success: true, result: { ok: true } })
     ).not.toThrow();
     expect(() =>
-      socket.serverSend({
+      ws.serverSend({
         id: 999,
         type: 'event',
         event: {
@@ -549,5 +488,196 @@ describe('HomeAssistantWebSocketClient', () => {
         },
       })
     ).not.toThrow();
+  });
+
+  it('resubscribes existing subscriptions after transport reconnect', async () => {
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
+
+    const handler = vi.fn();
+    const subscriptionPromise = client.subscribeToEvents('state_changed', handler);
+
+    const subscribeSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
+      id: number;
+      type: string;
+      event_type?: string;
+    };
+
+    ws.serverSend({ id: subscribeSent.id, type: 'result', success: true, result: null });
+    await subscriptionPromise;
+
+    // Simulate underlying transport dropping and reconnecting.
+    ws.disconnect();
+    ws.serverReconnect();
+
+    // Client should attempt to resubscribe with the same subscription id.
+    const resent = ws.sent
+      .map((s) => {
+        try {
+          return JSON.parse(s) as { type?: unknown; id?: unknown; event_type?: unknown };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .filter((m) => m?.type === 'subscribe_events' && m?.id === subscribeSent.id);
+
+    expect(resent.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('resubscribeAll replays subscribe_events with the same id + event_type', async () => {
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
+
+    const handler = vi.fn();
+    const subscriptionPromise = client.subscribeToEvents('state_changed', handler);
+
+    const initialSubscribe = JSON.parse(ws.sent[ws.sent.length - 1]) as {
+      id: number;
+      type: string;
+      event_type?: string;
+    };
+    expect(initialSubscribe.type).toBe('subscribe_events');
+    expect(initialSubscribe.event_type).toBe('state_changed');
+
+    ws.serverSend({ id: initialSubscribe.id, type: 'result', success: true, result: null });
+    await subscriptionPromise;
+
+    const sentBeforeReconnect = ws.sent.length;
+
+    ws.disconnect();
+    ws.serverReconnect();
+
+    let resubscribeRaw: string | undefined;
+    for (let idx = ws.sent.length - 1; idx >= sentBeforeReconnect; idx -= 1) {
+      const s = ws.sent[idx];
+      try {
+        const parsed = JSON.parse(s) as { type?: unknown; id?: unknown };
+        if (parsed.type === 'subscribe_events' && parsed.id === initialSubscribe.id) {
+          resubscribeRaw = s;
+          break;
+        }
+      } catch {
+        // Ignore unparsable messages.
+      }
+    }
+
+    expect(resubscribeRaw).toBeTruthy();
+    const resubscribe = JSON.parse(resubscribeRaw as string) as {
+      id: number;
+      type: string;
+      event_type?: string;
+    };
+
+    expect(resubscribe).toMatchObject({
+      id: initialSubscribe.id,
+      type: 'subscribe_events',
+      event_type: 'state_changed',
+    });
+
+    // Unblock the internal resubscribe loop.
+    ws.serverSend({ id: resubscribe.id, type: 'result', success: true, result: null });
+  });
+
+  it('resubscribeAll continues when a resubscribe fails (and handles null event_type)', async () => {
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
+
+    const handler1 = vi.fn();
+    const handler2 = vi.fn();
+
+    const sub1Promise = client.subscribeToEvents('state_changed', handler1);
+    const sub1 = JSON.parse(ws.sent[ws.sent.length - 1]) as {
+      id: number;
+      type: string;
+      event_type?: string;
+    };
+    ws.serverSend({ id: sub1.id, type: 'result', success: true, result: null });
+    await sub1Promise;
+
+    const sub2Promise = client.subscribeToEvents(null, handler2);
+    const sub2 = JSON.parse(ws.sent[ws.sent.length - 1]) as {
+      id: number;
+      type: string;
+      event_type?: string;
+    };
+    expect(sub2.type).toBe('subscribe_events');
+    expect('event_type' in sub2).toBe(false);
+    ws.serverSend({ id: sub2.id, type: 'result', success: true, result: null });
+    await sub2Promise;
+
+    const sentBeforeReconnect = ws.sent.length;
+
+    ws.disconnect();
+    ws.serverReconnect();
+
+    // With parallel resubscribe, we should see both resubscribe attempts issued after reconnect.
+    const resubscribeMessages = ws.sent
+      .slice(sentBeforeReconnect)
+      .map((s) => {
+        try {
+          return JSON.parse(s) as { id?: unknown; type?: unknown; event_type?: unknown };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .filter((m) => m?.type === 'subscribe_events') as Array<{
+      id: number;
+      type: 'subscribe_events';
+      event_type?: string;
+    }>;
+
+    const sub1Resubscribe = resubscribeMessages.find((m) => m.id === sub1.id);
+    const sub2Resubscribe = resubscribeMessages.find((m) => m.id === sub2.id);
+
+    expect(sub1Resubscribe).toMatchObject({
+      id: sub1.id,
+      type: 'subscribe_events',
+      event_type: 'state_changed',
+    });
+    expect(sub2Resubscribe).toBeTruthy();
+    expect(sub2Resubscribe?.id).toBe(sub2.id);
+    expect(sub2Resubscribe?.type).toBe('subscribe_events');
+    expect(sub2Resubscribe && 'event_type' in sub2Resubscribe).toBe(false);
+
+    // Simulate one resubscribe failing and the other succeeding.
+    ws.serverSend({
+      id: sub1.id,
+      type: 'result',
+      success: false,
+      error: { code: 'unknown', message: 'nope', data: null },
+    });
+    ws.serverSend({ id: sub2.id, type: 'result', success: true, result: null });
+
+    // Ensure the client still routes events for the successfully resubscribed id.
+    ws.serverSend({
+      id: sub2.id,
+      type: 'event',
+      event: {
+        event_type: 'state_changed',
+        data: { entity_id: 'light.kitchen', old_state: null, new_state: null },
+        time_fired: '2026-01-01T00:00:00+00:00',
+        origin: 'LOCAL',
+        context: { id: '1', parent_id: null, user_id: null },
+      },
+    });
+
+    expect(handler2).toHaveBeenCalled();
   });
 });

@@ -15,6 +15,10 @@ export const TYPES = {
   IFeatureFlagService: Symbol.for('IFeatureFlagService'),
   IHomeAssistantClient: Symbol.for('IHomeAssistantClient'),
 
+  IHttpClient: Symbol.for('IHttpClient'),
+  IWebSocketService: Symbol.for('IWebSocketService'),
+  IEntityService: Symbol.for('IEntityService'),
+
   IHomeAssistantConnectionConfig: Symbol.for('IHomeAssistantConnectionConfig'),
 
   IFloorplanDataSource: Symbol.for('IFloorplanDataSource'),
