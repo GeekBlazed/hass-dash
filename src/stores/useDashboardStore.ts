@@ -2,6 +2,10 @@ import { produce } from 'immer';
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
+import type { ClimateModel } from '../features/prototype/model/climate';
+import type { FloorplanModel } from '../features/prototype/model/floorplan';
+import type { LightingModel } from '../features/prototype/model/lighting';
+
 export type DashboardPanel = 'agenda' | 'climate' | 'lighting' | 'media' | null;
 
 export interface StageView {
@@ -41,6 +45,8 @@ export interface LocalClimateModel {
   areas: Record<string, LocalAreaClimateState>;
 }
 
+export type FloorplanLoadState = 'idle' | 'loading' | 'loaded' | 'error';
+
 interface DashboardState {
   activePanel: DashboardPanel;
   setActivePanel: (panel: DashboardPanel) => void;
@@ -49,13 +55,24 @@ interface DashboardState {
   setStageView: (view: Partial<StageView>) => void;
   resetStageView: () => void;
 
+  floorplan: {
+    state: FloorplanLoadState;
+    model: FloorplanModel | null;
+    errorMessage: string | null;
+  };
+  setFloorplanLoading: () => void;
+  setFloorplanLoaded: (model: FloorplanModel) => void;
+  setFloorplanError: (message: string) => void;
+
   // Local-only prototype models (while HA is not integrated)
   lighting: LocalLightingModel;
+  setLightingModel: (model: LightingModel) => void;
   setLightState: (lightId: string, next: Partial<Omit<LocalLightState, 'id'>>) => void;
   setLightOn: (lightId: string, on: boolean) => void;
   clearLighting: () => void;
 
   climate: LocalClimateModel;
+  setClimateModel: (model: ClimateModel) => void;
   setThermostat: (next: Partial<LocalThermostatState>) => void;
   setAreaClimate: (areaId: string, next: Partial<Omit<LocalAreaClimateState, 'areaId'>>) => void;
   clearClimate: () => void;
@@ -72,8 +89,25 @@ const DEFAULT_LIGHTING: LocalLightingModel = {
 };
 
 const DEFAULT_CLIMATE: LocalClimateModel = {
+  thermostat: {
+    measuredTemperature: 71,
+    measuredHumidity: 47,
+    hvacMode: 'cool',
+    fanMode: 'auto',
+    setTemperature: 71,
+  },
+  areas: {},
+};
+
+const EMPTY_CLIMATE: LocalClimateModel = {
   thermostat: {},
   areas: {},
+};
+
+const DEFAULT_FLOORPLAN: DashboardState['floorplan'] = {
+  state: 'idle',
+  model: null,
+  errorMessage: null,
 };
 
 export const useDashboardStore = create<DashboardState>()(
@@ -95,7 +129,52 @@ export const useDashboardStore = create<DashboardState>()(
           set({ stageView: DEFAULT_STAGE_VIEW });
         },
 
+        floorplan: DEFAULT_FLOORPLAN,
+        setFloorplanLoading: () => {
+          set({
+            floorplan: {
+              state: 'loading',
+              model: null,
+              errorMessage: null,
+            },
+          });
+        },
+        setFloorplanLoaded: (model) => {
+          set({
+            floorplan: {
+              state: 'loaded',
+              model,
+              errorMessage: null,
+            },
+          });
+        },
+        setFloorplanError: (message) => {
+          set({
+            floorplan: {
+              state: 'error',
+              model: null,
+              errorMessage: message,
+            },
+          });
+        },
+
         lighting: DEFAULT_LIGHTING,
+        setLightingModel: (model) => {
+          set((state) =>
+            produce(state, (draft) => {
+              draft.lighting.lights = {};
+              for (const light of model.lights) {
+                draft.lighting.lights[light.id] = {
+                  id: light.id,
+                  name: light.name,
+                  state: light.state,
+                  brightness: light.brightness,
+                  colorTemp: light.colorTemp,
+                };
+              }
+            })
+          );
+        },
         setLightState: (lightId, next) => {
           set((state) =>
             produce(state, (draft) => {
@@ -124,6 +203,28 @@ export const useDashboardStore = create<DashboardState>()(
         },
 
         climate: DEFAULT_CLIMATE,
+        setClimateModel: (model) => {
+          set((state) =>
+            produce(state, (draft) => {
+              draft.climate.thermostat = {
+                setTemperature: model.thermostat.setTemperature,
+                hvacMode: model.thermostat.hvacMode,
+                fanMode: model.thermostat.fanMode,
+                measuredTemperature: model.thermostat.measuredTemperature,
+                measuredHumidity: model.thermostat.measuredHumidity,
+              };
+
+              draft.climate.areas = {};
+              for (const area of model.areas) {
+                draft.climate.areas[area.areaId] = {
+                  areaId: area.areaId,
+                  temp: area.temp,
+                  humidity: area.humidity ?? null,
+                };
+              }
+            })
+          );
+        },
         setThermostat: (next) => {
           set((state) =>
             produce(state, (draft) => {
@@ -141,7 +242,7 @@ export const useDashboardStore = create<DashboardState>()(
           );
         },
         clearClimate: () => {
-          set({ climate: DEFAULT_CLIMATE });
+          set({ climate: EMPTY_CLIMATE });
         },
       }),
       {
@@ -150,6 +251,7 @@ export const useDashboardStore = create<DashboardState>()(
         partialize: (state) => ({
           activePanel: state.activePanel,
           stageView: state.stageView,
+          floorplan: state.floorplan,
           lighting: state.lighting,
           climate: state.climate,
         }),

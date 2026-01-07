@@ -1,11 +1,17 @@
 import { Container } from 'inversify';
 import 'reflect-metadata';
+import type { IClimateDataSource } from '../interfaces/IClimateDataSource';
 import type { IConfigService } from '../interfaces/IConfigService';
 import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
+import type { IFloorplanDataSource } from '../interfaces/IFloorplanDataSource';
 import type { IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
+import type { ILightingDataSource } from '../interfaces/ILightingDataSource';
 import { ConfigService } from '../services/ConfigService';
 import { FeatureFlagService } from '../services/FeatureFlagService';
 import { HomeAssistantWebSocketClient } from '../services/HomeAssistantWebSocketClient';
+import { PublicClimateYamlDataSource } from '../services/PublicClimateYamlDataSource';
+import { PublicFloorplanYamlDataSource } from '../services/PublicFloorplanYamlDataSource';
+import { PublicLightingYamlDataSource } from '../services/PublicLightingYamlDataSource';
 import { TYPES } from './types';
 
 /**
@@ -37,6 +43,20 @@ container
 container
   .bind<IHomeAssistantClient>(TYPES.IHomeAssistantClient)
   .to(HomeAssistantWebSocketClient)
+  .inSingletonScope();
+
+// Prototype data sources (local-only, swappable later for HA)
+container
+  .bind<IFloorplanDataSource>(TYPES.IFloorplanDataSource)
+  .to(PublicFloorplanYamlDataSource)
+  .inSingletonScope();
+container
+  .bind<IClimateDataSource>(TYPES.IClimateDataSource)
+  .to(PublicClimateYamlDataSource)
+  .inSingletonScope();
+container
+  .bind<ILightingDataSource>(TYPES.ILightingDataSource)
+  .to(PublicLightingYamlDataSource)
   .inSingletonScope();
 
 // Export the configured container
