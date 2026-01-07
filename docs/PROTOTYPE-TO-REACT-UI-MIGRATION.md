@@ -2,7 +2,7 @@
 
 This document outlines a practical, incremental path to take the working single-file prototype in `UI--IGNORE/floorplan-prototype.html` and implement the same UI in the production React/Vite app under `src/`.
 
-The goal is **UI parity** (layout, panel switching behavior, and overlay visibility), while keeping the architecture consistent with this repo (TypeScript strict, feature flags, DI, tests).
+The goal is **UI parity** (layout, panel switching behavior, and overlay visibility), while keeping the architecture consistent with this repo (TypeScript strict, DI, tests).
 
 ---
 
@@ -15,7 +15,7 @@ The goal is **UI parity** (layout, panel switching behavior, and overlay visibil
   - Map overlay layers show/hide based on the active panel.
 - Preserve the prototype’s current non-fatal behavior:
   - If lighting data is missing/unparseable, Lighting panel shows: **“There are no lights on.”**
-- Deliver in small PRs behind a feature flag, so `main` stays deployable.
+- Deliver in small PRs so `main` stays deployable.
 
 ## Non-goals (for the UI parity milestone)
 
@@ -86,24 +86,9 @@ This keeps the production app maintainable and makes it easy to evolve the data 
 
 ---
 
-### 2) Add a feature flag for the new React UI
+### 2) Implement parity UI directly in the Dashboard
 
-Add a flag (example):
-
-- `VITE_FEATURE_PROTOTYPE_UI=false`
-
-Use it to switch the app between:
-
-- existing dashboard scaffold
-- new prototype-parity UI
-
-#### Why
-
-- Allows incremental rollout without breaking current UI.
-
-#### Acceptance Criteria (Step 2)
-
-- Toggling the flag switches between UIs.
+The parity UI now lives directly under `src/components/dashboard/` and is rendered by `Dashboard`.
 
 ---
 

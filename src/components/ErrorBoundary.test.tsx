@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { useState, type JSX } from 'react';
 import { describe, expect, it } from 'vitest';
 import { ErrorBoundary } from './ErrorBoundary';
-
 function AlwaysThrows(): JSX.Element {
   throw new Error('Boom');
 }
