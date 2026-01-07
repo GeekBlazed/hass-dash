@@ -9,7 +9,7 @@ export function ClimatePanel({ isHidden = false }: { isHidden?: boolean }) {
   const measuredTemp = thermostat.measuredTemperature ?? 71;
   const measuredHumidity = thermostat.measuredHumidity ?? 47;
   const mode = thermostat.hvacMode ?? 'cool';
-  const modeLabel = mode.length > 0 ? `${mode[0].toUpperCase()}${mode.slice(1)}` : 'Cool';
+  const modeLabel = mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : 'Cool';
 
   const { minTemp, maxTemp } = useMemo(() => {
     const temps = Object.values(areas)

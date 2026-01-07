@@ -88,17 +88,6 @@ const DEFAULT_LIGHTING: LocalLightingModel = {
   lights: {},
 };
 
-const DEFAULT_CLIMATE: LocalClimateModel = {
-  thermostat: {
-    measuredTemperature: 71,
-    measuredHumidity: 47,
-    hvacMode: 'cool',
-    fanMode: 'auto',
-    setTemperature: 71,
-  },
-  areas: {},
-};
-
 const EMPTY_CLIMATE: LocalClimateModel = {
   thermostat: {},
   areas: {},
@@ -202,7 +191,7 @@ export const useDashboardStore = create<DashboardState>()(
           set({ lighting: DEFAULT_LIGHTING });
         },
 
-        climate: DEFAULT_CLIMATE,
+        climate: EMPTY_CLIMATE,
         setClimateModel: (model) => {
           set((state) =>
             produce(state, (draft) => {
