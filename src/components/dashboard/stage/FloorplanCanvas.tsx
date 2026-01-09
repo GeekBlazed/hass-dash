@@ -1,6 +1,7 @@
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { FloorplanEmptyOverlay } from './FloorplanEmptyOverlay';
 import { FloorplanSvg } from './FloorplanSvg';
+import { TrackedDeviceMarkersBridge } from './TrackedDeviceMarkersBridge';
 
 export function FloorplanCanvas({ onRetry }: { onRetry: () => void }) {
   const floorplan = useDashboardStore((s) => s.floorplan);
@@ -12,6 +13,7 @@ export function FloorplanCanvas({ onRetry }: { onRetry: () => void }) {
     <>
       <FloorplanEmptyOverlay isHidden={isHidden} message={message} onRetry={onRetry} />
       <FloorplanSvg />
+      <TrackedDeviceMarkersBridge />
     </>
   );
 }
