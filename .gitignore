@@ -29,4 +29,5 @@ coverage
 *.sw?
 
 **/*--IGNORE*
-public/data
+public/data/
+public/data/**
