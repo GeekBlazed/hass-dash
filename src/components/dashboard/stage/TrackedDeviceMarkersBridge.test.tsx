@@ -8,6 +8,8 @@ import { TrackedDeviceMarkersBridge } from './TrackedDeviceMarkersBridge';
 describe('TrackedDeviceMarkersBridge', () => {
   beforeEach(() => {
     vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
+    vi.stubEnv('VITE_FEATURE_TRACKING_DEBUG_OVERLAY', 'false');
+    vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'xyz');
     useDeviceLocationStore.persist.clearStorage();
     useDeviceLocationStore.setState({ locationsByEntityId: {} });
   });
@@ -129,6 +131,136 @@ describe('TrackedDeviceMarkersBridge', () => {
     await waitFor(() => {
       expect(existing.getAttribute('data-hass-dash-tracking')).toBe(null);
       expect(existing.getAttribute('transform')).toBe('translate(2 3)');
+    });
+  });
+
+  it('renders a dev-only debug label (xyz mode) when enabled', async () => {
+    vi.stubEnv('VITE_FEATURE_TRACKING_DEBUG_OVERLAY', 'true');
+    vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'xyz');
+
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2, z: 3 },
+        confidence: 80,
+        lastSeen: '2026-01-07T09:15:53Z',
+        receivedAt: 123,
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+
+      const debug = marker?.querySelector('text[data-hass-dash-tracking-debug="true"]');
+      expect(debug).toBeTruthy();
+
+      const tspans = debug?.querySelectorAll('tspan');
+      expect(tspans?.length).toBeGreaterThanOrEqual(2);
+      expect(debug?.textContent).toContain('x=1.00 y=2.00 z=3.00');
+      expect(debug?.textContent).toContain('conf=80');
+      expect(debug?.textContent).toContain('last_seen=2026-01-07T09:15:53Z');
+    });
+  });
+
+  it('renders a dev-only debug label (geo mode) when enabled', async () => {
+    vi.stubEnv('VITE_FEATURE_TRACKING_DEBUG_OVERLAY', 'true');
+    vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'geo');
+
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        geo: { latitude: 40.123, longitude: -74.456, elevation: 12.5 },
+        confidence: 80,
+        lastSeen: '2026-01-07T09:15:53Z',
+        receivedAt: 123,
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+
+      const debug = marker?.querySelector('text[data-hass-dash-tracking-debug="true"]');
+      expect(debug).toBeTruthy();
+
+      const tspans = debug?.querySelectorAll('tspan');
+      expect(tspans?.length).toBeGreaterThanOrEqual(2);
+      expect(debug?.textContent).toContain('lat=40.12 lon=-74.46 ele=12.50');
+      expect(debug?.textContent).toContain('conf=80');
+      expect(debug?.textContent).toContain('last_seen=2026-01-07T09:15:53Z');
+    });
+  });
+
+  it('removes debug label when debug overlay is disabled', async () => {
+    vi.stubEnv('VITE_FEATURE_TRACKING_DEBUG_OVERLAY', 'true');
+    vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'xyz');
+
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2, z: 3 },
+        confidence: 80,
+        lastSeen: '2026-01-07T09:15:53Z',
+        receivedAt: 123,
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+      expect(marker?.querySelector('text[data-hass-dash-tracking-debug="true"]')).toBeTruthy();
+    });
+
+    vi.stubEnv('VITE_FEATURE_TRACKING_DEBUG_OVERLAY', 'false');
+
+    // Force effect by updating the store.
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 4, y: 5 },
+        confidence: 80,
+        lastSeen: '2026-01-07T09:15:54Z',
+        receivedAt: 124,
+      });
+    });
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+      expect(marker?.querySelector('text[data-hass-dash-tracking-debug="true"]')).toBeFalsy();
     });
   });
 });

@@ -150,6 +150,7 @@ export class DeviceLocationTrackingService {
 const mapUpdateToDeviceLocation = (update: DeviceLocationUpdate): DeviceLocation => {
   return {
     position: update.position,
+    geo: update.geo,
     confidence: update.confidence,
     lastSeen: update.lastSeen,
     receivedAt: update.receivedAt,

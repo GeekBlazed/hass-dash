@@ -3,6 +3,7 @@ import type { HaEntityState } from '../../../types/home-assistant';
 export interface DeviceLocationUpdate {
   entityId: string;
   position: { x: number; y: number; z?: number };
+  geo?: { latitude: number; longitude: number; elevation?: number };
   confidence: number;
   lastSeen?: string;
   receivedAt: number;
@@ -44,15 +45,29 @@ export const extractDeviceLocationUpdateFromHaEntityState = (
   const z = getNumber(attributes.z);
   const confidence = getNumber(attributes.confidence);
 
+  const latitude = getNumber(attributes.latitude);
+  const longitude = getNumber(attributes.longitude);
+  const elevation = getNumber(attributes.elevation);
+
   if (x === undefined || y === undefined || confidence === undefined) return [];
   if (!(confidence > minConfidence)) return [];
 
   const lastSeen = getString(attributes.last_seen);
 
+  const geo =
+    latitude !== undefined && longitude !== undefined
+      ? {
+          latitude,
+          longitude,
+          ...(elevation === undefined ? {} : { elevation }),
+        }
+      : undefined;
+
   return [
     {
       entityId: entityState.entity_id,
       position: z === undefined ? { x, y } : { x, y, z },
+      geo,
       confidence,
       lastSeen,
       receivedAt,
@@ -99,14 +114,28 @@ export const extractDeviceLocationUpdatesFromJsonPayload = (
     const z = getNumber(a.z);
     const confidence = getNumber(a.confidence);
 
+    const latitude = getNumber(a.latitude);
+    const longitude = getNumber(a.longitude);
+    const elevation = getNumber(a.elevation);
+
     if (x === undefined || y === undefined || confidence === undefined) continue;
     if (!(confidence > minConfidence)) continue;
 
     const lastSeen = getString(a.last_seen);
 
+    const geo =
+      latitude !== undefined && longitude !== undefined
+        ? {
+            latitude,
+            longitude,
+            ...(elevation === undefined ? {} : { elevation }),
+          }
+        : undefined;
+
     updates.push({
       entityId,
       position: z === undefined ? { x, y } : { x, y, z },
+      geo,
       confidence,
       lastSeen,
       receivedAt,

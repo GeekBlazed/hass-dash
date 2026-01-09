@@ -8,6 +8,13 @@ export interface DeviceLocation {
     y: number;
     z?: number;
   };
+
+  geo?: {
+    latitude: number;
+    longitude: number;
+    elevation?: number;
+  };
+
   confidence: number;
   lastSeen: string | undefined;
   receivedAt: number;

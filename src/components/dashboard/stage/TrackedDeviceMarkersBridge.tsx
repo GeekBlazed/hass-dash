@@ -1,6 +1,11 @@
 import { useEffect } from 'react';
 
+import {
+  getTrackingDebugOverlayMode,
+  type TrackingDebugOverlayMode,
+} from '../../../features/tracking/trackingDebugOverlayConfig';
 import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
+import type { DeviceLocation } from '../../../stores/useDeviceLocationStore';
 import { useDeviceLocationStore } from '../../../stores/useDeviceLocationStore';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -10,6 +15,7 @@ const ENTITY_ID_ATTR = 'data-entity-id';
 const DEVICE_ID_ATTR = 'data-device-id';
 const TRACKING_KIND_ATTR = 'data-hass-dash-tracking-kind';
 const ORIG_TRANSFORM_ATTR = 'data-hass-dash-orig-transform';
+const DEBUG_LABEL_ATTR = 'data-hass-dash-tracking-debug';
 
 const createSvgElement = <T extends keyof SVGElementTagNameMap>(
   tag: T
@@ -71,10 +77,83 @@ const getMarkerIdsForEntityId = (entityId: string): string[] => {
   return objectId !== entityId ? [entityId, objectId] : [entityId];
 };
 
+const formatNumberCompact = (value: number): string => {
+  if (!Number.isFinite(value)) return String(value);
+  // Keep this compact for the overlay; the point is glanceable debugging.
+  return value.toFixed(2);
+};
+
+const formatDebugLabelLines = (
+  location: DeviceLocation,
+  mode: TrackingDebugOverlayMode
+): string[] => {
+  const confidence = location.confidence;
+  const lastSeen = location.lastSeen ?? '-';
+
+  if (mode === 'geo') {
+    const lat = location.geo?.latitude;
+    const lon = location.geo?.longitude;
+    const ele = location.geo?.elevation;
+
+    const geoLine =
+      lat !== undefined && lon !== undefined
+        ? `lat=${formatNumberCompact(lat)} lon=${formatNumberCompact(lon)}${
+            ele === undefined ? '' : ` ele=${formatNumberCompact(ele)}`
+          }`
+        : 'lat=- lon=-';
+
+    return [geoLine, `conf=${confidence}`, `last_seen=${lastSeen}`];
+  }
+
+  const { x, y, z } = location.position;
+  const xyzLine = `x=${formatNumberCompact(x)} y=${formatNumberCompact(y)}${
+    z === undefined ? '' : ` z=${formatNumberCompact(z)}`
+  }`;
+  return [xyzLine, `conf=${confidence}`, `last_seen=${lastSeen}`];
+};
+
+const upsertDebugLabel = (
+  marker: SVGGElement,
+  lines: string[] | null,
+  mode: TrackingDebugOverlayMode
+): void => {
+  const existing = marker.querySelector<SVGTextElement>(`text[${DEBUG_LABEL_ATTR}="true"]`);
+  if (!lines || lines.length === 0) {
+    existing?.remove();
+    return;
+  }
+
+  const el = existing ?? createSvgElement('text');
+  if (!existing) {
+    el.setAttribute(DEBUG_LABEL_ATTR, 'true');
+    el.setAttribute('class', 'device-debug-label');
+    el.setAttribute('x', '0.9');
+    el.setAttribute('y', mode === 'geo' ? '-0.9' : '-0.7');
+    el.setAttribute('text-anchor', 'start');
+    el.setAttribute('dominant-baseline', 'hanging');
+    el.setAttribute('font-size', '0.22');
+    el.setAttribute('fill', 'var(--text-muted)');
+    el.setAttribute('pointer-events', 'none');
+    marker.appendChild(el);
+  }
+
+  while (el.firstChild) el.removeChild(el.firstChild);
+
+  lines.forEach((line, index) => {
+    const tspan = createSvgElement('tspan');
+    tspan.setAttribute('x', '0.9');
+    tspan.setAttribute('dy', index === 0 ? '0' : '1.1em');
+    tspan.textContent = line;
+    el.appendChild(tspan);
+  });
+};
+
 const syncMarkers = (
   layer: SVGGElement,
   isEnabled: boolean,
-  locationsByEntityId: Record<string, { position: { x: number; y: number } }>
+  locationsByEntityId: Record<string, DeviceLocation>,
+  showDebugOverlay: boolean,
+  debugMode: TrackingDebugOverlayMode
 ): void => {
   const existingTrackingMarkers = new Map<string, SVGGElement>();
   layer.querySelectorAll<SVGGElement>(`g[${TRACKING_ATTR}="true"]`).forEach((marker) => {
@@ -86,6 +165,8 @@ const syncMarkers = (
 
   if (!isEnabled) {
     for (const marker of existingTrackingMarkers.values()) {
+      upsertDebugLabel(marker, null, debugMode);
+
       const kind = marker.getAttribute(TRACKING_KIND_ATTR);
       if (kind === 'bound') {
         const original = marker.getAttribute(ORIG_TRANSFORM_ATTR);
@@ -109,6 +190,8 @@ const syncMarkers = (
 
   for (const [entityId, marker] of existingTrackingMarkers.entries()) {
     if (!desiredEntityIds.has(entityId)) {
+      upsertDebugLabel(marker, null, debugMode);
+
       const kind = marker.getAttribute(TRACKING_KIND_ATTR);
       if (kind === 'bound') {
         const original = marker.getAttribute(ORIG_TRANSFORM_ATTR);
@@ -190,24 +273,35 @@ const syncMarkers = (
     }
 
     marker.setAttribute('transform', `translate(${x} ${yRender})`);
+
+    if (showDebugOverlay) {
+      upsertDebugLabel(marker, formatDebugLabelLines(location, debugMode), debugMode);
+    } else {
+      upsertDebugLabel(marker, null, debugMode);
+    }
   }
 };
 
 export function TrackedDeviceMarkersBridge() {
   const { isEnabled } = useFeatureFlag('DEVICE_TRACKING');
+  const { isEnabled: debugOverlayFlagEnabled } = useFeatureFlag('TRACKING_DEBUG_OVERLAY');
   const locationsByEntityId = useDeviceLocationStore((s) => s.locationsByEntityId);
+
+  // Dev-only: never show this overlay in production builds.
+  const showDebugOverlay = debugOverlayFlagEnabled && !import.meta.env.PROD;
+  const debugMode = getTrackingDebugOverlayMode();
 
   useEffect(() => {
     const layer = getDevicesLayer();
     if (!layer) return;
 
     // Initial sync
-    syncMarkers(layer, isEnabled, locationsByEntityId);
+    syncMarkers(layer, isEnabled, locationsByEntityId, showDebugOverlay, debugMode);
 
     // scripts.js clears and re-renders the devices layer (e.g., during reload).
     // Observe child list changes so our tracked markers are re-applied promptly.
     const observer = new MutationObserver(() => {
-      syncMarkers(layer, isEnabled, locationsByEntityId);
+      syncMarkers(layer, isEnabled, locationsByEntityId, showDebugOverlay, debugMode);
     });
 
     observer.observe(layer, { childList: true });
@@ -215,7 +309,7 @@ export function TrackedDeviceMarkersBridge() {
     return () => {
       observer.disconnect();
     };
-  }, [isEnabled, locationsByEntityId]);
+  }, [isEnabled, locationsByEntityId, showDebugOverlay, debugMode]);
 
   return null;
 }
