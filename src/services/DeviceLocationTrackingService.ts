@@ -9,9 +9,12 @@ import {
 import { getEspresenseMinConfidence } from '../features/tracking/espresense/espresenseTrackingConfig';
 import type { DeviceLocation } from '../stores/useDeviceLocationStore';
 
-export interface IDeviceLocationStoreSink {
+export interface IDeviceLocationStore {
   upsert(entityId: string, location: DeviceLocation): void;
 }
+
+// Backwards-compat alias (the service treats this dependency as write-only)
+export type IDeviceLocationStoreSink = IDeviceLocationStore;
 
 export interface DeviceLocationTrackingHardeningOptions {
   /**
@@ -50,7 +53,7 @@ export class DeviceLocationTrackingService {
 
   private readonly entityService: IEntityService;
   private readonly minConfidence: number;
-  private readonly store: IDeviceLocationStoreSink;
+  private readonly store: IDeviceLocationStore;
 
   private readonly hardening: DeviceLocationTrackingHardeningOptions;
   private readonly throttleByEntityId = new Map<string, ThrottleState>();
@@ -58,7 +61,7 @@ export class DeviceLocationTrackingService {
 
   constructor(
     entityService: IEntityService,
-    store: IDeviceLocationStoreSink,
+    store: IDeviceLocationStore,
     minConfidence: number = getEspresenseMinConfidence(),
     hardening: DeviceLocationTrackingHardeningOptions = DEFAULT_HARDENING
   ) {
