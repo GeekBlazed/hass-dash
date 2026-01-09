@@ -43,8 +43,13 @@ describe('ConfigService', () => {
 
   describe('isFeatureEnabled', () => {
     it('should return false for disabled features', () => {
+      // Ensure this test is not affected by developer/local env files.
+      vi.stubEnv('VITE_FEATURE_FLOOR_PLAN', 'false');
+
       const isEnabled = configService.isFeatureEnabled('FLOOR_PLAN');
       expect(isEnabled).toBe(false);
+
+      vi.unstubAllEnvs();
     });
 
     it('should return false for non-existent features', () => {
@@ -53,10 +58,15 @@ describe('ConfigService', () => {
     });
 
     it('should handle feature names in any case', () => {
+      // Ensure this test is not affected by developer/local env files.
+      vi.stubEnv('VITE_FEATURE_FLOOR_PLAN', 'false');
+
       const isEnabledLower = configService.isFeatureEnabled('floor_plan');
       const isEnabledUpper = configService.isFeatureEnabled('FLOOR_PLAN');
       expect(isEnabledLower).toBe(false);
       expect(isEnabledUpper).toBe(false);
+
+      vi.unstubAllEnvs();
     });
 
     it('should return true when feature is enabled', () => {
