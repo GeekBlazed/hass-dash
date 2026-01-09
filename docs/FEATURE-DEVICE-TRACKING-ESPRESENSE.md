@@ -369,5 +369,39 @@ Each iteration is designed to be:
 
 **Definition of Done (Automated Checklist):**
 
-- [ ] Unit test: throttling prevents more than N updates per time window.
-- [ ] Unit test: stale `last_seen` does not overwrite a newer stored value (if enabled).
+- ✅ Unit test: throttling prevents more than N updates per time window.
+- ✅ Unit test: stale `last_seen` does not overwrite a newer stored value (if enabled).
+
+---
+
+## 14. Recommended Future Improvements & Enhancements
+
+### 14.1 Smoother Motion / Less Jitter
+
+- Replace fixed-window throttling with a true per-entity debounce (e.g., emit only the latest update every 250–500ms).
+- Add optional smoothing (EMA / low-pass filter) per entity to reduce jitter.
+
+### 14.2 Better Staleness Semantics
+
+- Prefer Home Assistant `last_updated`/`last_changed` when `last_seen` is missing.
+- Add a maximum staleness cutoff (e.g., ignore if `last_seen` older than 30–120s).
+
+### 14.3 Coordinate System Hardening
+
+- Add explicit configuration for axis direction (invert Y / rotate), and a calibration workflow.
+- Persist the base viewBox and mapping parameters per floor.
+
+### 14.4 Multi-Floor Support
+
+- Use `z` (or derived metadata) to select the active floor.
+- Render device markers on multiple floors when “Show All Floors” is enabled.
+
+### 14.5 UX / Debuggability
+
+- Dev-only overlay to show raw `x/y/z/confidence/last_seen` next to each marker.
+- Add a debug view listing tracked entities + last update age + throttle drops.
+
+### 14.6 Security / Production Transport
+
+- Move from HA-mediated entity updates to a backend proxy (or HA supervisor addon) for tighter control over auth and rate limiting.
+- Add privacy controls (masking, per-user access limits, opt-out).

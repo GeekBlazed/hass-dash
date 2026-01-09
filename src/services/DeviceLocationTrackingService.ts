@@ -13,6 +13,38 @@ export interface IDeviceLocationStoreSink {
   upsert(entityId: string, location: DeviceLocation): void;
 }
 
+export interface DeviceLocationTrackingHardeningOptions {
+  /**
+   * Limits updates per entity to avoid UI thrash.
+   *
+   * Behavior: per entity id, allow at most `maxUpdatesPerWindow` updates in any
+   * `windowMs` rolling window (implemented as a simple fixed window).
+   */
+  throttle?: {
+    windowMs: number;
+    maxUpdatesPerWindow: number;
+  };
+
+  /**
+   * When enabled, if `last_seen` is present and parseable, ignore updates whose
+   * `last_seen` is older than the most recently accepted `last_seen`.
+   */
+  enableLastSeenStaleGuard?: boolean;
+}
+
+const DEFAULT_HARDENING: DeviceLocationTrackingHardeningOptions = {
+  throttle: {
+    windowMs: 1000,
+    maxUpdatesPerWindow: 4,
+  },
+  enableLastSeenStaleGuard: true,
+};
+
+type ThrottleState = {
+  windowStartAt: number;
+  count: number;
+};
+
 export class DeviceLocationTrackingService {
   private subscription: IHaSubscription | null = null;
 
@@ -20,14 +52,20 @@ export class DeviceLocationTrackingService {
   private readonly minConfidence: number;
   private readonly store: IDeviceLocationStoreSink;
 
+  private readonly hardening: DeviceLocationTrackingHardeningOptions;
+  private readonly throttleByEntityId = new Map<string, ThrottleState>();
+  private readonly lastSeenMsByEntityId = new Map<string, number>();
+
   constructor(
     entityService: IEntityService,
     store: IDeviceLocationStoreSink,
-    minConfidence: number = getEspresenseMinConfidence()
+    minConfidence: number = getEspresenseMinConfidence(),
+    hardening: DeviceLocationTrackingHardeningOptions = DEFAULT_HARDENING
   ) {
     this.entityService = entityService;
     this.minConfidence = minConfidence;
     this.store = store;
+    this.hardening = hardening;
   }
 
   async start(): Promise<void> {
@@ -49,8 +87,60 @@ export class DeviceLocationTrackingService {
   private handleEntityState(next: HaEntityState): void {
     const updates = extractDeviceLocationUpdateFromHaEntityState(next, this.minConfidence);
     for (const update of updates) {
+      if (!this.shouldAcceptUpdate(update)) continue;
       this.store.upsert(update.entityId, mapUpdateToDeviceLocation(update));
     }
+  }
+
+  private shouldAcceptUpdate(update: DeviceLocationUpdate): boolean {
+    if (!this.passesThrottle(update)) return false;
+    if (!this.passesLastSeenGuard(update)) return false;
+    return true;
+  }
+
+  private passesThrottle(update: DeviceLocationUpdate): boolean {
+    const throttle = this.hardening.throttle;
+    if (!throttle) return true;
+
+    const { windowMs, maxUpdatesPerWindow } = throttle;
+    if (!(windowMs > 0) || !(maxUpdatesPerWindow > 0)) return true;
+
+    const now = update.receivedAt;
+    const prev = this.throttleByEntityId.get(update.entityId);
+    if (!prev) {
+      this.throttleByEntityId.set(update.entityId, { windowStartAt: now, count: 1 });
+      return true;
+    }
+
+    if (now - prev.windowStartAt >= windowMs) {
+      this.throttleByEntityId.set(update.entityId, { windowStartAt: now, count: 1 });
+      return true;
+    }
+
+    if (prev.count >= maxUpdatesPerWindow) {
+      return false;
+    }
+
+    prev.count += 1;
+    return true;
+  }
+
+  private passesLastSeenGuard(update: DeviceLocationUpdate): boolean {
+    if (!this.hardening.enableLastSeenStaleGuard) return true;
+
+    const lastSeenRaw = update.lastSeen;
+    if (!lastSeenRaw) return true;
+
+    const nextMs = Date.parse(lastSeenRaw);
+    if (!Number.isFinite(nextMs)) return true;
+
+    const prevMs = this.lastSeenMsByEntityId.get(update.entityId);
+    if (prevMs !== undefined && nextMs < prevMs) {
+      return false;
+    }
+
+    this.lastSeenMsByEntityId.set(update.entityId, nextMs);
+    return true;
   }
 }
 
