@@ -4,6 +4,26 @@ import { TYPES } from '../core/types';
 import type { IHomeAssistantConnectionConfig } from '../interfaces/IHomeAssistantConnectionConfig';
 import type { IHttpClient } from '../interfaces/IHttpClient';
 
+const deriveBaseUrlFromWebSocketUrl = (webSocketUrl: string): string | undefined => {
+  try {
+    const url = new URL(webSocketUrl.trim());
+
+    // Map ws/wss -> http/https.
+    if (url.protocol === 'ws:') url.protocol = 'http:';
+    else if (url.protocol === 'wss:') url.protocol = 'https:';
+    else return undefined;
+
+    // Base URL should be the origin; paths are supplied per-request.
+    url.pathname = '/';
+    url.search = '';
+    url.hash = '';
+
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+};
+
 @injectable()
 export class HomeAssistantHttpClient implements IHttpClient {
   private readonly connectionConfig: IHomeAssistantConnectionConfig;
@@ -90,6 +110,11 @@ export class HomeAssistantHttpClient implements IHttpClient {
   private getBaseUrl(): string | undefined {
     const cfg = this.connectionConfig.getConfig();
     const baseUrl = cfg.baseUrl?.trim();
-    return baseUrl ? baseUrl : undefined;
+    if (baseUrl) return baseUrl;
+
+    const wsUrl = cfg.webSocketUrl?.trim() || this.connectionConfig.getEffectiveWebSocketUrl();
+    if (!wsUrl) return undefined;
+
+    return deriveBaseUrlFromWebSocketUrl(wsUrl);
   }
 }

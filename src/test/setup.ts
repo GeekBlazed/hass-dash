@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { act, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
 
 // Mock window.matchMedia
@@ -32,7 +32,15 @@ beforeEach(() => {
 });
 
 // Cleanup after each test
-afterEach(() => {
+afterEach(async () => {
+  // Many components (e.g. dashboard data loading) schedule microtask-based
+  // state updates after initial render. Flush them inside act() to avoid
+  // noisy "not wrapped in act(...)" warnings.
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
   cleanup();
   vi.clearAllMocks();
 });

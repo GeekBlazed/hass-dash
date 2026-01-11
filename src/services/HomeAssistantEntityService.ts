@@ -20,12 +20,37 @@ export class HomeAssistantEntityService implements IEntityService {
   }
 
   async fetchStates(): Promise<HaEntityState[]> {
-    // REST endpoint: GET /api/states
-    const states = await this.httpClient.get<HaEntityState[]>('/api/states');
-    if (!states) {
-      throw new Error('Home Assistant returned an empty response for GET /api/states');
+    // Prefer WebSocket (avoids REST/CORS and is often reachable even when REST is not).
+    let wsError: unknown;
+    try {
+      if (!this.haClient.isConnected()) {
+        await this.haClient.connect();
+      }
+
+      const states = await this.haClient.getStates();
+      if (!states) {
+        throw new Error('Home Assistant returned an empty response for get_states');
+      }
+      return states;
+    } catch (error) {
+      wsError = error;
     }
-    return states;
+
+    // Fallback: REST endpoint GET /api/states
+    try {
+      const states = await this.httpClient.get<HaEntityState[]>('/api/states');
+      if (!states) {
+        throw new Error('Home Assistant returned an empty response for GET /api/states');
+      }
+      return states;
+    } catch (restError) {
+      const wsMessage = wsError instanceof Error ? wsError.message : String(wsError);
+      const restMessage = restError instanceof Error ? restError.message : String(restError);
+      throw new Error(
+        `Failed to fetch Home Assistant states via WebSocket (get_states): ${wsMessage}. ` +
+          `Failed to fetch via REST (GET /api/states): ${restMessage}.`
+      );
+    }
   }
 
   async subscribeToStateChanges(

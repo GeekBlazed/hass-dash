@@ -45,27 +45,11 @@ export function FloorplanSvg() {
         </linearGradient>
 
         <symbol id="devicePin" viewBox="0 0 64 64">
-          <defs>
-            <clipPath id="devicePersonClip">
-              <circle cx="32" cy="24" r="15.8" />
-            </clipPath>
-          </defs>
           <path
             d="M32 3C20.4 3 11 12.4 11 24c0 15.7 17.5 32.7 20.1 35.2.5.5 1.2.8 1.9.8s1.4-.3 1.9-.8C35.5 56.7 53 39.7 53 24 53 12.4 43.6 3 32 3z"
             fill="currentColor"
           />
           <circle cx="32" cy="24" r="16" fill="var(--text-primary)" fillOpacity="0.96" />
-          <g clipPath="url(#devicePersonClip)">
-            <circle cx="32" cy="21" r="6.2" fill="var(--panel-bg)" fillOpacity="0.72" />
-            <path
-              d="M20.5 40.5c2.9-6.4 9-9.8 11.5-9.8s8.6 3.4 11.5 9.8"
-              fill="none"
-              stroke="var(--panel-bg)"
-              strokeOpacity="0.72"
-              strokeWidth="7.2"
-              strokeLinecap="round"
-            />
-          </g>
           <circle
             cx="32"
             cy="24"

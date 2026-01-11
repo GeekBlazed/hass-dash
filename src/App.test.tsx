@@ -1,6 +1,15 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+
+async function renderAndSettle(ui: ReactElement): Promise<void> {
+  render(ui);
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
 
 describe('App', () => {
   beforeEach(() => {
@@ -13,15 +22,15 @@ describe('App', () => {
     vi.unstubAllEnvs();
   });
 
-  it('renders the dashboard', () => {
-    render(<App />);
+  it('renders the dashboard', async () => {
+    await renderAndSettle(<App />);
 
     // Dashboard renders the prototype-style application shell
     expect(screen.getByRole('application', { name: /floorplan prototype/i })).toBeInTheDocument();
   });
 
-  it('renders quick action buttons', () => {
-    render(<App />);
+  it('renders quick action buttons', async () => {
+    await renderAndSettle(<App />);
 
     // Quick action buttons should be present
     expect(screen.getByRole('button', { name: /Lighting/i })).toBeInTheDocument();
@@ -30,23 +39,23 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /Agenda/i })).toBeInTheDocument();
   });
 
-  it('renders weather display', () => {
-    render(<App />);
+  it('renders weather display', async () => {
+    await renderAndSettle(<App />);
 
     // Weather block should include humidity line
     expect(screen.getByText(/Humidity:/i)).toBeInTheDocument();
   });
 
-  it('has proper semantic structure', () => {
-    render(<App />);
+  it('has proper semantic structure', async () => {
+    await renderAndSettle(<App />);
 
     // Should have main and aside landmarks
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByRole('complementary')).toBeInTheDocument();
   });
 
-  it('has accessible buttons with proper roles', () => {
-    render(<App />);
+  it('has accessible buttons with proper roles', async () => {
+    await renderAndSettle(<App />);
 
     // All buttons should be accessible
     const buttons = screen.getAllByRole('button');
@@ -56,5 +65,25 @@ describe('App', () => {
     buttons.forEach((button) => {
       expect(button).not.toHaveAttribute('tabindex', '-1');
     });
+  });
+
+  it('renders the component showcase when enabled', async () => {
+    vi.stubEnv('VITE_FEATURE_COMPONENT_SHOWCASE', 'true');
+
+    await renderAndSettle(<App />);
+
+    expect(screen.getByRole('heading', { name: /component showcase/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('application', { name: /floorplan prototype/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders the debug panel when debug flag is enabled as a boolean env value', async () => {
+    // Exercise the boolean env branch in App.tsx (not just the string-based path).
+    vi.stubEnv('VITE_FEATURE_DEBUG_PANEL', true as unknown as string);
+
+    await renderAndSettle(<App />);
+
+    expect(screen.getByRole('heading', { name: /feature flags/i })).toBeInTheDocument();
   });
 });

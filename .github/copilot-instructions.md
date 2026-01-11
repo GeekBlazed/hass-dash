@@ -289,13 +289,56 @@ All environment variables must be prefixed with `VITE_` to be exposed to the cli
 ```bash
 VITE_APP_VERSION=0.1.0
 
+# Home Assistant Connection
+# VITE_HA_BASE_URL=http://homeassistant.local:8123
+# VITE_HA_WEBSOCKET_URL=ws://homeassistant.local:8123/api/websocket
+# VITE_HA_ACCESS_TOKEN=your_long_lived_access_token_here
+
 # Feature Flags
+VITE_FEATURE_NAVIGATION=false
 VITE_FEATURE_DEBUG_PANEL=false
+VITE_FEATURE_DEVICE_TRACKING=false
+VITE_FEATURE_TRACKING_DEBUG_OVERLAY=false
 VITE_FEATURE_COMPONENT_SHOWCASE=false
 VITE_FEATURE_FLOOR_PLAN=false
 VITE_FEATURE_HA_CONNECTION=false
 VITE_FEATURE_OVERLAYS=false
+VITE_FEATURE_ONBOARDING=false
+
+# Overlay Flags
+VITE_OVERLAY_LIGHTING=false
+VITE_OVERLAY_CLIMATE=false
+VITE_OVERLAY_SURVEILLANCE=false
+VITE_OVERLAY_AV=false
+VITE_OVERLAY_NETWORK=false
+
+# Tracking debug overlay
+# Controls what raw location values are shown next to each marker when
+# VITE_FEATURE_TRACKING_DEBUG_OVERLAY=true.
+# Allowed: xyz | geo
+VITE_TRACKING_DEBUG_OVERLAY_MODE=xyz
+
+# Tracking (ESPresense)
+# Minimum confidence required to accept a device position update.
+# Initial default: accept only when confidence > 69
+VITE_TRACKING_ESPRESENSE_MIN_CONFIDENCE=69
 ```
+
+### ESPresense / Presence Tracking Notes
+
+When implementing or adjusting presence/location tracking features (especially ESPresense-backed flows), keep these conventions aligned with ESPresense Companion docs and common setup patterns:
+
+- **Coordinate system:** Use meters. Default convention is origin `(0,0)` at the bottom-left of the mapped area, and all room/node coordinates measured from that origin.
+- **Room geometry:** Keep polygon points in a consistent order (clockwise or counter-clockwise). Avoid overlaps/out-of-bounds coordinates.
+- **Node placement:** Accuracy depends heavily on node placement (trilateration). Prefer nodes near corners of the floorplan plus at least one additional node, and aim for **5+ fixes** (nodes seeing a device) for better accuracy.
+- **Max distance during setup:** ESPresense nodes often default to a max distance limit. During calibration/setup, setting max distance to `0` (no limit) can help ensure you receive all distance readings.
+- **RSSI@1m calibration:** If distance circles are consistently too large/small versus reality, adjust the device’s RSSI@1m (small steps) and verify across multiple known locations.
+- **Floor ordering:** If modeling multi-floor confidence, list floors for a node starting with the floor it’s on, followed by adjacent floors (helps avoid confusing “best scenario” selection).
+
+For project-specific tracking design and constraints, also check:
+
+- [docs/DEVICE-TRACKING.md](../docs/DEVICE-TRACKING.md)
+- [docs/FEATURE-DEVICE-TRACKING-ESPRESENSE.md](../docs/FEATURE-DEVICE-TRACKING-ESPRESENSE.md)
 
 **Access in Code:**
 

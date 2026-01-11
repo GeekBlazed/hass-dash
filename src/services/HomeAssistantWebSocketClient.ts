@@ -199,6 +199,16 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     return result as HaCallServiceResult;
   }
 
+  async getEntityRegistry(): Promise<unknown[]> {
+    const result = await this.sendCommand({ type: 'config/entity_registry/list' });
+    return Array.isArray(result) ? result : [];
+  }
+
+  async getDeviceRegistry(): Promise<unknown[]> {
+    const result = await this.sendCommand({ type: 'config/device_registry/list' });
+    return Array.isArray(result) ? result : [];
+  }
+
   /**
    * Resolve the WebSocket endpoint from the connection configuration.
    *

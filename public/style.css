@@ -898,6 +898,19 @@ button.qa {
   pointer-events: none;
 }
 
+.device-avatar-image {
+  pointer-events: none;
+}
+
+.device-avatar-text {
+  fill: var(--panel-bg);
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+
 .room:hover:not(.is-active) .room-shape {
   stroke: rgb(53, 37, 4);
   stroke-width: var(--wall-stroke-width-hover);

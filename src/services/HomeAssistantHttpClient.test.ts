@@ -5,6 +5,7 @@ import { HomeAssistantHttpClient } from './HomeAssistantHttpClient';
 
 type ConnectionConfigStubValues = {
   baseUrl?: string;
+  webSocketUrl?: string;
   accessToken?: string;
 };
 
@@ -14,13 +15,13 @@ function createConnectionConfigStub(
   return {
     getConfig: () => ({
       baseUrl: values.baseUrl,
-      webSocketUrl: undefined,
+      webSocketUrl: values.webSocketUrl,
       accessToken: values.accessToken,
     }),
-    getEffectiveWebSocketUrl: () => undefined,
+    getEffectiveWebSocketUrl: () => values.webSocketUrl,
     getAccessToken: () => values.accessToken,
     validate: () => ({
-      isValid: Boolean(values.baseUrl) && Boolean(values.accessToken),
+      isValid: Boolean((values.baseUrl ?? values.webSocketUrl) && values.accessToken),
       errors: [],
       effectiveWebSocketUrl: undefined,
     }),
@@ -42,6 +43,40 @@ describe('HomeAssistantHttpClient', () => {
     await expect(client.get('/api/')).rejects.toThrow(
       'Home Assistant base URL is not configured (VITE_HA_BASE_URL)'
     );
+  });
+
+  it('derives base URL from ws:// WebSocket URL when base URL is missing', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      expect(url).toBe('http://example/api/');
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
+    });
+    const client = new HomeAssistantHttpClient(config);
+
+    const result = await client.get<{ ok: boolean }>('/api/');
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('derives base URL from wss:// WebSocket URL when base URL is missing', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      expect(url).toBe('https://example/api/');
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'wss://example/api/websocket',
+      accessToken: 'token',
+    });
+    const client = new HomeAssistantHttpClient(config);
+
+    const result = await client.get<{ ok: boolean }>('/api/');
+    expect(result).toEqual({ ok: true });
   });
 
   it('throws when access token is missing', async () => {

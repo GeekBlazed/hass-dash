@@ -41,6 +41,162 @@ describe('espresenseLocationExtractor', () => {
     ]);
   });
 
+  it('includes geo fields when latitude/longitude are present', () => {
+    const entityState: HaEntityState = {
+      entity_id: 'device_tracker.phone_jeremy',
+      state: 'not_home',
+      attributes: {
+        x: 1,
+        y: 2,
+        confidence: 70,
+        last_seen: '2026-01-07T09:15:53.7063821Z',
+        latitude: 40.123,
+        longitude: -74.456,
+        elevation: 12.5,
+      },
+      last_changed: '2026-01-07T09:15:54Z',
+      last_updated: '2026-01-07T09:15:54Z',
+      context: { id: 'abc', parent_id: null, user_id: null },
+    };
+
+    expect(extractDeviceLocationUpdateFromHaEntityState(entityState, 69, 1)).toEqual([
+      {
+        entityId: 'device_tracker.phone_jeremy',
+        position: { x: 1, y: 2 },
+        geo: { latitude: 40.123, longitude: -74.456, elevation: 12.5 },
+        confidence: 70,
+        lastSeen: '2026-01-07T09:15:53.7063821Z',
+        receivedAt: 1,
+      },
+    ]);
+  });
+
+  it('parses numeric strings and includes geo without elevation when elevation is missing', () => {
+    const entityState: HaEntityState = {
+      entity_id: 'device_tracker.phone_jeremy',
+      state: 'not_home',
+      attributes: {
+        x: '1',
+        y: '2',
+        z: '3',
+        confidence: '70',
+        last_seen: '2026-01-07T09:15:53.7063821Z',
+        latitude: '40.123',
+        longitude: '-74.456',
+        // elevation intentionally missing
+      },
+      last_changed: '2026-01-07T09:15:54Z',
+      last_updated: '2026-01-07T09:15:54Z',
+      context: { id: 'abc', parent_id: null, user_id: null },
+    };
+
+    expect(extractDeviceLocationUpdateFromHaEntityState(entityState, 69, 1)).toEqual([
+      {
+        entityId: 'device_tracker.phone_jeremy',
+        position: { x: 1, y: 2, z: 3 },
+        geo: { latitude: 40.123, longitude: -74.456 },
+        confidence: 70,
+        lastSeen: '2026-01-07T09:15:53.7063821Z',
+        receivedAt: 1,
+      },
+    ]);
+  });
+
+  it('extracts geo from nested gps object (lat/lon/alt) when present', () => {
+    const entityState: HaEntityState = {
+      entity_id: 'device_tracker.phone_jeremy',
+      state: 'not_home',
+      attributes: {
+        x: 1,
+        y: 2,
+        confidence: 70,
+        gps: {
+          lat: '40.123',
+          lon: '-74.456',
+          alt: '12.5',
+        },
+      },
+      last_changed: '2026-01-07T09:15:54Z',
+      last_updated: '2026-01-07T09:15:54Z',
+      context: { id: 'abc', parent_id: null, user_id: null },
+    };
+
+    expect(extractDeviceLocationUpdateFromHaEntityState(entityState, 69, 1)).toEqual([
+      {
+        entityId: 'device_tracker.phone_jeremy',
+        position: { x: 1, y: 2 },
+        geo: { latitude: 40.123, longitude: -74.456, elevation: 12.5 },
+        confidence: 70,
+        lastSeen: undefined,
+        receivedAt: 1,
+      },
+    ]);
+  });
+
+  it('extracts geo from alternate top-level keys (lat/lng/elevation)', () => {
+    const entityState: HaEntityState = {
+      entity_id: 'device_tracker.phone_jeremy',
+      state: 'not_home',
+      attributes: {
+        x: 1,
+        y: 2,
+        confidence: 70,
+        lat: 40.123,
+        lng: -74.456,
+        elevation: 12.5,
+      },
+      last_changed: '2026-01-07T09:15:54Z',
+      last_updated: '2026-01-07T09:15:54Z',
+      context: { id: 'abc', parent_id: null, user_id: null },
+    };
+
+    expect(extractDeviceLocationUpdateFromHaEntityState(entityState, 69, 1)).toEqual([
+      {
+        entityId: 'device_tracker.phone_jeremy',
+        position: { x: 1, y: 2 },
+        geo: { latitude: 40.123, longitude: -74.456, elevation: 12.5 },
+        confidence: 70,
+        lastSeen: undefined,
+        receivedAt: 1,
+      },
+    ]);
+  });
+
+  it('extracts geo fields from HA WebSocket JSON envelope payload', () => {
+    const payload = JSON.stringify({
+      type: 'event',
+      event: {
+        c: {
+          'device_tracker.phone_jeremy': {
+            '+': {
+              a: {
+                x: 1,
+                y: 2,
+                confidence: 70,
+                last_seen: '2026-01-07T09:15:53.7063821Z',
+                latitude: 40.123,
+                longitude: -74.456,
+                // elevation intentionally missing
+              },
+            },
+          },
+        },
+      },
+      id: 3,
+    });
+
+    expect(extractDeviceLocationUpdatesFromJsonPayload(payload, 69, 1)).toEqual([
+      {
+        entityId: 'device_tracker.phone_jeremy',
+        position: { x: 1, y: 2 },
+        geo: { latitude: 40.123, longitude: -74.456 },
+        confidence: 70,
+        lastSeen: '2026-01-07T09:15:53.7063821Z',
+        receivedAt: 1,
+      },
+    ]);
+  });
+
   it('returns zero updates for invalid JSON', () => {
     const updates = extractDeviceLocationUpdatesFromJsonPayload('{nope', 69, 1);
     expect(updates).toEqual([]);

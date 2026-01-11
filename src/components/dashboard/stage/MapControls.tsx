@@ -62,7 +62,7 @@ export function MapControls() {
             type="range"
             min="50"
             max="300"
-            value="100"
+            defaultValue={100}
             step="1"
             aria-label="Zoom"
           />

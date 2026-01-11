@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
+import { Button } from './Button';
 import {
   Dialog,
   DialogClose,
@@ -11,7 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './Dialog';
-import { Button } from './Button';
 
 describe('Dialog', () => {
   it('should render trigger button', () => {
@@ -23,6 +23,7 @@ describe('Dialog', () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Test Dialog</DialogTitle>
+            <DialogDescription>Test description</DialogDescription>
           </DialogHeader>
         </DialogContent>
       </Dialog>
@@ -95,6 +96,7 @@ describe('Dialog', () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Test Dialog</DialogTitle>
+            <DialogDescription>Test description</DialogDescription>
           </DialogHeader>
         </DialogContent>
       </Dialog>
@@ -133,6 +135,7 @@ describe('Dialog', () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Action</DialogTitle>
+            <DialogDescription>Confirm the action</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
@@ -154,6 +157,7 @@ describe('Dialog', () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Test Dialog</DialogTitle>
+            <DialogDescription>Test description</DialogDescription>
           </DialogHeader>
         </DialogContent>
       </Dialog>

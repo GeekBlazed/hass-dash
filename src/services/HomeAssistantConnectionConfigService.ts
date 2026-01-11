@@ -82,10 +82,11 @@ export class HomeAssistantConnectionConfigService implements IHomeAssistantConne
 
   getEffectiveWebSocketUrl(): string | undefined {
     const config = this.getConfig();
-    if (config.webSocketUrl) return config.webSocketUrl;
+    if (config.webSocketUrl) return this.normalizeWebSocketUrlForPageContext(config.webSocketUrl);
     if (!config.baseUrl) return undefined;
 
-    return deriveWebSocketUrlFromBaseUrl(config.baseUrl);
+    const derived = deriveWebSocketUrlFromBaseUrl(config.baseUrl);
+    return derived ? this.normalizeWebSocketUrlForPageContext(derived) : undefined;
   }
 
   getAccessToken(): string | undefined {
@@ -93,6 +94,42 @@ export class HomeAssistantConnectionConfigService implements IHomeAssistantConne
   }
 
   validate(): HomeAssistantConnectionValidationResult {
-    return validateHomeAssistantConnectionConfig(this.getConfig());
+    const result = validateHomeAssistantConnectionConfig(this.getConfig());
+    if (!result.effectiveWebSocketUrl) return result;
+
+    return {
+      ...result,
+      effectiveWebSocketUrl: this.normalizeWebSocketUrlForPageContext(result.effectiveWebSocketUrl),
+    };
+  }
+
+  private normalizeWebSocketUrlForPageContext(value: string): string {
+    const raw = value.trim();
+    if (!raw) return raw;
+
+    // Browsers block ws:// from https:// pages (mixed content). If the user
+    // configured ws:// explicitly but we're running on https, attempt a safe
+    // best-effort upgrade to wss://.
+    const pageProtocol =
+      typeof globalThis !== 'undefined' &&
+      'location' in globalThis &&
+      typeof (globalThis as unknown as { location?: { protocol?: unknown } }).location?.protocol ===
+        'string'
+        ? ((globalThis as unknown as { location: { protocol: string } }).location.protocol as
+            | 'http:'
+            | 'https:'
+            | string)
+        : undefined;
+
+    if (pageProtocol !== 'https:') return raw;
+
+    try {
+      const url = new URL(raw);
+      if (url.protocol !== 'ws:') return raw;
+      url.protocol = 'wss:';
+      return url.toString();
+    } catch {
+      return raw;
+    }
   }
 }
