@@ -12,8 +12,16 @@ export interface DeviceLocationUpdate {
 const getNumber = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string') {
-    const parsed = Number(value);
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return undefined;
+
+    // Prefer strict numeric parsing.
+    const parsed = Number(trimmed);
     if (Number.isFinite(parsed)) return parsed;
+
+    // Fall back to parseFloat to tolerate values with suffixes like "40.12 m".
+    const floatParsed = Number.parseFloat(trimmed);
+    if (Number.isFinite(floatParsed)) return floatParsed;
   }
   return undefined;
 };
@@ -24,6 +32,40 @@ const getString = (value: unknown): string | undefined => {
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null;
+};
+
+type Geo = { latitude: number; longitude: number; elevation?: number };
+
+const getGeoFromRecord = (record: Record<string, unknown>): Geo | undefined => {
+  const latitude = getNumber(record.latitude ?? record.lat);
+  const longitude = getNumber(record.longitude ?? record.lon ?? record.lng ?? record.long);
+  const elevation = getNumber(
+    record.elevation ?? record.ele ?? record.alt ?? record.altitude ?? record.height
+  );
+
+  if (latitude === undefined || longitude === undefined) return undefined;
+
+  return {
+    latitude,
+    longitude,
+    ...(elevation === undefined ? {} : { elevation }),
+  };
+};
+
+const getGeoFromAttributes = (attributes: Record<string, unknown>): Geo | undefined => {
+  // Direct fields are the canonical expected shape.
+  const direct = getGeoFromRecord(attributes);
+  if (direct) return direct;
+
+  // Some integrations nest under an object.
+  for (const key of ['gps', 'geo', 'location', 'coords', 'coordinates']) {
+    const nested = attributes[key];
+    if (!isRecord(nested)) continue;
+    const candidate = getGeoFromRecord(nested);
+    if (candidate) return candidate;
+  }
+
+  return undefined;
 };
 
 /**
@@ -45,23 +87,12 @@ export const extractDeviceLocationUpdateFromHaEntityState = (
   const z = getNumber(attributes.z);
   const confidence = getNumber(attributes.confidence);
 
-  const latitude = getNumber(attributes.latitude);
-  const longitude = getNumber(attributes.longitude);
-  const elevation = getNumber(attributes.elevation);
-
   if (x === undefined || y === undefined || confidence === undefined) return [];
   if (!(confidence > minConfidence)) return [];
 
   const lastSeen = getString(attributes.last_seen);
 
-  const geo =
-    latitude !== undefined && longitude !== undefined
-      ? {
-          latitude,
-          longitude,
-          ...(elevation === undefined ? {} : { elevation }),
-        }
-      : undefined;
+  const geo = getGeoFromAttributes(attributes);
 
   return [
     {
@@ -114,23 +145,12 @@ export const extractDeviceLocationUpdatesFromJsonPayload = (
     const z = getNumber(a.z);
     const confidence = getNumber(a.confidence);
 
-    const latitude = getNumber(a.latitude);
-    const longitude = getNumber(a.longitude);
-    const elevation = getNumber(a.elevation);
-
     if (x === undefined || y === undefined || confidence === undefined) continue;
     if (!(confidence > minConfidence)) continue;
 
     const lastSeen = getString(a.last_seen);
 
-    const geo =
-      latitude !== undefined && longitude !== undefined
-        ? {
-            latitude,
-            longitude,
-            ...(elevation === undefined ? {} : { elevation }),
-          }
-        : undefined;
+    const geo = getGeoFromAttributes(a);
 
     updates.push({
       entityId,

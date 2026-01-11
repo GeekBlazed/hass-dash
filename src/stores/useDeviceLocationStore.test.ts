@@ -68,4 +68,47 @@ describe('useDeviceLocationStore', () => {
     useDeviceLocationStore.getState().clear();
     expect(useDeviceLocationStore.getState().locationsByEntityId).toEqual({});
   });
+
+  it('remove() deletes a single entity location', () => {
+    useDeviceLocationStore.getState().upsert('device_tracker.keep', {
+      position: { x: 1, y: 2 },
+      confidence: 70,
+      lastSeen: undefined,
+      receivedAt: 1,
+    });
+
+    expect(
+      useDeviceLocationStore.getState().locationsByEntityId['device_tracker.keep']
+    ).toBeTruthy();
+
+    useDeviceLocationStore.getState().remove('device_tracker.keep');
+    expect(
+      useDeviceLocationStore.getState().locationsByEntityId['device_tracker.keep']
+    ).toBeUndefined();
+  });
+
+  it('pruneToEntityIds() keeps allowed ids and removes others', () => {
+    useDeviceLocationStore.getState().upsert('device_tracker.keep', {
+      position: { x: 1, y: 2 },
+      confidence: 70,
+      lastSeen: undefined,
+      receivedAt: 1,
+    });
+
+    useDeviceLocationStore.getState().upsert('device_tracker.drop', {
+      position: { x: 3, y: 4 },
+      confidence: 70,
+      lastSeen: undefined,
+      receivedAt: 1,
+    });
+
+    useDeviceLocationStore.getState().pruneToEntityIds(['device_tracker.keep']);
+
+    expect(
+      useDeviceLocationStore.getState().locationsByEntityId['device_tracker.keep']
+    ).toBeTruthy();
+    expect(
+      useDeviceLocationStore.getState().locationsByEntityId['device_tracker.drop']
+    ).toBeUndefined();
+  });
 });

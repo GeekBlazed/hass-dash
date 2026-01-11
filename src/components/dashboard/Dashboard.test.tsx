@@ -1,8 +1,17 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useDashboardStore } from '../../stores/useDashboardStore';
 import { Dashboard } from './Dashboard';
+
+async function renderAndSettle(ui: ReactElement): Promise<void> {
+  render(ui);
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
 
 describe('Dashboard', () => {
   beforeEach(() => {
@@ -13,41 +22,41 @@ describe('Dashboard', () => {
     });
   });
 
-  it('should render the floorplan application shell', () => {
-    render(<Dashboard />);
+  it('should render the floorplan application shell', async () => {
+    await renderAndSettle(<Dashboard />);
     expect(screen.getByRole('application', { name: /floorplan prototype/i })).toBeInTheDocument();
   });
 
-  it('should render the sidebar brand and weather summary', () => {
-    render(<Dashboard />);
+  it('should render the sidebar brand and weather summary', async () => {
+    await renderAndSettle(<Dashboard />);
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByLabelText(/weather summary/i)).toBeInTheDocument();
     expect(screen.getByText(/Humidity:/i)).toBeInTheDocument();
   });
 
-  it('should render quick action buttons', () => {
-    render(<Dashboard />);
+  it('should render quick action buttons', async () => {
+    await renderAndSettle(<Dashboard />);
     expect(screen.getByRole('button', { name: /lighting/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /climate/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /media/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /agenda/i })).toBeInTheDocument();
   });
 
-  it('should render the climate panel thermostat values', () => {
-    render(<Dashboard />);
+  it('should render the climate panel thermostat values', async () => {
+    await renderAndSettle(<Dashboard />);
     expect(screen.getByLabelText(/climate controls/i)).toBeInTheDocument();
     expect(screen.getByText(/71°F/i)).toBeInTheDocument();
     expect(screen.getByText(/47%/i)).toBeInTheDocument();
   });
 
-  it('should render the floorplan stage and svg container', () => {
-    render(<Dashboard />);
+  it('should render the floorplan stage and svg container', async () => {
+    await renderAndSettle(<Dashboard />);
     expect(screen.getByRole('main', { name: /floorplan/i })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /home floorplan \(from yaml\)/i })).toBeInTheDocument();
   });
 
-  it('should include a floorplan empty state container', () => {
-    render(<Dashboard />);
+  it('should include a floorplan empty state container', async () => {
+    await renderAndSettle(<Dashboard />);
     expect(screen.getByRole('heading', { name: /floorplan not loaded/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
@@ -55,6 +64,10 @@ describe('Dashboard', () => {
   it('should switch sidebar panels via quick actions', async () => {
     const user = userEvent.setup();
     const { container } = render(<Dashboard />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
 
     const lightingButton = screen.getByRole('button', { name: /lighting/i });
     const climateButton = screen.getByRole('button', { name: /climate/i });
@@ -93,7 +106,7 @@ describe('Dashboard', () => {
 
   it('should include the lighting empty state copy', async () => {
     const user = userEvent.setup();
-    render(<Dashboard />);
+    await renderAndSettle(<Dashboard />);
 
     await user.click(screen.getByRole('button', { name: /lighting/i }));
 

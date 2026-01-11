@@ -2,6 +2,7 @@ import { act, render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useDeviceLocationStore } from '../../../stores/useDeviceLocationStore';
+import { useDeviceTrackerMetadataStore } from '../../../stores/useDeviceTrackerMetadataStore';
 import { FloorplanSvg } from './FloorplanSvg';
 import { TrackedDeviceMarkersBridge } from './TrackedDeviceMarkersBridge';
 
@@ -12,6 +13,86 @@ describe('TrackedDeviceMarkersBridge', () => {
     vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'xyz');
     useDeviceLocationStore.persist.clearStorage();
     useDeviceLocationStore.setState({ locationsByEntityId: {} });
+    useDeviceTrackerMetadataStore.getState().clear();
+  });
+
+  it('prefers HA name/alias for marker label when available', async () => {
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceTrackerMetadataStore.getState().setAll({
+        'device_tracker.phone_jeremy': {
+          deviceId: 'abc123',
+          alias: 'phone:jeremy',
+          name: 'Jeremy',
+        },
+      });
+    });
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: 1,
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+
+      const label = marker?.querySelector('text.device-label');
+      expect(label?.textContent).toBe('Jeremy');
+    });
+  });
+
+  it('falls back to HA alias for marker label when name is missing', async () => {
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceTrackerMetadataStore.getState().setAll({
+        'device_tracker.phone_jeremy': {
+          deviceId: 'abc123',
+          alias: 'Jeremy Phone',
+        },
+      });
+    });
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: 1,
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+
+      const label = marker?.querySelector('text.device-label');
+      expect(label?.textContent).toBe('Jeremy Phone');
+    });
   });
 
   it('renders a marker when store contains a location', async () => {
@@ -42,6 +123,144 @@ describe('TrackedDeviceMarkersBridge', () => {
       expect(marker).toBeTruthy();
       // FloorplanSvg viewBox is 0 0 10 10 so yRender = 10 - y
       expect(marker?.getAttribute('transform')).toBe('translate(1 8)');
+    });
+  });
+
+  it('renders an avatar image when metadata provides avatarUrl', async () => {
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceTrackerMetadataStore.getState().setAll({
+        'device_tracker.phone_jeremy': {
+          deviceId: 'abc123',
+          name: 'Jeremy',
+          avatarUrl: 'http://ha.example/avatar.jpg',
+          initials: 'J',
+        },
+      });
+    });
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: 1,
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+
+      const img = marker?.querySelector('image.device-avatar-image');
+      expect(img).toBeTruthy();
+      expect(img?.getAttribute('href')).toBe('http://ha.example/avatar.jpg');
+
+      const initials = marker?.querySelector('text.device-avatar-text');
+      expect(initials).toBeTruthy();
+      expect(initials?.getAttribute('display')).toBe('none');
+    });
+  });
+
+  it('renders initials when metadata has no avatarUrl', async () => {
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceTrackerMetadataStore.getState().setAll({
+        'device_tracker.phone_jeremy': {
+          deviceId: 'abc123',
+          name: 'Jeremy Smith',
+          initials: 'JS',
+        },
+      });
+    });
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: 1,
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+
+      const img = marker?.querySelector('image.device-avatar-image');
+      expect(img).toBeTruthy();
+      expect(img?.getAttribute('display')).toBe('none');
+
+      const initials = marker?.querySelector('text.device-avatar-text');
+      expect(initials).toBeTruthy();
+      expect(initials?.getAttribute('display')).toBe(null);
+      expect(initials?.textContent).toBe('JS');
+    });
+  });
+
+  it('computes initials from the preferred label when metadata does not provide initials', async () => {
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceTrackerMetadataStore.getState().setAll({
+        'device_tracker.phone_jeremy': {
+          deviceId: 'abc123',
+          name: 'Jeremy Smith',
+          // initials omitted intentionally
+        },
+      });
+    });
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: 1,
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+
+      const img = marker?.querySelector('image.device-avatar-image');
+      expect(img).toBeTruthy();
+      expect(img?.getAttribute('display')).toBe('none');
+
+      const initials = marker?.querySelector('text.device-avatar-text');
+      expect(initials).toBeTruthy();
+      expect(initials?.getAttribute('display')).toBe(null);
+      expect(initials?.textContent).toBe('JS');
     });
   });
 
@@ -131,6 +350,99 @@ describe('TrackedDeviceMarkersBridge', () => {
     await waitFor(() => {
       expect(existing.getAttribute('data-hass-dash-tracking')).toBe(null);
       expect(existing.getAttribute('transform')).toBe('translate(2 3)');
+    });
+  });
+
+  it('restores a bound marker with no original transform by removing the transform attribute', async () => {
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    const layer = document.getElementById('devices-layer');
+    expect(layer).toBeTruthy();
+
+    const existing = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    existing.setAttribute('class', 'device-marker');
+    existing.setAttribute('data-device-id', 'device_tracker.phone_jeremy');
+    // Intentionally omit transform
+    layer?.appendChild(existing);
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: 1,
+      });
+    });
+
+    await waitFor(() => {
+      expect(existing.getAttribute('data-hass-dash-tracking')).toBe('true');
+      expect(existing.getAttribute('transform')).toBe('translate(1 8)');
+    });
+
+    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'false');
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 4, y: 5 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: 2,
+      });
+    });
+
+    await waitFor(() => {
+      expect(existing.getAttribute('data-hass-dash-tracking')).toBe(null);
+      expect(existing.getAttribute('transform')).toBe(null);
+    });
+  });
+
+  it('removes created tracking markers when tracking is disabled', async () => {
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: 1,
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+    });
+
+    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'false');
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 4, y: 5 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: 2,
+      });
+    });
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeFalsy();
     });
   });
 

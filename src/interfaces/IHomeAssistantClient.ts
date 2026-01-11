@@ -40,4 +40,17 @@ export interface IHomeAssistantClient {
   ): Promise<IHaSubscription>;
 
   callService(params: HaCallServiceParams): Promise<HaCallServiceResult>;
+
+  /**
+   * Optional: Fetch entity registry entries via the Home Assistant WebSocket API.
+   *
+   * Not all client implementations need to support this, but it's preferred for
+   * browser-based development because it avoids REST/CORS constraints.
+   */
+  getEntityRegistry?(): Promise<unknown[]>;
+
+  /**
+   * Optional: Fetch device registry entries via the Home Assistant WebSocket API.
+   */
+  getDeviceRegistry?(): Promise<unknown[]>;
 }

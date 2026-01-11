@@ -42,6 +42,26 @@ describe('HomeAssistantConnectionConfigService', () => {
     expect(validation.effectiveWebSocketUrl).toBe('wss://example/api/websocket');
   });
 
+  it('getEffectiveWebSocketUrl() upgrades ws:// to wss:// when page is https', () => {
+    const svc = new HomeAssistantConnectionConfigService(
+      createConfigStub({
+        VITE_HA_WEBSOCKET_URL: 'ws://example.com/api/websocket',
+        VITE_HA_ACCESS_TOKEN: 'token',
+      })
+    );
+
+    // Simulate an https-hosted app. Browsers block ws:// mixed content.
+    vi.stubGlobal('location', { protocol: 'https:' } as unknown as Location);
+    try {
+      expect(svc.getEffectiveWebSocketUrl()).toBe('wss://example.com/api/websocket');
+
+      const validation = svc.validate();
+      expect(validation.effectiveWebSocketUrl).toBe('wss://example.com/api/websocket');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('validate() rejects invalid base url scheme', () => {
     const svc = new HomeAssistantConnectionConfigService(
       createConfigStub({

@@ -2,6 +2,7 @@ import { Container } from 'inversify';
 import 'reflect-metadata';
 import type { IClimateDataSource } from '../interfaces/IClimateDataSource';
 import type { IConfigService } from '../interfaces/IConfigService';
+import type { IDeviceTrackerMetadataService } from '../interfaces/IDeviceTrackerMetadataService';
 import type { IEntityService } from '../interfaces/IEntityService';
 import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
 import type { IFloorplanDataSource } from '../interfaces/IFloorplanDataSource';
@@ -13,6 +14,7 @@ import type { IWebSocketService } from '../interfaces/IWebSocketService';
 import { ConfigService } from '../services/ConfigService';
 import { FeatureFlagService } from '../services/FeatureFlagService';
 import { HomeAssistantConnectionConfigService } from '../services/HomeAssistantConnectionConfigService';
+import { HomeAssistantDeviceTrackerMetadataService } from '../services/HomeAssistantDeviceTrackerMetadataService';
 import { HomeAssistantEntityService } from '../services/HomeAssistantEntityService';
 import { HomeAssistantHttpClient } from '../services/HomeAssistantHttpClient';
 import { HomeAssistantWebSocketClient } from '../services/HomeAssistantWebSocketClient';
@@ -82,6 +84,12 @@ container
 container
   .bind<ILightingDataSource>(TYPES.ILightingDataSource)
   .to(PublicLightingYamlDataSource)
+  .inSingletonScope();
+
+// Home Assistant registries (device/entity metadata for labeling, etc.)
+container
+  .bind<IDeviceTrackerMetadataService>(TYPES.IDeviceTrackerMetadataService)
+  .to(HomeAssistantDeviceTrackerMetadataService)
   .inSingletonScope();
 
 // Export the configured container

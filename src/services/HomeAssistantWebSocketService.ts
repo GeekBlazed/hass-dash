@@ -10,6 +10,11 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
   private socket: WebSocket | null = null;
   private connected = false;
 
+  private connectPromise: Promise<void> | null = null;
+
+  private readonly sendQueue: string[] = [];
+  private flushSendQueueTimerId: number | null = null;
+
   private wsUrl: string | null = null;
   private token: string | null = null;
 
@@ -47,24 +52,50 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
     if (!socket || !this.connected) {
       throw new Error('WebSocket is not connected');
     }
+
+    // In browsers, calling send() while CONNECTING throws:
+    // "Failed to execute 'send' on 'WebSocket': Still in CONNECTING state."
+    // This can happen transiently during reconnects or StrictMode effect replays.
+    // Queue and retry shortly to avoid hard-failing callers.
+    if (!this.isSocketOpen(socket)) {
+      this.sendQueue.push(data);
+      this.scheduleFlushSendQueue();
+      return;
+    }
+
     socket.send(data);
   }
 
   async connect(wsUrl: string, accessToken: string): Promise<void> {
     if (this.connected) return;
+    if (this.connectPromise) return this.connectPromise;
 
     this.wsUrl = wsUrl;
     this.token = accessToken;
 
     this.shouldReconnect = true;
     this.clearReconnectTimer();
+    this.clearSendQueue();
 
-    await this.connectOnce();
+    this.connectPromise = this.connectOnce();
+
+    try {
+      await this.connectPromise;
+    } finally {
+      // Clear the in-flight promise so future reconnect attempts can proceed.
+      // Note: if we successfully connected, `this.connected` will be true and
+      // the early return above will handle subsequent connect() calls.
+      this.connectPromise = null;
+    }
   }
 
   disconnect(): void {
     this.shouldReconnect = false;
     this.clearReconnectTimer();
+
+    this.connectPromise = null;
+
+    this.clearSendQueue();
 
     this.setConnected(false);
 
@@ -113,6 +144,7 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
         this.reconnectAttempt = 0;
         this.attachHandlers(socket);
         this.setConnected(true);
+        this.flushSendQueue();
         resolve();
       };
 
@@ -128,6 +160,8 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
       socket.onclose = (event) => {
         this.socket = null;
         this.setConnected(false);
+
+        this.clearSendQueue();
 
         if (!settled) {
           const reason = (event as { reason?: unknown }).reason;
@@ -193,6 +227,7 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
     socket.onclose = () => {
       this.socket = null;
       this.setConnected(false);
+      this.clearSendQueue();
       if (this.shouldReconnect) {
         this.scheduleReconnect();
       }
@@ -228,6 +263,49 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
     if (this.reconnectTimerId === null) return;
     window.clearTimeout(this.reconnectTimerId);
     this.reconnectTimerId = null;
+  }
+
+  private isSocketOpen(socket: WebSocket): boolean {
+    // Some unit tests stub WebSocket with minimal shape.
+    // Treat missing readyState as "open" to preserve prior behavior.
+    const rs = (socket as unknown as { readyState?: unknown }).readyState;
+    return typeof rs === 'number' ? rs === WebSocket.OPEN : true;
+  }
+
+  private scheduleFlushSendQueue(): void {
+    if (this.flushSendQueueTimerId !== null) return;
+
+    // Use a short retry loop; if the socket never opens, the queue is cleared on close/disconnect.
+    this.flushSendQueueTimerId = window.setTimeout(() => {
+      this.flushSendQueueTimerId = null;
+      this.flushSendQueue();
+
+      // If we still can't flush (e.g., CONNECTING), keep trying.
+      const socket = this.socket;
+      if (socket && this.sendQueue.length > 0 && !this.isSocketOpen(socket)) {
+        this.scheduleFlushSendQueue();
+      }
+    }, 50);
+  }
+
+  private flushSendQueue(): void {
+    const socket = this.socket;
+    if (!socket || !this.connected) return;
+    if (!this.isSocketOpen(socket)) return;
+
+    while (this.sendQueue.length > 0) {
+      const next = this.sendQueue.shift();
+      if (next === undefined) break;
+      socket.send(next);
+    }
+  }
+
+  private clearSendQueue(): void {
+    this.sendQueue.length = 0;
+    if (this.flushSendQueueTimerId !== null) {
+      window.clearTimeout(this.flushSendQueueTimerId);
+      this.flushSendQueueTimerId = null;
+    }
   }
 
   private setConnected(next: boolean): void {

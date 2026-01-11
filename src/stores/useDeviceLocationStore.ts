@@ -24,6 +24,8 @@ interface DeviceLocationStore {
   locationsByEntityId: Record<string, DeviceLocation>;
 
   upsert: (entityId: string, location: DeviceLocation) => void;
+  remove: (entityId: string) => void;
+  pruneToEntityIds: (entityIds: Iterable<string>) => void;
   clear: () => void;
 }
 
@@ -37,6 +39,27 @@ export const useDeviceLocationStore = create<DeviceLocationStore>()(
           set((state) =>
             produce(state, (draft) => {
               draft.locationsByEntityId[entityId] = location;
+            })
+          );
+        },
+
+        remove: (entityId) => {
+          set((state) =>
+            produce(state, (draft) => {
+              delete draft.locationsByEntityId[entityId];
+            })
+          );
+        },
+
+        pruneToEntityIds: (entityIds) => {
+          const allowed = new Set(entityIds);
+          set((state) =>
+            produce(state, (draft) => {
+              for (const id of Object.keys(draft.locationsByEntityId)) {
+                if (!allowed.has(id)) {
+                  delete draft.locationsByEntityId[id];
+                }
+              }
             })
           );
         },

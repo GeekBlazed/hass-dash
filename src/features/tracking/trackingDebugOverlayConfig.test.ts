@@ -22,4 +22,12 @@ describe('trackingDebugOverlayConfig', () => {
     vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'xyz');
     expect(getTrackingDebugOverlayMode()).toBe('xyz');
   });
+
+  it('ignores inline comments in env values', () => {
+    vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'geo # Allowed: xyz | geo');
+    expect(getTrackingDebugOverlayMode()).toBe('geo');
+
+    vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'xyz; trailing comment');
+    expect(getTrackingDebugOverlayMode()).toBe('xyz');
+  });
 });

@@ -109,7 +109,9 @@ describe('FeatureFlagService', () => {
     it('should warn and not enable in production', () => {
       vi.stubEnv('PROD', true);
       vi.stubEnv('DEV', false);
-      const consoleSpy = vi.spyOn(console, 'warn');
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {
+        // Silence expected warning in tests.
+      });
 
       service.enable('TEST');
 
@@ -157,7 +159,9 @@ describe('FeatureFlagService', () => {
     it('should warn and not disable in production', () => {
       vi.stubEnv('PROD', true);
       vi.stubEnv('DEV', false);
-      const consoleSpy = vi.spyOn(console, 'warn');
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {
+        // Silence expected warning in tests.
+      });
 
       service.disable('TEST');
 

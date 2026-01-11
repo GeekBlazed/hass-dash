@@ -4,6 +4,10 @@ import { HomeAssistantWebSocketService } from './HomeAssistantWebSocketService';
 
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSING = 2;
+  static CLOSED = 3;
 
   onopen: ((event: unknown) => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
@@ -12,6 +16,7 @@ class MockWebSocket {
 
   sent: string[] = [];
   url: string;
+  readyState?: number;
 
   constructor(url: string) {
     this.url = url;
@@ -101,6 +106,24 @@ describe('HomeAssistantWebSocketService', () => {
     expect(MockWebSocket.instances).toHaveLength(1);
 
     await expect(service.connect('ws://example/api/websocket', 'token')).resolves.toBeUndefined();
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it('connect() reuses the in-flight connection when connecting', async () => {
+    const service = new HomeAssistantWebSocketService();
+
+    const p1 = service.connect('ws://example/api/websocket', 'token');
+    const p2 = service.connect('ws://example/api/websocket', 'token');
+
+    // Only one socket should be created while the handshake is in progress.
+    expect(MockWebSocket.instances).toHaveLength(1);
+
+    const socket = MockWebSocket.instances[0];
+    socket.serverSend({ type: 'auth_required' });
+    socket.serverSend({ type: 'auth_ok' });
+
+    await expect(Promise.all([p1, p2])).resolves.toEqual([undefined, undefined]);
+    expect(service.isConnected()).toBe(true);
     expect(MockWebSocket.instances).toHaveLength(1);
   });
 
@@ -252,5 +275,25 @@ describe('HomeAssistantWebSocketService', () => {
 
     socket1.serverSendRaw('{"type":"event","data":123}');
     expect(onData).toHaveBeenCalledWith('{"type":"event","data":123}');
+  });
+
+  it('send() queues while socket is CONNECTING, then flushes when OPEN', async () => {
+    const service = new HomeAssistantWebSocketService();
+
+    const connectPromise = service.connect('ws://example/api/websocket', 'token');
+    const socket = MockWebSocket.instances[0];
+    socket.serverSend({ type: 'auth_required' });
+    socket.serverSend({ type: 'auth_ok' });
+    await expect(connectPromise).resolves.toBeUndefined();
+    expect(service.isConnected()).toBe(true);
+
+    // Force a transient CONNECTING state to exercise the send queue branch.
+    socket.readyState = MockWebSocket.CONNECTING;
+    service.send('hello');
+    expect(socket.sent).not.toContain('hello');
+
+    socket.readyState = MockWebSocket.OPEN;
+    await vi.advanceTimersByTimeAsync(60);
+    expect(socket.sent).toContain('hello');
   });
 });

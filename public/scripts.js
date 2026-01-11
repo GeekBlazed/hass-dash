@@ -709,7 +709,8 @@
     let gestureStart = null;
 
     // Increase/decrease device marker size (in screen pixels) without affecting map scale.
-    const DEVICE_PIN_SCALE = 2.1;
+    // Markers were bumped ~50% larger to better fit avatar/initials overlays.
+    const DEVICE_PIN_SCALE = 3.15;
 
     const updateRoomLabelSizes = (desiredPx = 14) => {
       const rect = svg.getBoundingClientRect();
@@ -767,9 +768,39 @@
 
         const label = g.querySelector('.device-label');
         if (label instanceof SVGTextElement) {
-          label.setAttribute('font-size', String(deviceLabelFontSizeInUserUnits));
+          label.setAttribute('font-size', String(deviceLabelFontSizeInUserUnits * 1.35));
           label.setAttribute('x', '0');
-          label.setAttribute('y', String(-devicePinHeightInUserUnits - deviceLabelGapInUserUnits));
+          label.setAttribute(
+            'y',
+            String(-devicePinHeightInUserUnits - deviceLabelGapInUserUnits / 4)
+          );
+        }
+
+        // Optional avatar/initials overlay within the pin.
+        // The marker origin is the pin tip; the pin's bounding box is set above.
+        // Match the `#devicePin` symbol proportions (viewBox 0..64):
+        // - head circle is centered at y=24 (24/64 = 0.375)
+        // - head circle diameter is 32 (32/64 = 0.5)
+        // Avatar sizing/alignment tweaks:
+        // - Slightly larger (a couple screen pixels) to fully cover the white disc
+        // - Slightly lower to better center within the pin head area
+        const avatarSizeInUserUnits = devicePinWidthInUserUnits * 0.54 + 2 * unitsPerPx;
+        const avatarCenterY =
+          -devicePinHeightInUserUnits + devicePinHeightInUserUnits * 0.375 + 4 * unitsPerPx;
+
+        const avatarImage = g.querySelector('.device-avatar-image');
+        if (avatarImage instanceof SVGImageElement) {
+          avatarImage.setAttribute('width', String(avatarSizeInUserUnits));
+          avatarImage.setAttribute('height', String(avatarSizeInUserUnits));
+          avatarImage.setAttribute('x', String(-avatarSizeInUserUnits / 2));
+          avatarImage.setAttribute('y', String(avatarCenterY - avatarSizeInUserUnits / 2));
+        }
+
+        const avatarText = g.querySelector('.device-avatar-text');
+        if (avatarText instanceof SVGTextElement) {
+          avatarText.setAttribute('font-size', String(avatarSizeInUserUnits * 0.42));
+          avatarText.setAttribute('x', '0');
+          avatarText.setAttribute('y', String(avatarCenterY));
         }
       }
 
@@ -1551,7 +1582,7 @@
           `viewBox: ${viewBox}`;
 
         if (statusEl) statusEl.textContent = msg;
-        console.log(msg);
+        console.debug(msg);
       } catch (err) {
         const msg = `Floorplan: ERROR\n${String(err)}`;
         showEmptyMessage(msg);

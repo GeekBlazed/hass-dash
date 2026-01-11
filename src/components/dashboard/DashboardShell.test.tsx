@@ -28,6 +28,10 @@ vi.mock('./HaLightHotwireBridge', () => ({
   HaLightHotwireBridge: () => null,
 }));
 
+vi.mock('./DeviceLocationTrackingController', () => ({
+  DeviceLocationTrackingController: () => null,
+}));
+
 // Shared store mock used by the selector shim.
 const mockStore = {
   setFloorplanLoading: vi.fn(),

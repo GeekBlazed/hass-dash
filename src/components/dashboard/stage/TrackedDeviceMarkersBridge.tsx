@@ -7,6 +7,7 @@ import {
 import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import type { DeviceLocation } from '../../../stores/useDeviceLocationStore';
 import { useDeviceLocationStore } from '../../../stores/useDeviceLocationStore';
+import { useDeviceTrackerMetadataStore } from '../../../stores/useDeviceTrackerMetadataStore';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -68,6 +69,127 @@ const flipYIfPossible = (y: number): number => {
 const getDeviceLabel = (entityId: string): string => {
   const parts = String(entityId).split('.');
   return parts.length > 1 ? parts[1] : entityId;
+};
+
+const getPreferredDeviceLabel = (
+  entityId: string,
+  metadataByEntityId: Record<string, { name?: string; alias?: string }>
+): string => {
+  const meta = metadataByEntityId[entityId];
+  const name = meta?.name?.trim();
+  if (name) return name;
+  const alias = meta?.alias?.trim();
+  if (alias) return alias;
+  return getDeviceLabel(entityId);
+};
+
+const computeInitials = (name: string): string | undefined => {
+  const trimmed = name.trim();
+  if (!trimmed) return undefined;
+
+  const parts = trimmed
+    .split(/\s+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return undefined;
+
+  const first = parts[0];
+  const last = parts.length > 1 ? parts[parts.length - 1] : '';
+  const firstChar = first[0] ?? '';
+  const lastChar = last ? (last[0] ?? '') : '';
+
+  const initials = `${firstChar}${lastChar}`.trim().toUpperCase();
+  return initials || undefined;
+};
+
+const upsertAvatar = (
+  marker: SVGGElement,
+  avatarUrl: string | undefined,
+  initials: string | undefined
+): void => {
+  let image = marker.querySelector<SVGImageElement>('image.device-avatar-image');
+  let text = marker.querySelector<SVGTextElement>('text.device-avatar-text');
+
+  if (!image) {
+    image = createSvgElement('image');
+    image.setAttribute('class', 'device-avatar-image');
+    image.setAttribute('x', '0');
+    image.setAttribute('y', '0');
+    image.setAttribute('width', '1');
+    image.setAttribute('height', '1');
+    image.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+
+    // Clip to a circle; sized relative to the image box.
+    const clipId = `hass-dash-avatar-clip-${
+      marker.getAttribute(ENTITY_ID_ATTR) ?? Math.random().toString(36).slice(2)
+    }`;
+
+    const defs = createSvgElement('defs');
+    const clipPath = createSvgElement('clipPath');
+    clipPath.setAttribute('id', clipId);
+    clipPath.setAttribute('clipPathUnits', 'objectBoundingBox');
+    const circle = createSvgElement('circle');
+    circle.setAttribute('cx', '0.5');
+    circle.setAttribute('cy', '0.5');
+    circle.setAttribute('r', '0.5');
+    clipPath.appendChild(circle);
+    defs.appendChild(clipPath);
+    marker.appendChild(defs);
+
+    image.setAttribute('clip-path', `url(#${clipId})`);
+
+    // Place above the pin but below the label.
+    const label = marker.querySelector('text.device-label');
+    if (label && label.parentNode === marker) {
+      marker.insertBefore(image, label);
+    } else {
+      marker.appendChild(image);
+    }
+  }
+
+  if (!text) {
+    text = createSvgElement('text');
+    text.setAttribute('class', 'device-avatar-text');
+    text.setAttribute('x', '0');
+    text.setAttribute('y', '0');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('pointer-events', 'none');
+
+    const label = marker.querySelector('text.device-label');
+    if (label && label.parentNode === marker) {
+      marker.insertBefore(text, label);
+    } else {
+      marker.appendChild(text);
+    }
+  }
+
+  if (avatarUrl) {
+    image.setAttribute('href', avatarUrl);
+    image.setAttribute('xlink:href', avatarUrl);
+    image.removeAttribute('display');
+
+    text.setAttribute('display', 'none');
+    if (text.textContent) text.textContent = '';
+    return;
+  }
+
+  // No avatar: hide the image and show initials.
+  image.removeAttribute('href');
+  image.removeAttribute('xlink:href');
+  image.setAttribute('display', 'none');
+
+  const desired = (initials ?? '').trim().toUpperCase();
+  if (desired) {
+    text.removeAttribute('display');
+    if (text.textContent !== desired) {
+      text.textContent = desired;
+    }
+  } else {
+    text.setAttribute('display', 'none');
+    if (text.textContent) text.textContent = '';
+  }
 };
 
 const getMarkerIdsForEntityId = (entityId: string): string[] => {
@@ -152,6 +274,10 @@ const syncMarkers = (
   layer: SVGGElement,
   isEnabled: boolean,
   locationsByEntityId: Record<string, DeviceLocation>,
+  metadataByEntityId: Record<
+    string,
+    { name?: string; alias?: string; avatarUrl?: string; initials?: string }
+  >,
   showDebugOverlay: boolean,
   debugMode: TrackingDebugOverlayMode
 ): void => {
@@ -265,12 +391,24 @@ const syncMarkers = (
         label.setAttribute('y', '0');
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('dominant-baseline', 'middle');
-        label.textContent = getDeviceLabel(entityId);
+        label.textContent = getPreferredDeviceLabel(entityId, metadataByEntityId);
         marker.appendChild(label);
 
         layer.appendChild(marker);
       }
     }
+
+    // Keep labels up-to-date (both created and prototype-bound markers).
+    const preferredLabel = getPreferredDeviceLabel(entityId, metadataByEntityId);
+    const labelEl = marker.querySelector<SVGTextElement>('text.device-label');
+    if (labelEl && labelEl.textContent !== preferredLabel) {
+      labelEl.textContent = preferredLabel;
+    }
+
+    const meta = metadataByEntityId[entityId];
+    const avatarUrl = meta?.avatarUrl;
+    const initials = meta?.initials?.trim() || computeInitials(preferredLabel);
+    upsertAvatar(marker, avatarUrl, initials);
 
     marker.setAttribute('transform', `translate(${x} ${yRender})`);
 
@@ -286,6 +424,7 @@ export function TrackedDeviceMarkersBridge() {
   const { isEnabled } = useFeatureFlag('DEVICE_TRACKING');
   const { isEnabled: debugOverlayFlagEnabled } = useFeatureFlag('TRACKING_DEBUG_OVERLAY');
   const locationsByEntityId = useDeviceLocationStore((s) => s.locationsByEntityId);
+  const metadataByEntityId = useDeviceTrackerMetadataStore((s) => s.metadataByEntityId);
 
   // Dev-only: never show this overlay in production builds.
   const showDebugOverlay = debugOverlayFlagEnabled && !import.meta.env.PROD;
@@ -296,12 +435,26 @@ export function TrackedDeviceMarkersBridge() {
     if (!layer) return;
 
     // Initial sync
-    syncMarkers(layer, isEnabled, locationsByEntityId, showDebugOverlay, debugMode);
+    syncMarkers(
+      layer,
+      isEnabled,
+      locationsByEntityId,
+      metadataByEntityId,
+      showDebugOverlay,
+      debugMode
+    );
 
     // scripts.js clears and re-renders the devices layer (e.g., during reload).
     // Observe child list changes so our tracked markers are re-applied promptly.
     const observer = new MutationObserver(() => {
-      syncMarkers(layer, isEnabled, locationsByEntityId, showDebugOverlay, debugMode);
+      syncMarkers(
+        layer,
+        isEnabled,
+        locationsByEntityId,
+        metadataByEntityId,
+        showDebugOverlay,
+        debugMode
+      );
     });
 
     observer.observe(layer, { childList: true });
@@ -309,7 +462,7 @@ export function TrackedDeviceMarkersBridge() {
     return () => {
       observer.disconnect();
     };
-  }, [isEnabled, locationsByEntityId, showDebugOverlay, debugMode]);
+  }, [isEnabled, locationsByEntityId, metadataByEntityId, showDebugOverlay, debugMode]);
 
   return null;
 }

@@ -24,4 +24,6 @@ export const TYPES = {
   IFloorplanDataSource: Symbol.for('IFloorplanDataSource'),
   IClimateDataSource: Symbol.for('IClimateDataSource'),
   ILightingDataSource: Symbol.for('ILightingDataSource'),
+
+  IDeviceTrackerMetadataService: Symbol.for('IDeviceTrackerMetadataService'),
 };
