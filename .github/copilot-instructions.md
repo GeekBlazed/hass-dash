@@ -23,17 +23,19 @@ This is a visual, user-friendly front-end companion to Home Assistant. The appli
 - ✅ Coverage reporting with 96%+ actual coverage
 - ✅ GitHub Actions CI workflow
 - ✅ InversifyJS DI container with services (ConfigService, FeatureFlagService)
+- ✅ Zustand state management (see `src/stores/*`)
 - ✅ TypeScript decorators enabled for DI
 - ✅ Feature flag system with runtime overrides
 - ✅ Custom React hooks (useFeatureFlag, useFeatureFlags)
 - ✅ Debug panel component for feature flag management
 - ✅ Component showcase (feature-flagged) for UI primitives
+- ✅ Home Assistant integration (HTTP + WebSocket) with entity subscription/services
+- ✅ Device/person tracking (ESPresense via HA entities) with People-based labeling + avatars
 
 **Not Yet Implemented:**
 
-- ⏳ State management with Zustand (Phase 1)
 - ⏳ Konva.js floor plans (Phase 3)
-- ⏳ Home Assistant integration (Phase 2)
+- ⏳ PWA install/offline polish (Phase 5)
 
 See [IMPLEMENTATION-PLAN.md](../docs/IMPLEMENTATION-PLAN.md) for detailed roadmap.
 
@@ -54,11 +56,12 @@ See [IMPLEMENTATION-PLAN.md](../docs/IMPLEMENTATION-PLAN.md) for detailed roadma
 - **GitHub Actions CI** running tests, linting, and builds
 - **InversifyJS DI container** ([di-container.ts](../src/core/di-container.ts)) with type identifiers ([types.ts](../src/core/types.ts))
 - **Service implementations:** ConfigService and FeatureFlagService with interfaces and comprehensive tests
+- **Home Assistant integration:** HTTP + WebSocket services, entity cache + subscription pipeline
 - **TypeScript decorators enabled** in tsconfig.app.json
 - **Feature flag system** with sessionStorage overrides for dev mode
 - **Custom React hooks** for feature flag consumption (useFeatureFlag, useFeatureFlags)
 - **DebugPanel component** for visualizing and toggling feature flags
-- No state management library yet (Zustand coming in Phase 1)
+- Zustand stores in `src/stores/*` (including persisted tracking stores)
 
 ---
 
@@ -339,6 +342,40 @@ For project-specific tracking design and constraints, also check:
 
 - [docs/DEVICE-TRACKING.md](../docs/DEVICE-TRACKING.md)
 - [docs/FEATURE-DEVICE-TRACKING-ESPRESENSE.md](../docs/FEATURE-DEVICE-TRACKING-ESPRESENSE.md)
+
+### Device Tracking (ESPresense via Home Assistant)
+
+Important project conventions from the most recent tracking work:
+
+- **No new WebSocket connections:** reuse the existing HA client/services and the `state_changed` subscription.
+- **People-driven labeling:** marker label comes from `person.*` (friendly name), not from MQTT/device-tracker raw ids.
+- **People-only visibility:** only `device_tracker.*` entities assigned to a Person are rendered; unassigned trackers are automatically removed from the rendered set.
+- **Canonical IDs + aliases:** multiple identifier formats (e.g. `irk:*`, `phone:*`) are canonicalized/aliased into a single device record; explicitly exclude `node:*` devices from tracking.
+- **Live metadata updates:** when a person changes name or avatar, markers update via the same HA `state_changed` pipeline.
+
+Where to look in the codebase:
+
+- Tracking call-chain overview and file inventory: `docs/DEVICE-TRACKING.md`
+- Location extraction/parsing: `src/features/tracking/espresense/*`
+- Tracking service/controller wiring: `src/services/DeviceLocationTrackingService.ts` and `src/components/dashboard/DeviceLocationTrackingController.tsx`
+- Marker rendering + debug overlay: `src/components/dashboard/stage/TrackedDeviceMarkersBridge.tsx`
+
+Marker avatar behavior:
+
+- Markers render the **person image avatar** when available (`person.*.attributes.entity_picture`), otherwise fall back to **initials**.
+- Debug overlay labels (xyz/geo) remain **dev-only** and are gated by feature flags (see `docs/DEVICE-TRACKING.md`).
+
+### Prototype Marker Sizing / Alignment (SVG renderer)
+
+If you’re adjusting marker sizing or avatar alignment in the SVG-based floorplan prototype renderer:
+
+- The prototype runtime renderer lives in `public/scripts.js`.
+- Pin scale is controlled by `DEVICE_PIN_SCALE`.
+- Avatar overlay sizing/positioning is computed in SVG “user units” using a viewBox-aware `unitsPerPx` conversion (small numeric tweaks correspond to ~1–2 device pixels).
+
+### Testing / Build Gotcha (TypeScript + JSX types)
+
+If you see `TS2503: Cannot find namespace 'JSX'` (often in tests), prefer React types like `ReactElement` over `JSX.Element` in test helper return types.
 
 **Access in Code:**
 

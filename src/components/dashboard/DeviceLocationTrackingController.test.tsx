@@ -3,15 +3,44 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { TYPES } from '../../core/types';
 import * as useServiceModule from '../../hooks/useService';
+import type {
+  DeviceTrackerMetadata,
+  IDeviceTrackerMetadataService,
+} from '../../interfaces/IDeviceTrackerMetadataService';
 import type { IEntityService } from '../../interfaces/IEntityService';
+import type { IHomeAssistantConnectionConfig } from '../../interfaces/IHomeAssistantConnectionConfig';
 import { useDeviceLocationStore } from '../../stores/useDeviceLocationStore';
 import { useDeviceTrackerMetadataStore } from '../../stores/useDeviceTrackerMetadataStore';
 import type { HaEntityState } from '../../types/home-assistant';
 import { DeviceLocationTrackingController } from './DeviceLocationTrackingController';
 
+declare global {
+  interface Window {
+    __hassDashDebug?: {
+      deviceTrackerMetadata?: Record<string, DeviceTrackerMetadata>;
+      getDeviceTrackerMetadataStoreState?: () => unknown;
+    };
+  }
+}
+
 describe('DeviceLocationTrackingController', () => {
+  const makeHaEntityState = (overrides: {
+    entity_id: string;
+    state?: string;
+    attributes?: Record<string, unknown>;
+  }): HaEntityState => {
+    return {
+      entity_id: overrides.entity_id,
+      state: overrides.state ?? 'home',
+      attributes: overrides.attributes ?? {},
+      last_changed: '2026-01-11T00:00:00.000Z',
+      last_updated: '2026-01-11T00:00:00.000Z',
+      context: { id: 'test', parent_id: null, user_id: null },
+    };
+  };
+
   const forceDevMode = (): (() => void) => {
-    const env = (import.meta as any).env as Record<string, unknown>;
+    const env = import.meta.env as unknown as Record<string, unknown>;
     const prevDev = env.DEV;
     const prevProd = env.PROD;
     env.DEV = true;
@@ -30,7 +59,7 @@ describe('DeviceLocationTrackingController', () => {
     useDeviceLocationStore.getState().clear();
     useDeviceTrackerMetadataStore.getState().clear();
 
-    const handlers: Array<(nextState: any) => void> = [];
+    const handlers: Array<(nextState: HaEntityState) => void> = [];
     const unsubscribe = vi.fn(async () => undefined);
 
     const fetchStates = vi.fn(async () => [
@@ -47,8 +76,8 @@ describe('DeviceLocationTrackingController', () => {
       } satisfies HaEntityState,
     ]);
 
-    const subscribeToStateChanges = vi.fn(async (h) => {
-      handlers.push(h as any);
+    const subscribeToStateChanges = vi.fn(async (h: (newState: HaEntityState) => void) => {
+      handlers.push(h);
       return { unsubscribe };
     });
 
@@ -66,16 +95,18 @@ describe('DeviceLocationTrackingController', () => {
 
     // Emit a tracker location update. It should only be accepted because it's assigned.
     for (const h of handlers) {
-      h({
-        entity_id: 'device_tracker.phone_jeremy',
-        state: 'home',
-        attributes: {
-          x: 1,
-          y: 2,
-          confidence: 80,
-          last_seen: '2026-01-11T00:00:00.000Z',
-        },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'device_tracker.phone_jeremy',
+          state: 'home',
+          attributes: {
+            x: 1,
+            y: 2,
+            confidence: 80,
+            last_seen: '2026-01-11T00:00:00.000Z',
+          },
+        })
+      );
     }
 
     await vi.waitFor(() => {
@@ -86,14 +117,16 @@ describe('DeviceLocationTrackingController', () => {
 
     // Now unassign the tracker from the person.
     for (const h of handlers) {
-      h({
-        entity_id: 'person.jeremy',
-        state: 'home',
-        attributes: {
-          friendly_name: 'Jeremy',
-          device_trackers: [],
-        },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'person.jeremy',
+          state: 'home',
+          attributes: {
+            friendly_name: 'Jeremy',
+            device_trackers: [],
+          },
+        })
+      );
     }
 
     await vi.waitFor(() => {
@@ -104,16 +137,18 @@ describe('DeviceLocationTrackingController', () => {
 
     // Even if the tracker continues to send updates, it should no longer be accepted.
     for (const h of handlers) {
-      h({
-        entity_id: 'device_tracker.phone_jeremy',
-        state: 'home',
-        attributes: {
-          x: 3,
-          y: 4,
-          confidence: 80,
-          last_seen: '2026-01-11T00:00:01.000Z',
-        },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'device_tracker.phone_jeremy',
+          state: 'home',
+          attributes: {
+            x: 3,
+            y: 4,
+            confidence: 80,
+            last_seen: '2026-01-11T00:00:01.000Z',
+          },
+        })
+      );
     }
 
     await vi.waitFor(() => {
@@ -136,11 +171,11 @@ describe('DeviceLocationTrackingController', () => {
 
     useDeviceTrackerMetadataStore.getState().clear();
 
-    const handlers: Array<(nextState: any) => void> = [];
+    const handlers: Array<(nextState: HaEntityState) => void> = [];
 
     const unsubscribe = vi.fn(async () => undefined);
-    const subscribeToStateChanges = vi.fn(async (h) => {
-      handlers.push(h as any);
+    const subscribeToStateChanges = vi.fn(async (h: (newState: HaEntityState) => void) => {
+      handlers.push(h);
       return { unsubscribe };
     });
 
@@ -156,14 +191,16 @@ describe('DeviceLocationTrackingController', () => {
     });
 
     for (const h of handlers) {
-      h({
-        entity_id: 'person.jeremy',
-        attributes: {
-          friendly_name: 'Jeremy Smith',
-          entity_picture: '/api/image_proxy/image/abc',
-          device_trackers: ['device_tracker.phone_jeremy'],
-        },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'person.jeremy',
+          attributes: {
+            friendly_name: 'Jeremy Smith',
+            entity_picture: '/api/image_proxy/image/abc',
+            device_trackers: ['device_tracker.phone_jeremy'],
+          },
+        })
+      );
     }
 
     await vi.waitFor(() => {
@@ -246,15 +283,15 @@ describe('DeviceLocationTrackingController', () => {
     vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
     vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
 
-    const handlers: Array<(nextState: any) => void> = [];
+    const handlers: Array<(nextState: HaEntityState) => void> = [];
     const unsubscribe = vi.fn(async () => undefined);
 
     const fetchStates = vi.fn(async () => {
       throw new Error('boom');
     });
 
-    const subscribeToStateChanges = vi.fn(async (h) => {
-      handlers.push(h as any);
+    const subscribeToStateChanges = vi.fn(async (h: (newState: HaEntityState) => void) => {
+      handlers.push(h);
       return { unsubscribe };
     });
 
@@ -274,7 +311,7 @@ describe('DeviceLocationTrackingController', () => {
 
     // Ensure non-person updates are ignored by the person handler when present.
     for (const h of handlers) {
-      h({ entity_id: 'sensor.not_a_person', attributes: {} });
+      h(makeHaEntityState({ entity_id: 'sensor.not_a_person', attributes: {} }));
     }
 
     warnSpy.mockRestore();
@@ -288,7 +325,7 @@ describe('DeviceLocationTrackingController', () => {
     useDeviceLocationStore.getState().clear();
     useDeviceTrackerMetadataStore.getState().clear();
 
-    const handlers: Array<(nextState: any) => void> = [];
+    const handlers: Array<(nextState: HaEntityState) => void> = [];
     const unsubscribe = vi.fn(async () => undefined);
 
     const fetchStates = vi.fn(async () => [
@@ -305,8 +342,8 @@ describe('DeviceLocationTrackingController', () => {
       } satisfies HaEntityState,
     ]);
 
-    const subscribeToStateChanges = vi.fn(async (h) => {
-      handlers.push(h as any);
+    const subscribeToStateChanges = vi.fn(async (h: (newState: HaEntityState) => void) => {
+      handlers.push(h);
       return { unsubscribe };
     });
 
@@ -323,27 +360,31 @@ describe('DeviceLocationTrackingController', () => {
 
     // Assign with mixed junk entries; only the valid device_tracker.* should be allowed.
     for (const h of handlers) {
-      h({
-        entity_id: 'person.jeremy',
-        attributes: {
-          friendly_name: 'Jeremy',
-          device_trackers: [
-            123,
-            'phone_jeremy',
-            'tracker.phone_jeremy',
-            'device_tracker.phone_jeremy',
-          ],
-        },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'person.jeremy',
+          attributes: {
+            friendly_name: 'Jeremy',
+            device_trackers: [
+              123,
+              'phone_jeremy',
+              'tracker.phone_jeremy',
+              'device_tracker.phone_jeremy',
+            ],
+          },
+        })
+      );
     }
 
     // Valid tracker should be accepted.
     for (const h of handlers) {
-      h({
-        entity_id: 'device_tracker.phone_jeremy',
-        state: 'home',
-        attributes: { x: 1, y: 2, confidence: 80, last_seen: '2026-01-11T00:00:00.000Z' },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'device_tracker.phone_jeremy',
+          state: 'home',
+          attributes: { x: 1, y: 2, confidence: 80, last_seen: '2026-01-11T00:00:00.000Z' },
+        })
+      );
     }
 
     await vi.waitFor(() => {
@@ -354,13 +395,15 @@ describe('DeviceLocationTrackingController', () => {
 
     // If device_trackers becomes non-array, it should be treated as empty and pruned.
     for (const h of handlers) {
-      h({
-        entity_id: 'person.jeremy',
-        attributes: {
-          friendly_name: 'Jeremy',
-          device_trackers: 'not-an-array',
-        },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'person.jeremy',
+          attributes: {
+            friendly_name: 'Jeremy',
+            device_trackers: 'not-an-array',
+          },
+        })
+      );
     }
 
     await vi.waitFor(() => {
@@ -382,11 +425,11 @@ describe('DeviceLocationTrackingController', () => {
 
     useDeviceTrackerMetadataStore.getState().clear();
 
-    const handlers: Array<(nextState: any) => void> = [];
+    const handlers: Array<(nextState: HaEntityState) => void> = [];
 
     const unsubscribe = vi.fn(async () => undefined);
-    const subscribeToStateChanges = vi.fn(async (h) => {
-      handlers.push(h as any);
+    const subscribeToStateChanges = vi.fn(async (h: (newState: HaEntityState) => void) => {
+      handlers.push(h);
       return { unsubscribe };
     });
 
@@ -402,13 +445,15 @@ describe('DeviceLocationTrackingController', () => {
     });
 
     for (const h of handlers) {
-      h({
-        entity_id: 'person.jeremy',
-        attributes: {
-          friendly_name: '   ',
-          device_trackers: ['device_tracker.phone_jeremy'],
-        },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'person.jeremy',
+          attributes: {
+            friendly_name: '   ',
+            device_trackers: ['device_tracker.phone_jeremy'],
+          },
+        })
+      );
     }
 
     await vi.waitFor(() => {
@@ -436,7 +481,7 @@ describe('DeviceLocationTrackingController', () => {
       subscribeToStateChanges,
     };
 
-    const metadataByEntityId = {
+    const metadataByEntityId: Record<string, DeviceTrackerMetadata> = {
       'device_tracker.phone_jeremy': { name: 'Jeremy', alias: 'phone:jeremy' },
     };
 
@@ -444,16 +489,19 @@ describe('DeviceLocationTrackingController', () => {
 
     const useServiceSpy = vi
       .spyOn(useServiceModule, 'useService')
-      .mockImplementation((typeId: symbol) => {
+      .mockImplementation((typeId: symbol): unknown => {
         if (typeId === TYPES.IDeviceTrackerMetadataService) {
-          return { fetchByEntityId } as any;
+          const svc: IDeviceTrackerMetadataService = {
+            fetchByEntityId,
+          };
+          return svc;
         }
 
         if (typeId === TYPES.IEntityService) {
-          return entityService as any;
+          return entityService;
         }
 
-        return {} as any;
+        return {};
       });
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
@@ -466,10 +514,8 @@ describe('DeviceLocationTrackingController', () => {
     });
 
     await vi.waitFor(() => {
-      expect((window as any).__hassDashDebug?.deviceTrackerMetadata).toEqual(metadataByEntityId);
-      expect(typeof (window as any).__hassDashDebug?.getDeviceTrackerMetadataStoreState).toBe(
-        'function'
-      );
+      expect(window.__hassDashDebug?.deviceTrackerMetadata).toEqual(metadataByEntityId);
+      expect(typeof window.__hassDashDebug?.getDeviceTrackerMetadataStoreState).toBe('function');
     });
 
     unmount();
@@ -488,10 +534,10 @@ describe('DeviceLocationTrackingController', () => {
 
     useDeviceTrackerMetadataStore.getState().clear();
 
-    const handlers: Array<(nextState: any) => void> = [];
+    const handlers: Array<(nextState: HaEntityState) => void> = [];
     const unsubscribe = vi.fn(async () => undefined);
-    const subscribeToStateChanges = vi.fn(async (h) => {
-      handlers.push(h as any);
+    const subscribeToStateChanges = vi.fn(async (h: (newState: HaEntityState) => void) => {
+      handlers.push(h);
       return { unsubscribe };
     });
 
@@ -501,27 +547,33 @@ describe('DeviceLocationTrackingController', () => {
     };
 
     const fetchByEntityId = vi.fn(async () => ({}));
-    const connectionConfig = {
+    const connectionConfig: Pick<
+      IHomeAssistantConnectionConfig,
+      'getConfig' | 'getEffectiveWebSocketUrl'
+    > = {
       getConfig: vi.fn(() => ({ baseUrl: undefined, webSocketUrl: '' })),
       getEffectiveWebSocketUrl: vi.fn(() => 'wss://ha.example:8123/api/websocket'),
     };
 
     const useServiceSpy = vi
       .spyOn(useServiceModule, 'useService')
-      .mockImplementation((typeId: symbol) => {
+      .mockImplementation((typeId: symbol): unknown => {
         if (typeId === TYPES.IDeviceTrackerMetadataService) {
-          return { fetchByEntityId } as any;
+          const svc: IDeviceTrackerMetadataService = {
+            fetchByEntityId,
+          };
+          return svc;
         }
 
         if (typeId === TYPES.IEntityService) {
-          return entityService as any;
+          return entityService;
         }
 
         if (typeId === TYPES.IHomeAssistantConnectionConfig) {
-          return connectionConfig as any;
+          return connectionConfig as unknown as IHomeAssistantConnectionConfig;
         }
 
-        return {} as any;
+        return {};
       });
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
@@ -531,14 +583,16 @@ describe('DeviceLocationTrackingController', () => {
     });
 
     for (const h of handlers) {
-      h({
-        entity_id: 'person.jeremy',
-        attributes: {
-          friendly_name: 'Jeremy Smith',
-          entity_picture: '/api/image_proxy/image/abc',
-          device_trackers: ['device_tracker.phone_jeremy'],
-        },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'person.jeremy',
+          attributes: {
+            friendly_name: 'Jeremy Smith',
+            entity_picture: '/api/image_proxy/image/abc',
+            device_trackers: ['device_tracker.phone_jeremy'],
+          },
+        })
+      );
     }
 
     await vi.waitFor(() => {
@@ -559,11 +613,11 @@ describe('DeviceLocationTrackingController', () => {
 
     useDeviceTrackerMetadataStore.getState().clear();
 
-    const handlers: Array<(nextState: any) => void> = [];
+    const handlers: Array<(nextState: HaEntityState) => void> = [];
 
     const unsubscribe = vi.fn(async () => undefined);
-    const subscribeToStateChanges = vi.fn(async (h) => {
-      handlers.push(h as any);
+    const subscribeToStateChanges = vi.fn(async (h: (newState: HaEntityState) => void) => {
+      handlers.push(h);
       return { unsubscribe };
     });
 
@@ -573,26 +627,32 @@ describe('DeviceLocationTrackingController', () => {
     };
 
     const fetchByEntityId = vi.fn(async () => ({}));
-    const connectionConfig = {
+    const connectionConfig: Pick<
+      IHomeAssistantConnectionConfig,
+      'getConfig' | 'getEffectiveWebSocketUrl'
+    > = {
       getConfig: vi.fn(() => ({ baseUrl: 'http://ha.example:8123', webSocketUrl: '' })),
       getEffectiveWebSocketUrl: vi.fn(() => undefined),
     };
     const useServiceSpy = vi
       .spyOn(useServiceModule, 'useService')
-      .mockImplementation((typeId: symbol) => {
+      .mockImplementation((typeId: symbol): unknown => {
         if (typeId === TYPES.IDeviceTrackerMetadataService) {
-          return { fetchByEntityId } as any;
+          const svc: IDeviceTrackerMetadataService = {
+            fetchByEntityId,
+          };
+          return svc;
         }
 
         if (typeId === TYPES.IEntityService) {
-          return entityService as any;
+          return entityService;
         }
 
         if (typeId === TYPES.IHomeAssistantConnectionConfig) {
-          return connectionConfig as any;
+          return connectionConfig as unknown as IHomeAssistantConnectionConfig;
         }
 
-        return {} as any;
+        return {};
       });
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
@@ -602,14 +662,16 @@ describe('DeviceLocationTrackingController', () => {
     });
 
     for (const h of handlers) {
-      h({
-        entity_id: 'person.jeremy',
-        attributes: {
-          friendly_name: 'Jeremy',
-          entity_picture: 'https://cdn.example/avatar.png',
-          device_trackers: ['device_tracker.phone_jeremy'],
-        },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'person.jeremy',
+          attributes: {
+            friendly_name: 'Jeremy',
+            entity_picture: 'https://cdn.example/avatar.png',
+            device_trackers: ['device_tracker.phone_jeremy'],
+          },
+        })
+      );
     }
 
     await vi.waitFor(() => {
@@ -646,16 +708,19 @@ describe('DeviceLocationTrackingController', () => {
 
     const useServiceSpy = vi
       .spyOn(useServiceModule, 'useService')
-      .mockImplementation((typeId: symbol) => {
+      .mockImplementation((typeId: symbol): unknown => {
         if (typeId === TYPES.IDeviceTrackerMetadataService) {
-          return { fetchByEntityId } as any;
+          const svc: IDeviceTrackerMetadataService = {
+            fetchByEntityId,
+          };
+          return svc;
         }
 
         if (typeId === TYPES.IEntityService) {
-          return entityService as any;
+          return entityService;
         }
 
-        return {} as any;
+        return {};
       });
 
     render(<DeviceLocationTrackingController entityService={entityService} />);
@@ -676,10 +741,10 @@ describe('DeviceLocationTrackingController', () => {
 
     useDeviceTrackerMetadataStore.getState().clear();
 
-    const handlers: Array<(nextState: any) => void> = [];
+    const handlers: Array<(nextState: HaEntityState) => void> = [];
     const unsubscribe = vi.fn(async () => undefined);
-    const subscribeToStateChanges = vi.fn(async (h) => {
-      handlers.push(h as any);
+    const subscribeToStateChanges = vi.fn(async (h: (newState: HaEntityState) => void) => {
+      handlers.push(h);
       return { unsubscribe };
     });
 
@@ -689,7 +754,10 @@ describe('DeviceLocationTrackingController', () => {
     };
 
     const fetchByEntityId = vi.fn(async () => ({}));
-    const connectionConfig = {
+    const connectionConfig: Pick<
+      IHomeAssistantConnectionConfig,
+      'getConfig' | 'getEffectiveWebSocketUrl'
+    > = {
       getConfig: vi.fn(() => ({
         baseUrl: undefined,
         webSocketUrl: 'ws://ha.example:8123/api/websocket',
@@ -699,20 +767,23 @@ describe('DeviceLocationTrackingController', () => {
 
     const useServiceSpy = vi
       .spyOn(useServiceModule, 'useService')
-      .mockImplementation((typeId: symbol) => {
+      .mockImplementation((typeId: symbol): unknown => {
         if (typeId === TYPES.IDeviceTrackerMetadataService) {
-          return { fetchByEntityId } as any;
+          const svc: IDeviceTrackerMetadataService = {
+            fetchByEntityId,
+          };
+          return svc;
         }
 
         if (typeId === TYPES.IEntityService) {
-          return entityService as any;
+          return entityService;
         }
 
         if (typeId === TYPES.IHomeAssistantConnectionConfig) {
-          return connectionConfig as any;
+          return connectionConfig as unknown as IHomeAssistantConnectionConfig;
         }
 
-        return {} as any;
+        return {};
       });
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
@@ -722,14 +793,16 @@ describe('DeviceLocationTrackingController', () => {
     });
 
     for (const h of handlers) {
-      h({
-        entity_id: 'person.jeremy',
-        attributes: {
-          friendly_name: 'Jeremy',
-          entity_picture: '/api/image_proxy/image/abc',
-          device_trackers: ['device_tracker.phone_jeremy'],
-        },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'person.jeremy',
+          attributes: {
+            friendly_name: 'Jeremy',
+            entity_picture: '/api/image_proxy/image/abc',
+            device_trackers: ['device_tracker.phone_jeremy'],
+          },
+        })
+      );
     }
 
     await vi.waitFor(() => {
@@ -750,10 +823,10 @@ describe('DeviceLocationTrackingController', () => {
 
     useDeviceTrackerMetadataStore.getState().clear();
 
-    const handlers: Array<(nextState: any) => void> = [];
+    const handlers: Array<(nextState: HaEntityState) => void> = [];
     const unsubscribe = vi.fn(async () => undefined);
-    const subscribeToStateChanges = vi.fn(async (h) => {
-      handlers.push(h as any);
+    const subscribeToStateChanges = vi.fn(async (h: (newState: HaEntityState) => void) => {
+      handlers.push(h);
       return { unsubscribe };
     });
 
@@ -763,7 +836,10 @@ describe('DeviceLocationTrackingController', () => {
     };
 
     const fetchByEntityId = vi.fn(async () => ({}));
-    const connectionConfig = {
+    const connectionConfig: Pick<
+      IHomeAssistantConnectionConfig,
+      'getConfig' | 'getEffectiveWebSocketUrl'
+    > = {
       getConfig: vi.fn(() => ({
         baseUrl: undefined,
         webSocketUrl: 'http://ha.example:8123/api/websocket',
@@ -773,20 +849,23 @@ describe('DeviceLocationTrackingController', () => {
 
     const useServiceSpy = vi
       .spyOn(useServiceModule, 'useService')
-      .mockImplementation((typeId: symbol) => {
+      .mockImplementation((typeId: symbol): unknown => {
         if (typeId === TYPES.IDeviceTrackerMetadataService) {
-          return { fetchByEntityId } as any;
+          const svc: IDeviceTrackerMetadataService = {
+            fetchByEntityId,
+          };
+          return svc;
         }
 
         if (typeId === TYPES.IEntityService) {
-          return entityService as any;
+          return entityService;
         }
 
         if (typeId === TYPES.IHomeAssistantConnectionConfig) {
-          return connectionConfig as any;
+          return connectionConfig as unknown as IHomeAssistantConnectionConfig;
         }
 
-        return {} as any;
+        return {};
       });
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
@@ -796,14 +875,16 @@ describe('DeviceLocationTrackingController', () => {
     });
 
     for (const h of handlers) {
-      h({
-        entity_id: 'person.jeremy',
-        attributes: {
-          friendly_name: 'Jeremy',
-          entity_picture: '/api/image_proxy/image/abc',
-          device_trackers: ['device_tracker.phone_jeremy'],
-        },
-      });
+      h(
+        makeHaEntityState({
+          entity_id: 'person.jeremy',
+          attributes: {
+            friendly_name: 'Jeremy',
+            entity_picture: '/api/image_proxy/image/abc',
+            device_trackers: ['device_tracker.phone_jeremy'],
+          },
+        })
+      );
     }
 
     await vi.waitFor(() => {
