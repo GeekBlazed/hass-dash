@@ -193,8 +193,8 @@ const upsertAvatar = (
 };
 
 const getMarkerIdsForEntityId = (entityId: string): string[] => {
-  // Prefer exact match (your `devices.yaml` uses full HA entity ids like
-  // `device_tracker.phone_jeremy`). Fall back to just `object_id` for legacy.
+  // Prefer exact match (full HA entity ids like `device_tracker.phone_jeremy`).
+  // Fall back to just `object_id` for legacy.
   const objectId = getDeviceLabel(entityId);
   return objectId !== entityId ? [entityId, objectId] : [entityId];
 };

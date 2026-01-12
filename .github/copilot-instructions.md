@@ -72,9 +72,6 @@ Prototype YAML used by the React parity UI lives under `public/data/` and is loa
 **Prototype data inputs (YAML):**
 
 - `public/data/floorplan.yaml` – room geometry + labels used to render the SVG floorplan
-- `public/data/devices.yaml` – device marker positions/labels
-- `public/data/climate.yaml` – per-room climate values used by the Climate panel/overlay
-- `public/data/lighting.yaml` – lights + scenes used by the Lighting panel/overlay
 
 **Prototype interaction model (important):**
 
@@ -82,7 +79,7 @@ Prototype YAML used by the React parity UI lives under `public/data/` and is loa
 - “Quick actions” are the entry points that toggle which sidebar panel is active.
 - The SVG floorplan is layered using `<g>` groups; overlays are turned on/off by showing/hiding the corresponding layer.
 - Lighting controls in the prototype are **local-only**: toggles update an in-memory model and re-render the UI (they do not persist to YAML and do not call Home Assistant).
-- `public/data/lighting.yaml` is treated as optional; if it is missing/unparseable, or if no lights are currently on, the Lighting panel should display: “There are no lights on.”
+- Prototype lighting data is treated as optional; if no lights are currently on, the Lighting panel should display: “There are no lights on.”
 
 **When working on floorplan/overlay/panel UI:**
 

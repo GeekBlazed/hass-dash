@@ -2,26 +2,25 @@ import { useEffect, useState } from 'react';
 
 import { TYPES } from '../../core/types';
 import { useService } from '../../hooks/useService';
-import type { IClimateDataSource } from '../../interfaces/IClimateDataSource';
 import type { IFloorplanDataSource } from '../../interfaces/IFloorplanDataSource';
 import type { ILightingDataSource } from '../../interfaces/ILightingDataSource';
 import { useDashboardStore } from '../../stores/useDashboardStore';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardStage } from './DashboardStage';
 import { DeviceLocationTrackingController } from './DeviceLocationTrackingController';
+import { HaAreaClimateOverlayBridge } from './HaAreaClimateOverlayBridge';
 import { HaLightHotwireBridge } from './HaLightHotwireBridge';
+import { HomeAssistantEntityStoreController } from './HomeAssistantEntityStoreController';
 
 export function DashboardShell() {
   const [reloadNonce, setReloadNonce] = useState(0);
 
   const floorplanSource = useService<IFloorplanDataSource>(TYPES.IFloorplanDataSource);
-  const climateSource = useService<IClimateDataSource>(TYPES.IClimateDataSource);
   const lightingSource = useService<ILightingDataSource>(TYPES.ILightingDataSource);
 
   const setFloorplanLoading = useDashboardStore((s) => s.setFloorplanLoading);
   const setFloorplanLoaded = useDashboardStore((s) => s.setFloorplanLoaded);
   const setFloorplanError = useDashboardStore((s) => s.setFloorplanError);
-  const setClimateModel = useDashboardStore((s) => s.setClimateModel);
   const setLightingModel = useDashboardStore((s) => s.setLightingModel);
 
   useEffect(() => {
@@ -35,9 +34,8 @@ export function DashboardShell() {
     setFloorplanLoading();
 
     void (async () => {
-      const [floorplan, climate, lighting] = await Promise.allSettled([
+      const [floorplan, lighting] = await Promise.allSettled([
         floorplanSource.getFloorplan(),
-        climateSource.getClimate(),
         lightingSource.getLighting(),
       ]);
 
@@ -53,10 +51,6 @@ export function DashboardShell() {
         setFloorplanError(message);
       }
 
-      if (climate.status === 'fulfilled') {
-        setClimateModel(climate.value);
-      }
-
       if (lighting.status === 'fulfilled') {
         setLightingModel(lighting.value);
       }
@@ -68,12 +62,10 @@ export function DashboardShell() {
   }, [
     reloadNonce,
     floorplanSource,
-    climateSource,
     lightingSource,
     setFloorplanLoading,
     setFloorplanLoaded,
     setFloorplanError,
-    setClimateModel,
     setLightingModel,
   ]);
 
@@ -84,6 +76,8 @@ export function DashboardShell() {
   return (
     <div className="viewport">
       <HaLightHotwireBridge />
+      <HaAreaClimateOverlayBridge />
+      <HomeAssistantEntityStoreController />
       <DeviceLocationTrackingController />
       <div className="frame" role="application" aria-label="Floorplan prototype">
         <div className="app">

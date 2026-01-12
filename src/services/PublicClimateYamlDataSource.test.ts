@@ -3,51 +3,22 @@ import { describe, expect, it, vi } from 'vitest';
 import { PublicClimateYamlDataSource } from './PublicClimateYamlDataSource';
 
 describe('PublicClimateYamlDataSource', () => {
-  it('loads and normalizes /data/climate.yaml', async () => {
-    const yaml = `thermostat:
-  default:
-    measured_temperature: 76
-    measured_humidity: 40
-    set_temperature: 70
-    hvac_mode: cool
-areas:
-  - area_id: kitchen
-    temp: 80
-    humidity: null
-`;
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => new Response(yaml, { status: 200 }))
-    );
+  it('returns an empty model and does not fetch any YAML', async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response('thermostat: {}', { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
 
     const ds = new PublicClimateYamlDataSource();
     const model = await ds.getClimate();
 
-    expect(model.thermostat.measuredTemperature).toBe(76);
-    expect(model.thermostat.measuredHumidity).toBe(40);
-    expect(model.areas[0]?.areaId).toBe('kitchen');
-  });
-
-  it('throws when /data/climate.yaml is missing', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => new Response('Not found', { status: 404 }))
-    );
-
-    const ds = new PublicClimateYamlDataSource();
-
-    await expect(ds.getClimate()).rejects.toThrow(/failed to load/i);
-  });
-
-  it('throws when YAML is unparseable', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => new Response(':\n- [', { status: 200 }))
-    );
-
-    const ds = new PublicClimateYamlDataSource();
-
-    await expect(ds.getClimate()).rejects.toBeInstanceOf(Error);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(model.areas).toEqual([]);
+    expect(typeof model.thermostat.name).toBe('string');
+    expect(typeof model.thermostat.unit).toBe('string');
+    expect(typeof model.thermostat.precision).toBe('number');
+    expect(typeof model.thermostat.setTemperature).toBe('number');
+    expect(typeof model.thermostat.hvacMode).toBe('string');
+    expect(typeof model.thermostat.measuredTemperature).toBe('number');
   });
 });

@@ -1466,17 +1466,7 @@
       if (retryButton instanceof HTMLButtonElement) retryButton.disabled = true;
 
       try {
-        const [
-          { text, source },
-          { text: devicesText, source: devicesSource },
-          { text: climateText, source: climateSource },
-          { text: lightingText, source: lightingSource },
-        ] = await Promise.all([
-          loadYamlText('/data/floorplan.yaml', ''),
-          loadYamlText('/data/devices.yaml', ''),
-          loadYamlText('/data/climate.yaml', ''),
-          loadYamlText('/data/lighting.yaml', ''),
-        ]);
+        const [{ text, source }] = await Promise.all([loadYamlText('/data/floorplan.yaml', '')]);
 
         if (!String(text || '').trim()) {
           const msg =
@@ -1498,31 +1488,11 @@
         }
         const doc = parseYamlLite(normalized);
 
-        const normalizedDevices = normalizeYamlText(devicesText);
-        const devicesDoc = parseYamlLite(normalizedDevices);
-
-        const normalizedClimate = normalizeYamlText(climateText);
-        let climateDoc = null;
-        if (String(normalizedClimate || '').trim() && !isProbablyHtml(normalizedClimate)) {
-          try {
-            climateDoc = parseYamlLite(normalizedClimate);
-          } catch (err) {
-            climateDoc = null;
-            console.warn('climate.yaml present but could not be parsed; ignoring.', err);
-          }
-        }
-
-        const normalizedLighting = normalizeYamlText(lightingText);
-        let lightingDoc = null;
-        if (String(normalizedLighting || '').trim() && !isProbablyHtml(normalizedLighting)) {
-          try {
-            lightingDoc = parseYamlLite(normalizedLighting);
-          } catch {
-            lightingDoc = null;
-          }
-        }
-
-        const lightingModel = normalizeLightingDoc(lightingDoc);
+        // NOTE: The React parity UI no longer loads local YAML models for devices/climate/lighting.
+        // The legacy prototype renderer still accepts these parameters, so we pass safe empties.
+        const devicesDoc = {};
+        const climateDoc = null;
+        const lightingModel = { lights: [] };
         const floorsCount = Array.isArray(doc?.floors) ? doc.floors.length : 0;
 
         if (floorsCount === 0) {
@@ -1549,10 +1519,6 @@
         // Ensure map overlay reflects current sidebar state (and not just the initial DOM classes).
         setClimateOverlayVisible(getVisibleSidebarPanel() === 'climate');
 
-        if (climateDoc) {
-          applyClimatePanel(climateDoc);
-        }
-
         applyLightingPanel(lightingModel);
         const roomsCount = result?.roomsCount ?? 0;
         const devicesCount = result?.devicesCount ?? 0;
@@ -1572,9 +1538,6 @@
         const msg =
           `Floorplan: ok\n` +
           `source: ${source}\n` +
-          `devices: ${devicesSource}\n` +
-          `climate: ${climateSource}\n` +
-          `lighting: ${lightingSource}\n` +
           `default_floor_id: ${defaultFloorId || '(none)'}${defaultFloorNote}\n` +
           `floors: ${floorsCount}  floor: ${floorId}\n` +
           `rooms: ${roomsCount}\n` +
@@ -1728,6 +1691,21 @@
     const minEl = document.getElementById('temp-range-min');
     const maxEl = document.getElementById('temp-range-max');
     const indicatorEl = document.getElementById('temp-range-indicator');
+
+    // If the React app is managing the thermostat UI, do not overwrite it with
+    // prototype YAML data.
+    const isReactManaged = (el) =>
+      el instanceof HTMLElement && el.getAttribute('data-managed-by') === 'react';
+    if (
+      isReactManaged(setTempEl) ||
+      isReactManaged(humidityEl) ||
+      isReactManaged(modeEl) ||
+      isReactManaged(minEl) ||
+      isReactManaged(maxEl) ||
+      isReactManaged(indicatorEl)
+    ) {
+      return;
+    }
 
     const setTemp = Number(defaults.set_temperature);
     const measuredHumidity = Number(defaults.measured_humidity);

@@ -28,8 +28,17 @@ interface EntityStateStore {
   entitiesById: Record<string, HaEntityState>;
   lastUpdatedAt: number | null;
 
+  /**
+   * Entity ids labeled "Household" in the Home Assistant entity registry.
+   *
+   * Stored as a Record for easy lookups and to avoid persisting potentially
+   * large/volatile registry metadata.
+   */
+  householdEntityIds: Record<string, true>;
+
   setAll: (states: HaEntityState[]) => void;
   upsert: (state: HaEntityState) => void;
+  setHouseholdEntityIds: (entityIds: Iterable<string>) => void;
   clear: () => void;
 }
 
@@ -39,6 +48,7 @@ export const useEntityStore = create<EntityStateStore>()(
       (set) => ({
         entitiesById: {},
         lastUpdatedAt: null,
+        householdEntityIds: {},
 
         setAll: (states) => {
           set({
@@ -56,8 +66,12 @@ export const useEntityStore = create<EntityStateStore>()(
           );
         },
 
+        setHouseholdEntityIds: (entityIds) => {
+          set({ householdEntityIds: Object.fromEntries(Array.from(entityIds, (id) => [id, true])) });
+        },
+
         clear: () => {
-          set({ entitiesById: {}, lastUpdatedAt: null });
+          set({ entitiesById: {}, lastUpdatedAt: null, householdEntityIds: {} });
         },
       }),
       {

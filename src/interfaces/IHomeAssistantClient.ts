@@ -53,4 +53,14 @@ export interface IHomeAssistantClient {
    * Optional: Fetch device registry entries via the Home Assistant WebSocket API.
    */
   getDeviceRegistry?(): Promise<unknown[]>;
+
+  /**
+   * Optional: Fetch label registry entries via the Home Assistant WebSocket API.
+   */
+  getLabelRegistry?(): Promise<unknown[]>;
+
+  /**
+   * Optional: Fetch area registry entries via the Home Assistant WebSocket API.
+   */
+  getAreaRegistry?(): Promise<unknown[]>;
 }

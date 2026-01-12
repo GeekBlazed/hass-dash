@@ -209,6 +209,16 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     return Array.isArray(result) ? result : [];
   }
 
+  async getLabelRegistry(): Promise<unknown[]> {
+    const result = await this.sendCommand({ type: 'config/label_registry/list' });
+    return Array.isArray(result) ? result : [];
+  }
+
+  async getAreaRegistry(): Promise<unknown[]> {
+    const result = await this.sendCommand({ type: 'config/area_registry/list' });
+    return Array.isArray(result) ? result : [];
+  }
+
   /**
    * Resolve the WebSocket endpoint from the connection configuration.
    *

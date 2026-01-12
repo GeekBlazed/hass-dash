@@ -3,6 +3,8 @@ import { userEvent } from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useDashboardStore } from '../../stores/useDashboardStore';
+import { useEntityStore } from '../../stores/useEntityStore';
+import type { HaEntityState } from '../../types/home-assistant';
 import { Dashboard } from './Dashboard';
 
 async function renderAndSettle(ui: ReactElement): Promise<void> {
@@ -16,10 +18,13 @@ async function renderAndSettle(ui: ReactElement): Promise<void> {
 describe('Dashboard', () => {
   beforeEach(() => {
     useDashboardStore.persist.clearStorage();
+    useEntityStore.persist.clearStorage();
     useDashboardStore.setState({
       activePanel: 'climate',
       stageView: { x: 0, y: 0, scale: 1 },
     });
+
+    useEntityStore.setState({ entitiesById: {}, lastUpdatedAt: null });
   });
 
   it('should render the floorplan application shell', async () => {
@@ -43,10 +48,24 @@ describe('Dashboard', () => {
   });
 
   it('should render the climate panel thermostat values', async () => {
+    const makeEntity = (entityId: string, state: string): HaEntityState => ({
+      entity_id: entityId,
+      state,
+      attributes: { unit_of_measurement: '°F', friendly_name: entityId },
+      last_changed: '2026-01-01T00:00:00.000Z',
+      last_updated: '2026-01-01T00:00:00.000Z',
+      context: { id: 'ctx', parent_id: null, user_id: null },
+    });
+
+    useEntityStore
+      .getState()
+      .upsert(makeEntity('sensor.household_temperature_mean_weighted', '73.6'));
+    useEntityStore.getState().upsert(makeEntity('sensor.household_temperature_minimum', '70.1'));
+    useEntityStore.getState().upsert(makeEntity('sensor.household_temperature_maximum', '78.2'));
+
     await renderAndSettle(<Dashboard />);
     expect(screen.getByLabelText(/climate controls/i)).toBeInTheDocument();
-    expect(screen.getByText(/71°F/i)).toBeInTheDocument();
-    expect(screen.getByText(/47%/i)).toBeInTheDocument();
+    expect(screen.getByText(/74°F/i)).toBeInTheDocument();
   });
 
   it('should render the floorplan stage and svg container', async () => {

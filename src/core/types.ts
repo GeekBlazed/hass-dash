@@ -22,8 +22,10 @@ export const TYPES = {
   IHomeAssistantConnectionConfig: Symbol.for('IHomeAssistantConnectionConfig'),
 
   IFloorplanDataSource: Symbol.for('IFloorplanDataSource'),
-  IClimateDataSource: Symbol.for('IClimateDataSource'),
   ILightingDataSource: Symbol.for('ILightingDataSource'),
 
   IDeviceTrackerMetadataService: Symbol.for('IDeviceTrackerMetadataService'),
+
+  IHouseholdEntityLabelService: Symbol.for('IHouseholdEntityLabelService'),
+  IHouseholdAreaEntityIndexService: Symbol.for('IHouseholdAreaEntityIndexService'),
 };

@@ -28,6 +28,10 @@ vi.mock('./HaLightHotwireBridge', () => ({
   HaLightHotwireBridge: () => null,
 }));
 
+vi.mock('./HaAreaClimateOverlayBridge', () => ({
+  HaAreaClimateOverlayBridge: () => null,
+}));
+
 vi.mock('./DeviceLocationTrackingController', () => ({
   DeviceLocationTrackingController: () => null,
 }));
@@ -37,7 +41,6 @@ const mockStore = {
   setFloorplanLoading: vi.fn(),
   setFloorplanLoaded: vi.fn(),
   setFloorplanError: vi.fn(),
-  setClimateModel: vi.fn(),
   setLightingModel: vi.fn(),
 };
 
@@ -52,7 +55,6 @@ describe('DashboardShell', () => {
     mockStore.setFloorplanLoading.mockReset();
     mockStore.setFloorplanLoaded.mockReset();
     mockStore.setFloorplanError.mockReset();
-    mockStore.setClimateModel.mockReset();
     mockStore.setLightingModel.mockReset();
 
     vi.useRealTimers();
@@ -68,7 +70,6 @@ describe('DashboardShell', () => {
 
     useServiceMock.mockReturnValue({
       getFloorplan: vi.fn(),
-      getClimate: vi.fn(),
       getLighting: vi.fn(),
     });
 
@@ -85,17 +86,11 @@ describe('DashboardShell', () => {
     const floorplanSource = {
       getFloorplan: vi.fn().mockRejectedValue(new Error('floorplan exploded')),
     };
-    const climateSource = {
-      getClimate: vi.fn().mockResolvedValue({}),
-    };
     const lightingSource = {
       getLighting: vi.fn().mockResolvedValue({}),
     };
 
-    useServiceMock
-      .mockReturnValueOnce(floorplanSource)
-      .mockReturnValueOnce(climateSource)
-      .mockReturnValueOnce(lightingSource);
+    useServiceMock.mockReturnValueOnce(floorplanSource).mockReturnValueOnce(lightingSource);
 
     render(<DashboardShell />);
 
@@ -105,7 +100,6 @@ describe('DashboardShell', () => {
       expect(mockStore.setFloorplanError).toHaveBeenCalledWith('floorplan exploded');
     });
 
-    expect(mockStore.setClimateModel).toHaveBeenCalled();
     expect(mockStore.setLightingModel).toHaveBeenCalled();
   });
 
@@ -115,17 +109,11 @@ describe('DashboardShell', () => {
     const floorplanSource = {
       getFloorplan: vi.fn().mockRejectedValue('nope'),
     };
-    const climateSource = {
-      getClimate: vi.fn().mockResolvedValue({}),
-    };
     const lightingSource = {
       getLighting: vi.fn().mockResolvedValue({}),
     };
 
-    useServiceMock
-      .mockReturnValueOnce(floorplanSource)
-      .mockReturnValueOnce(climateSource)
-      .mockReturnValueOnce(lightingSource);
+    useServiceMock.mockReturnValueOnce(floorplanSource).mockReturnValueOnce(lightingSource);
 
     render(<DashboardShell />);
 
@@ -145,17 +133,11 @@ describe('DashboardShell', () => {
     const floorplanSource = {
       getFloorplan: vi.fn().mockReturnValue(floorplanPromise),
     };
-    const climateSource = {
-      getClimate: vi.fn().mockReturnValue(floorplanPromise),
-    };
     const lightingSource = {
       getLighting: vi.fn().mockReturnValue(floorplanPromise),
     };
 
-    useServiceMock
-      .mockReturnValueOnce(floorplanSource)
-      .mockReturnValueOnce(climateSource)
-      .mockReturnValueOnce(lightingSource);
+    useServiceMock.mockReturnValueOnce(floorplanSource).mockReturnValueOnce(lightingSource);
 
     const { unmount } = render(<DashboardShell />);
     unmount();
@@ -168,7 +150,6 @@ describe('DashboardShell', () => {
 
     expect(mockStore.setFloorplanLoaded).not.toHaveBeenCalled();
     expect(mockStore.setFloorplanError).not.toHaveBeenCalled();
-    expect(mockStore.setClimateModel).not.toHaveBeenCalled();
     expect(mockStore.setLightingModel).not.toHaveBeenCalled();
   });
 });
