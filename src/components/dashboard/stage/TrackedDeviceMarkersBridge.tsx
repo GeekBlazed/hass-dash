@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   getTrackingDebugOverlayMode,
   type TrackingDebugOverlayMode,
 } from '../../../features/tracking/trackingDebugOverlayConfig';
+import { getTrackingStaleTimeoutMs } from '../../../features/tracking/trackingStaleTimeoutConfig';
 import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import type { DeviceLocation } from '../../../stores/useDeviceLocationStore';
 import { useDeviceLocationStore } from '../../../stores/useDeviceLocationStore';
@@ -193,8 +194,8 @@ const upsertAvatar = (
 };
 
 const getMarkerIdsForEntityId = (entityId: string): string[] => {
-  // Prefer exact match (your `devices.yaml` uses full HA entity ids like
-  // `device_tracker.phone_jeremy`). Fall back to just `object_id` for legacy.
+  // Prefer exact match (full HA entity ids like `device_tracker.phone_jeremy`).
+  // Fall back to just `object_id` for legacy.
   const objectId = getDeviceLabel(entityId);
   return objectId !== entityId ? [entityId, objectId] : [entityId];
 };
@@ -420,25 +421,68 @@ const syncMarkers = (
   }
 };
 
+const filterNonStaleLocations = (
+  locationsByEntityId: Record<string, DeviceLocation>,
+  nowMs: number,
+  staleTimeoutMs: number
+): Record<string, DeviceLocation> => {
+  const filtered: Record<string, DeviceLocation> = {};
+  for (const [entityId, location] of Object.entries(locationsByEntityId)) {
+    const ageMs = nowMs - location.receivedAt;
+    if (ageMs > staleTimeoutMs) continue;
+    filtered[entityId] = location;
+  }
+  return filtered;
+};
+
+const getNextStaleCheckDelayMs = (
+  locationsByEntityId: Record<string, DeviceLocation>,
+  nowMs: number,
+  staleTimeoutMs: number
+): number | null => {
+  let nextCheckAtMs: number | null = null;
+
+  for (const location of Object.values(locationsByEntityId)) {
+    // We hide when ageMs > staleTimeoutMs, so schedule for +1ms past the boundary.
+    const candidateAtMs = location.receivedAt + staleTimeoutMs + 1;
+    if (candidateAtMs <= nowMs) return 0;
+    if (nextCheckAtMs === null || candidateAtMs < nextCheckAtMs) {
+      nextCheckAtMs = candidateAtMs;
+    }
+  }
+
+  if (nextCheckAtMs === null) return null;
+  return Math.max(0, nextCheckAtMs - nowMs);
+};
+
 export function TrackedDeviceMarkersBridge() {
   const { isEnabled } = useFeatureFlag('DEVICE_TRACKING');
   const { isEnabled: debugOverlayFlagEnabled } = useFeatureFlag('TRACKING_DEBUG_OVERLAY');
   const locationsByEntityId = useDeviceLocationStore((s) => s.locationsByEntityId);
   const metadataByEntityId = useDeviceTrackerMetadataStore((s) => s.metadataByEntityId);
+  const [staleTick, setStaleTick] = useState(0);
 
   // Dev-only: never show this overlay in production builds.
   const showDebugOverlay = debugOverlayFlagEnabled && !import.meta.env.PROD;
   const debugMode = getTrackingDebugOverlayMode();
+  const staleTimeoutMs = getTrackingStaleTimeoutMs();
 
   useEffect(() => {
     const layer = getDevicesLayer();
     if (!layer) return;
 
+    const nowMs = Date.now();
+    const filteredLocationsByEntityId = filterNonStaleLocations(
+      locationsByEntityId,
+      nowMs,
+      staleTimeoutMs
+    );
+
     // Initial sync
     syncMarkers(
       layer,
       isEnabled,
-      locationsByEntityId,
+      filteredLocationsByEntityId,
       metadataByEntityId,
       showDebugOverlay,
       debugMode
@@ -450,7 +494,7 @@ export function TrackedDeviceMarkersBridge() {
       syncMarkers(
         layer,
         isEnabled,
-        locationsByEntityId,
+        filteredLocationsByEntityId,
         metadataByEntityId,
         showDebugOverlay,
         debugMode
@@ -459,10 +503,33 @@ export function TrackedDeviceMarkersBridge() {
 
     observer.observe(layer, { childList: true });
 
+    const nextDelayMs =
+      isEnabled === true
+        ? getNextStaleCheckDelayMs(filteredLocationsByEntityId, nowMs, staleTimeoutMs)
+        : null;
+
+    const timerId =
+      nextDelayMs === null
+        ? null
+        : window.setTimeout(() => {
+            setStaleTick((t) => t + 1);
+          }, nextDelayMs);
+
     return () => {
       observer.disconnect();
+      if (timerId !== null) {
+        window.clearTimeout(timerId);
+      }
     };
-  }, [isEnabled, locationsByEntityId, metadataByEntityId, showDebugOverlay, debugMode]);
+  }, [
+    isEnabled,
+    locationsByEntityId,
+    metadataByEntityId,
+    showDebugOverlay,
+    debugMode,
+    staleTimeoutMs,
+    staleTick,
+  ]);
 
   return null;
 }

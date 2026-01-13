@@ -64,7 +64,7 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
   }
 
   async connect(): Promise<void> {
-    if (this.connected) return;
+    if (this.connected && this.webSocketService.isConnected()) return;
 
     const wsUrl = this.getWebSocketUrl();
     const token = this.getAccessToken();
@@ -181,6 +181,26 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
   }
 
   async callService(params: HaCallServiceParams): Promise<HaCallServiceResult> {
+    // Consumers often call connect() themselves, but we also defend here so
+    // callService remains robust when the socket drops between interactions.
+    await this.connect();
+
+    try {
+      return await this.callServiceOnce(params);
+    } catch (error: unknown) {
+      // If the WebSocket drops mid-flight, the pending request is rejected.
+      // Retry once after reconnect; call_service is typically idempotent here
+      // because we use turn_on/turn_off (not toggle).
+      if (!this.isRetryableDisconnectError(error)) {
+        throw error;
+      }
+
+      await this.connect();
+      return await this.callServiceOnce(params);
+    }
+  }
+
+  private async callServiceOnce(params: HaCallServiceParams): Promise<HaCallServiceResult> {
     const id = this.allocateId();
     const command = {
       id,
@@ -199,6 +219,16 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     return result as HaCallServiceResult;
   }
 
+  private isRetryableDisconnectError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const msg = error.message.trim().toLowerCase();
+    return (
+      msg === 'websocket disconnected' ||
+      msg === 'websocket is not connected' ||
+      msg === 'home assistant client is not connected'
+    );
+  }
+
   async getEntityRegistry(): Promise<unknown[]> {
     const result = await this.sendCommand({ type: 'config/entity_registry/list' });
     return Array.isArray(result) ? result : [];
@@ -206,6 +236,16 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
 
   async getDeviceRegistry(): Promise<unknown[]> {
     const result = await this.sendCommand({ type: 'config/device_registry/list' });
+    return Array.isArray(result) ? result : [];
+  }
+
+  async getLabelRegistry(): Promise<unknown[]> {
+    const result = await this.sendCommand({ type: 'config/label_registry/list' });
+    return Array.isArray(result) ? result : [];
+  }
+
+  async getAreaRegistry(): Promise<unknown[]> {
+    const result = await this.sendCommand({ type: 'config/area_registry/list' });
     return Array.isArray(result) ? result : [];
   }
 

@@ -2,13 +2,12 @@
   const SVG_NS = 'http://www.w3.org/2000/svg';
   let suppressRoomClick = false;
 
-  const HOTWIRE_LIGHT_ENTITY_IDS = new Set(['light.norad_corner_torch']);
-
   const INIT_MARKER_ATTR = 'data-hassdash-prototype-init';
   const BOUND_MARKER_ATTR = 'data-hassdash-prototype-bound';
 
   function dispatchLightToggle(entityId) {
-    if (!HOTWIRE_LIGHT_ENTITY_IDS.has(String(entityId || ''))) return;
+    // Let the React/HA bridge decide which entities can be toggled.
+    if (!entityId) return;
 
     window.dispatchEvent(
       new CustomEvent('hass-dash:toggle-light', {
@@ -505,7 +504,12 @@
       labelsLayer.appendChild(labelGroup);
 
       // Lighting toggle buttons live on a dedicated overlay layer.
-      if (lightsLayer instanceof SVGGElement && lightingModel?.byRoomId instanceof Map) {
+      // If React is managing this layer (HA-backed toggles), do not create prototype toggles.
+      if (
+        lightsLayer instanceof SVGGElement &&
+        lightsLayer.getAttribute('data-managed-by') !== 'react' &&
+        lightingModel?.byRoomId instanceof Map
+      ) {
         const roomLights = lightingModel.byRoomId.get(room.id);
         if (Array.isArray(roomLights) && roomLights.length) {
           const [cx, cy] = centroid(room.points);
@@ -1015,6 +1019,14 @@
 
     // Pointer: click-drag pan (mouse). Touch: pinch zoom + two-finger pan.
     svg.addEventListener('pointerdown', (e) => {
+      // If the pointerdown started on an interactive overlay element, do not
+      // initialize panning/gesture tracking. This prevents pointer capture from
+      // suppressing/retargeting the subsequent click.
+      if (e.target instanceof Element) {
+        const interactive = e.target.closest('.light-toggle');
+        if (interactive) return;
+      }
+
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
 
       if (e.pointerType === 'mouse' && e.button === 0) {
@@ -1466,17 +1478,7 @@
       if (retryButton instanceof HTMLButtonElement) retryButton.disabled = true;
 
       try {
-        const [
-          { text, source },
-          { text: devicesText, source: devicesSource },
-          { text: climateText, source: climateSource },
-          { text: lightingText, source: lightingSource },
-        ] = await Promise.all([
-          loadYamlText('/data/floorplan.yaml', ''),
-          loadYamlText('/data/devices.yaml', ''),
-          loadYamlText('/data/climate.yaml', ''),
-          loadYamlText('/data/lighting.yaml', ''),
-        ]);
+        const [{ text, source }] = await Promise.all([loadYamlText('/data/floorplan.yaml', '')]);
 
         if (!String(text || '').trim()) {
           const msg =
@@ -1498,31 +1500,11 @@
         }
         const doc = parseYamlLite(normalized);
 
-        const normalizedDevices = normalizeYamlText(devicesText);
-        const devicesDoc = parseYamlLite(normalizedDevices);
-
-        const normalizedClimate = normalizeYamlText(climateText);
-        let climateDoc = null;
-        if (String(normalizedClimate || '').trim() && !isProbablyHtml(normalizedClimate)) {
-          try {
-            climateDoc = parseYamlLite(normalizedClimate);
-          } catch (err) {
-            climateDoc = null;
-            console.warn('climate.yaml present but could not be parsed; ignoring.', err);
-          }
-        }
-
-        const normalizedLighting = normalizeYamlText(lightingText);
-        let lightingDoc = null;
-        if (String(normalizedLighting || '').trim() && !isProbablyHtml(normalizedLighting)) {
-          try {
-            lightingDoc = parseYamlLite(normalizedLighting);
-          } catch {
-            lightingDoc = null;
-          }
-        }
-
-        const lightingModel = normalizeLightingDoc(lightingDoc);
+        // NOTE: The React parity UI no longer loads local YAML models for devices/climate/lighting.
+        // The legacy prototype renderer still accepts these parameters, so we pass safe empties.
+        const devicesDoc = {};
+        const climateDoc = null;
+        const lightingModel = { lights: [] };
         const floorsCount = Array.isArray(doc?.floors) ? doc.floors.length : 0;
 
         if (floorsCount === 0) {
@@ -1549,10 +1531,6 @@
         // Ensure map overlay reflects current sidebar state (and not just the initial DOM classes).
         setClimateOverlayVisible(getVisibleSidebarPanel() === 'climate');
 
-        if (climateDoc) {
-          applyClimatePanel(climateDoc);
-        }
-
         applyLightingPanel(lightingModel);
         const roomsCount = result?.roomsCount ?? 0;
         const devicesCount = result?.devicesCount ?? 0;
@@ -1572,9 +1550,6 @@
         const msg =
           `Floorplan: ok\n` +
           `source: ${source}\n` +
-          `devices: ${devicesSource}\n` +
-          `climate: ${climateSource}\n` +
-          `lighting: ${lightingSource}\n` +
           `default_floor_id: ${defaultFloorId || '(none)'}${defaultFloorNote}\n` +
           `floors: ${floorsCount}  floor: ${floorId}\n` +
           `rooms: ${roomsCount}\n` +
@@ -1675,6 +1650,12 @@
     const emptyEl = document.getElementById('lighting-empty');
     if (!(listEl instanceof HTMLElement) || !(emptyEl instanceof HTMLElement)) return;
 
+    // If the React app is managing the lighting UI, do not overwrite it with
+    // prototype YAML/local models.
+    const isReactManaged = (el) =>
+      el instanceof HTMLElement && el.getAttribute('data-managed-by') === 'react';
+    if (isReactManaged(listEl) || isReactManaged(emptyEl)) return;
+
     while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
 
     const lights = Array.isArray(lightingModel?.lights) ? lightingModel.lights : [];
@@ -1728,6 +1709,21 @@
     const minEl = document.getElementById('temp-range-min');
     const maxEl = document.getElementById('temp-range-max');
     const indicatorEl = document.getElementById('temp-range-indicator');
+
+    // If the React app is managing the thermostat UI, do not overwrite it with
+    // prototype YAML data.
+    const isReactManaged = (el) =>
+      el instanceof HTMLElement && el.getAttribute('data-managed-by') === 'react';
+    if (
+      isReactManaged(setTempEl) ||
+      isReactManaged(humidityEl) ||
+      isReactManaged(modeEl) ||
+      isReactManaged(minEl) ||
+      isReactManaged(maxEl) ||
+      isReactManaged(indicatorEl)
+    ) {
+      return;
+    }
 
     const setTemp = Number(defaults.set_temperature);
     const measuredHumidity = Number(defaults.measured_humidity);

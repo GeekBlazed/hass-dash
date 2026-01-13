@@ -5,7 +5,7 @@
   --accent-dark: #e5a352;
 
   /* Prototype marker color */
-  --node-blue: #4da3ff;
+  --node-blue: #1864b5;
 
   --panel-bg: #090909;
   --panel-bg-warm: #1a1713;
@@ -883,6 +883,7 @@ button.qa {
 
 .device-marker {
   pointer-events: none;
+  color: var(--node-blue);
 }
 
 .device-pin {

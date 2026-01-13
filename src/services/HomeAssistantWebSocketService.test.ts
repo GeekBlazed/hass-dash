@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HomeAssistantWebSocketService } from './HomeAssistantWebSocketService';
 
@@ -51,6 +51,10 @@ describe('HomeAssistantWebSocketService', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).WebSocket = MockWebSocket;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('send() throws when not connected', () => {

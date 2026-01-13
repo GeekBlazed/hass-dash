@@ -2,6 +2,16 @@ import '@testing-library/jest-dom/vitest';
 import { act, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
 
+// jsdom in this environment does not implement document.elementFromPoint, but
+// some UI code (e.g. delegated SVG pointer handlers) uses it.
+if (
+  typeof (document as unknown as { elementFromPoint?: unknown }).elementFromPoint !== 'function'
+) {
+  (
+    document as unknown as { elementFromPoint: (x: number, y: number) => Element | null }
+  ).elementFromPoint = () => null;
+}
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

@@ -5,6 +5,7 @@ import { useEntityStore } from './useEntityStore';
 const createInitialEntityState = () => ({
   entitiesById: {},
   lastUpdatedAt: null,
+  householdEntityIds: {},
 });
 
 describe('useEntityStore', () => {
@@ -78,6 +79,28 @@ describe('useEntityStore', () => {
     expect(useEntityStore.getState().lastUpdatedAt).toBe(2000);
   });
 
+  it('optimisticSetState() updates an existing entity state and timestamps', () => {
+    nowSpy = vi.spyOn(Date, 'now').mockReturnValue(123456);
+
+    useEntityStore.getState().upsert({
+      entity_id: 'light.kitchen',
+      state: 'on',
+      attributes: { friendly_name: 'Kitchen' },
+      last_changed: '2026-01-01T00:00:00+00:00',
+      last_updated: '2026-01-01T00:00:00+00:00',
+      context: { id: '1', parent_id: null, user_id: null },
+    });
+
+    nowSpy.mockReturnValue(2000);
+    useEntityStore.getState().optimisticSetState('light.kitchen', 'off');
+
+    const next = useEntityStore.getState().entitiesById['light.kitchen'];
+    expect(next?.state).toBe('off');
+    expect(next?.last_updated).toBe(new Date(2000).toISOString());
+    expect(next?.last_changed).toBe(new Date(2000).toISOString());
+    expect(useEntityStore.getState().lastUpdatedAt).toBe(2000);
+  });
+
   it('clear() resets entitiesById and lastUpdatedAt', () => {
     nowSpy = vi.spyOn(Date, 'now').mockReturnValue(999);
 
@@ -96,6 +119,31 @@ describe('useEntityStore', () => {
     useEntityStore.getState().clear();
     expect(useEntityStore.getState().entitiesById).toEqual({});
     expect(useEntityStore.getState().lastUpdatedAt).toBeNull();
+    expect(useEntityStore.getState().householdEntityIds).toEqual({});
+  });
+
+  it('setHouseholdEntityIds() updates a non-persisted lookup set', async () => {
+    useEntityStore.getState().setHouseholdEntityIds(['sensor.a', 'sensor.b']);
+    expect(useEntityStore.getState().householdEntityIds['sensor.a']).toBe(true);
+    expect(useEntityStore.getState().householdEntityIds['sensor.b']).toBe(true);
+
+    const storage = useEntityStore.persist.getOptions().storage;
+    expect(storage).toBeDefined();
+
+    const raw = await Promise.resolve(storage?.getItem('hass-dash:entities'));
+    if (!raw) {
+      // Depending on timing, Zustand may not flush immediately; we at least assert
+      // the value is present in memory.
+      return;
+    }
+
+    const parsed =
+      typeof raw === 'string'
+        ? (JSON.parse(raw) as { state?: { householdEntityIds?: unknown } })
+        : (raw as { state?: { householdEntityIds?: unknown } });
+
+    // Guardrail: registry-derived metadata should not be persisted.
+    expect(parsed.state?.householdEntityIds).toBeUndefined();
   });
 
   it('persists entitiesById and lastUpdatedAt', async () => {
@@ -172,6 +220,7 @@ describe('useEntityStore', () => {
     const partialize = options.partialize as unknown as (state: {
       entitiesById: Record<string, HaEntityState>;
       lastUpdatedAt: number | null;
+      householdEntityIds?: Record<string, true>;
     }) => { entitiesById: Record<string, HaEntityState>; lastUpdatedAt: number | null };
 
     const one: HaEntityState = {

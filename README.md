@@ -28,7 +28,7 @@ While Home Assistant excels at managing services and resources behind the scenes
 
 All presented in a **minimalistic, color-coded interface** that makes sense at a glance.
 
-**Current Status:** Iteration 0.1 - Project Scaffolding Complete ✅
+**Current Status:** Foundation complete (DI + feature flags + HA connection + dashboard scaffold) ✅
 
 ---
 
@@ -98,8 +98,10 @@ pnpm format:check    # Check code formatting
 pnpm type-check      # Run TypeScript type checking
 
 # Testing (Coming in Iteration 0.2)
-pnpm test            # Run unit tests
+pnpm test            # Run tests in watch mode
+pnpm test:run        # Run tests once
 pnpm test:coverage   # Run tests with coverage report
+pnpm test:e2e        # Run Playwright E2E tests
 ```
 
 ### What You'll See
@@ -111,7 +113,7 @@ After running `pnpm dev`, you'll see the welcome screen with:
 - Development mode indicator
 - Links to Documentation and GitHub
 
-This is Iteration 0.1 - a basic scaffolded project demonstrating that the development environment is working correctly.
+The app boots into the dashboard-first UI. Home Assistant and tracking features are gated behind feature flags and require HA configuration.
 
 ---
 
@@ -140,7 +142,7 @@ Toggle information layers on/off to minimize visual clutter:
 - **Security** - Camera feeds, motion detection, package alerts
 - **Energy Management** - Production, consumption, storage, solar/wind/geothermal
 - **Location Tracking** - People and pets within the home
-- **AI Assistants** - Integration with Alexa, Google Home, local assistants
+- **AI Assistants** - Integration with local assistants
 
 ### Progressive Web App
 
@@ -163,21 +165,22 @@ Toggle information layers on/off to minimize visual clutter:
 
 This project is built with modern web technologies and strict architectural principles:
 
-**Current Stack (Iteration 0.1):**
+**Current Stack:**
 
 - **Framework:** React 19.2.3 with TypeScript 5.9.3 (strict mode)
 - **Build Tool:** Vite 7.3.0
 - **Styling:** Tailwind CSS 4.1.18 with PostCSS
 - **Code Quality:** ESLint 9.39.2, Prettier 3.7.4
 - **Package Manager:** pnpm 10.26.1
+- **Testing:** Vitest + React Testing Library (coverage gates in CI)
+- **Dependency Injection:** InversifyJS + `reflect-metadata`
+- **State Management:** Zustand (stores under `src/stores/*`)
+- **Home Assistant Integration:** HTTP + WebSocket (feature-flagged)
 
 **Coming in Future Iterations:**
 
-- **State Management:** Zustand + Immer
-- **Dependency Injection:** InversifyJS (SOLID principles enforced)
 - **2D Visualization:** Konva.js / React-Konva
 - **UI Components:** Radix UI (accessible primitives)
-- **Testing:** Vitest + React Testing Library + Playwright
 - **PWA:** Vite PWA Plugin with Workbox
 - **HTTP Client:** Axios with interceptors
 - **Real-time:** Native WebSocket with reconnection logic
@@ -263,7 +266,7 @@ class MyService {
 - **Component Tests:** UI components with mocked dependencies
 - **E2E Tests:** Critical user flows
 
-**No PR will be merged without appropriate tests and 80% coverage.**
+**No PR will be merged without appropriate tests and 80% global branch coverage.**
 
 ---
 
@@ -355,48 +358,34 @@ The MIT License provides maximum flexibility for community contributions and ado
 
 ## Roadmap
 
-### Phase 0: Foundation (Current - Week 1)
+### Phase 0-2: Foundation → HA Connection
 
-- ✅ **Iteration 0.1:** Project Scaffolding - COMPLETE!
-- ⏳ **Iteration 0.2:** Testing Infrastructure (Vitest + RTL + Playwright)
-- ⏳ **Iteration 0.3:** CI/CD Pipeline (GitHub Actions)
-- ⏳ **Iteration 0.4:** Dependency Injection Setup (InversifyJS)
-- ⏳ **Iteration 0.5:** Feature Flag System
-
-### Phase 1: Core Infrastructure (Week 2-3)
-
-- Layout & Navigation Shell
-- Radix UI + Tailwind Integration
-- State Management Setup (Zustand + Immer)
-- Error Boundary & Loading States
-
-### Phase 2: Home Assistant Connection (Week 3-4)
-
-- Environment Configuration
-- HTTP Client Service (Axios)
-- WebSocket Service with reconnection
-- Entity Service
+- ✅ Project scaffolding (Vite + React + TS + Tailwind)
+- ✅ Testing + coverage gates (Vitest + RTL)
+- ✅ CI checks (lint/test/build)
+- ✅ Dependency injection + feature flags
+- ✅ Home Assistant connection (HTTP + WebSocket) + entity subscription pipeline
 
 ### Phase 3: Floor Plan Foundation (Week 4-5)
 
-- Floor Plan Data Model (JSON/TypeScript)
-- Konva Setup & Basic Canvas
-- Room Rendering
-- Multi-Floor Navigation
+- ⏳ Floor Plan Data Model (JSON/TypeScript)
+- ⏳ Konva Setup & Basic Canvas
+- ⏳ Room Rendering
+- ⏳ Multi-Floor Navigation
 
 ### Phase 4: First Overlay - Lighting (Week 5-6)
 
-- Overlay System Architecture
-- Device Placement on Floor Plan
-- Light Control
-- Light Details Panel
+- ⏳ Overlay System Architecture
+- ⏳ Device Placement on Floor Plan
+- ⏳ Light Control
+- ⏳ Light Details Panel
 
 ### Phase 5: Polish & PWA (Week 6-7)
 
-- PWA Configuration
-- Offline Support (LKG values)
-- Performance Optimization
-- User Onboarding
+- ⏳ PWA Configuration
+- ⏳ Offline Support (LKG values)
+- ⏳ Performance Optimization
+- ⏳ User Onboarding
 
 See [IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) for complete roadmap with 35+ iterations.
 

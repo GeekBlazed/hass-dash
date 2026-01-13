@@ -5,7 +5,7 @@ import type { IHomeAssistantClient } from '../../interfaces/IHomeAssistantClient
 import { HaLightHotwireBridge } from './HaLightHotwireBridge';
 
 describe('HaLightHotwireBridge', () => {
-  it('calls Home Assistant light.toggle for the NORAD entity', async () => {
+  it('calls Home Assistant light.toggle for any light.* entity id', async () => {
     const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
 
@@ -22,7 +22,7 @@ describe('HaLightHotwireBridge', () => {
 
     window.dispatchEvent(
       new CustomEvent('hass-dash:toggle-light', {
-        detail: { entityId: 'light.norad_corner_torch' },
+        detail: { entityId: 'light.kitchen_ceiling' },
       })
     );
 
@@ -33,13 +33,13 @@ describe('HaLightHotwireBridge', () => {
     expect(callService).toHaveBeenCalledWith({
       domain: 'light',
       service: 'toggle',
-      service_data: { entity_id: 'light.norad_corner_torch' },
+      service_data: { entity_id: 'light.kitchen_ceiling' },
     });
 
     getSpy.mockRestore();
   });
 
-  it('ignores non-NORAD entities', async () => {
+  it('ignores non-light entity ids', async () => {
     const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
 
@@ -56,7 +56,7 @@ describe('HaLightHotwireBridge', () => {
 
     window.dispatchEvent(
       new CustomEvent('hass-dash:toggle-light', {
-        detail: { entityId: 'light.some_other_light' },
+        detail: { entityId: 'switch.kitchen_fan' },
       })
     );
 
