@@ -379,6 +379,10 @@ describe('HomeAssistantWebSocketClient', () => {
       return_response: true,
     });
 
+    // callService() defensively awaits connect(), which yields to a microtask even
+    // when already connected. Flush once so the command is actually sent.
+    await Promise.resolve();
+
     const lastSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
       id: number;
       type: string;
@@ -423,6 +427,8 @@ describe('HomeAssistantWebSocketClient', () => {
       target: { entity_id: 'light.nope' },
     });
 
+    await Promise.resolve();
+
     const lastSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
       id: number;
       type: string;
@@ -439,6 +445,53 @@ describe('HomeAssistantWebSocketClient', () => {
     await expect(promise).rejects.toMatchObject({
       message: 'Service not found',
       code: 'service_not_found',
+    });
+  });
+
+  it('callService() retries once after transport disconnect and resolves after reconnect', async () => {
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
+
+    const promise = client.callService({
+      domain: 'light',
+      service: 'turn_on',
+      target: { entity_id: 'light.kitchen' },
+    });
+
+    await Promise.resolve();
+
+    const firstSent = JSON.parse(ws.sent[ws.sent.length - 1]) as { id: number; type: string };
+    expect(firstSent.type).toBe('call_service');
+
+    // Drop the underlying transport before responding.
+    const sentCountBeforeDisconnect = ws.sent.length;
+    ws.disconnect();
+
+    // Retry happens asynchronously (disconnect rejection → connect → resend).
+    for (let i = 0; i < 10 && ws.sent.length === sentCountBeforeDisconnect; i += 1) {
+      await Promise.resolve();
+    }
+    expect(ws.sent.length).toBeGreaterThan(sentCountBeforeDisconnect);
+
+    // Client should reconnect and re-send the command.
+    const resent = JSON.parse(ws.sent[ws.sent.length - 1]) as { id: number; type: string };
+    expect(resent.type).toBe('call_service');
+    expect(resent.id).not.toBe(firstSent.id);
+
+    ws.serverSend({
+      id: resent.id,
+      type: 'result',
+      success: true,
+      result: { context: { id: '1', parent_id: null, user_id: null }, response: { ok: true } },
+    });
+
+    await expect(promise).resolves.toMatchObject({
+      response: { ok: true },
     });
   });
 

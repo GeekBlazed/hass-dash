@@ -38,6 +38,7 @@ interface EntityStateStore {
 
   setAll: (states: HaEntityState[]) => void;
   upsert: (state: HaEntityState) => void;
+  optimisticSetState: (entityId: string, nextState: string) => void;
   setHouseholdEntityIds: (entityIds: Iterable<string>) => void;
   clear: () => void;
 }
@@ -66,8 +67,29 @@ export const useEntityStore = create<EntityStateStore>()(
           );
         },
 
+        optimisticSetState: (entityId, nextState) => {
+          const now = Date.now();
+          const iso = new Date(now).toISOString();
+
+          set((state) =>
+            produce(state, (draft) => {
+              const existing = draft.entitiesById[entityId];
+              if (!existing) return;
+
+              // Keep attributes/context, but reflect the new state immediately.
+              existing.state = nextState;
+              existing.last_changed = iso;
+              existing.last_updated = iso;
+
+              draft.lastUpdatedAt = now;
+            })
+          );
+        },
+
         setHouseholdEntityIds: (entityIds) => {
-          set({ householdEntityIds: Object.fromEntries(Array.from(entityIds, (id) => [id, true])) });
+          set({
+            householdEntityIds: Object.fromEntries(Array.from(entityIds, (id) => [id, true])),
+          });
         },
 
         clear: () => {

@@ -79,6 +79,28 @@ describe('useEntityStore', () => {
     expect(useEntityStore.getState().lastUpdatedAt).toBe(2000);
   });
 
+  it('optimisticSetState() updates an existing entity state and timestamps', () => {
+    nowSpy = vi.spyOn(Date, 'now').mockReturnValue(123456);
+
+    useEntityStore.getState().upsert({
+      entity_id: 'light.kitchen',
+      state: 'on',
+      attributes: { friendly_name: 'Kitchen' },
+      last_changed: '2026-01-01T00:00:00+00:00',
+      last_updated: '2026-01-01T00:00:00+00:00',
+      context: { id: '1', parent_id: null, user_id: null },
+    });
+
+    nowSpy.mockReturnValue(2000);
+    useEntityStore.getState().optimisticSetState('light.kitchen', 'off');
+
+    const next = useEntityStore.getState().entitiesById['light.kitchen'];
+    expect(next?.state).toBe('off');
+    expect(next?.last_updated).toBe(new Date(2000).toISOString());
+    expect(next?.last_changed).toBe(new Date(2000).toISOString());
+    expect(useEntityStore.getState().lastUpdatedAt).toBe(2000);
+  });
+
   it('clear() resets entitiesById and lastUpdatedAt', () => {
     nowSpy = vi.spyOn(Date, 'now').mockReturnValue(999);
 

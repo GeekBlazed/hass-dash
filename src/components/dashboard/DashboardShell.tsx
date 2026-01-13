@@ -11,6 +11,7 @@ import { DeviceLocationTrackingController } from './DeviceLocationTrackingContro
 import { HaAreaClimateOverlayBridge } from './HaAreaClimateOverlayBridge';
 import { HaLightHotwireBridge } from './HaLightHotwireBridge';
 import { HomeAssistantEntityStoreController } from './HomeAssistantEntityStoreController';
+import { HaRoomLightingOverlayBridge } from './stage/HaRoomLightingOverlayBridge';
 
 export function DashboardShell() {
   const [reloadNonce, setReloadNonce] = useState(0);
@@ -77,6 +78,7 @@ export function DashboardShell() {
     <div className="viewport">
       <HaLightHotwireBridge />
       <HaAreaClimateOverlayBridge />
+      <HaRoomLightingOverlayBridge />
       <HomeAssistantEntityStoreController />
       <DeviceLocationTrackingController />
       <div className="frame" role="application" aria-label="Floorplan prototype">

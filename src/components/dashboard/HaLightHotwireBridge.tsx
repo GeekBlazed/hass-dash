@@ -5,8 +5,6 @@ import type { IHomeAssistantClient } from '../../interfaces/IHomeAssistantClient
 
 type HassDashToggleLightEvent = CustomEvent<{ entityId?: string }>;
 
-const HOTWIRE_ENTITY_ID = 'light.norad_corner_torch';
-
 export function HaLightHotwireBridge() {
   const homeAssistantClient = useService<IHomeAssistantClient>(TYPES.IHomeAssistantClient);
 
@@ -16,7 +14,7 @@ export function HaLightHotwireBridge() {
     const handler = (event: Event) => {
       const e = event as HassDashToggleLightEvent;
       const entityId = e.detail?.entityId;
-      if (!entityId || entityId !== HOTWIRE_ENTITY_ID) return;
+      if (!entityId || !entityId.startsWith('light.')) return;
 
       void (async () => {
         try {

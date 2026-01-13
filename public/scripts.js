@@ -2,13 +2,12 @@
   const SVG_NS = 'http://www.w3.org/2000/svg';
   let suppressRoomClick = false;
 
-  const HOTWIRE_LIGHT_ENTITY_IDS = new Set(['light.norad_corner_torch']);
-
   const INIT_MARKER_ATTR = 'data-hassdash-prototype-init';
   const BOUND_MARKER_ATTR = 'data-hassdash-prototype-bound';
 
   function dispatchLightToggle(entityId) {
-    if (!HOTWIRE_LIGHT_ENTITY_IDS.has(String(entityId || ''))) return;
+    // Let the React/HA bridge decide which entities can be toggled.
+    if (!entityId) return;
 
     window.dispatchEvent(
       new CustomEvent('hass-dash:toggle-light', {
@@ -505,7 +504,12 @@
       labelsLayer.appendChild(labelGroup);
 
       // Lighting toggle buttons live on a dedicated overlay layer.
-      if (lightsLayer instanceof SVGGElement && lightingModel?.byRoomId instanceof Map) {
+      // If React is managing this layer (HA-backed toggles), do not create prototype toggles.
+      if (
+        lightsLayer instanceof SVGGElement &&
+        lightsLayer.getAttribute('data-managed-by') !== 'react' &&
+        lightingModel?.byRoomId instanceof Map
+      ) {
         const roomLights = lightingModel.byRoomId.get(room.id);
         if (Array.isArray(roomLights) && roomLights.length) {
           const [cx, cy] = centroid(room.points);
@@ -1015,6 +1019,14 @@
 
     // Pointer: click-drag pan (mouse). Touch: pinch zoom + two-finger pan.
     svg.addEventListener('pointerdown', (e) => {
+      // If the pointerdown started on an interactive overlay element, do not
+      // initialize panning/gesture tracking. This prevents pointer capture from
+      // suppressing/retargeting the subsequent click.
+      if (e.target instanceof Element) {
+        const interactive = e.target.closest('.light-toggle');
+        if (interactive) return;
+      }
+
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
 
       if (e.pointerType === 'mouse' && e.button === 0) {
@@ -1637,6 +1649,12 @@
     const listEl = document.getElementById('lighting-list');
     const emptyEl = document.getElementById('lighting-empty');
     if (!(listEl instanceof HTMLElement) || !(emptyEl instanceof HTMLElement)) return;
+
+    // If the React app is managing the lighting UI, do not overwrite it with
+    // prototype YAML/local models.
+    const isReactManaged = (el) =>
+      el instanceof HTMLElement && el.getAttribute('data-managed-by') === 'react';
+    if (isReactManaged(listEl) || isReactManaged(emptyEl)) return;
 
     while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
 
