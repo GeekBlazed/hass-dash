@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { container } from '../core/di-container';
 import { useFeatureFlags } from '../hooks/useFeatureFlag';
-import { DebugPanel } from './DebugPanel';
+import * as DebugPanelModule from './DebugPanel';
 
 // Mock the useFeatureFlags hook
 vi.mock('../hooks/useFeatureFlag', () => ({
@@ -15,12 +15,9 @@ vi.mock('../core/di-container', () => ({
   },
 }));
 
-// Mock window.location.reload
-const mockReload = vi.fn();
-Object.defineProperty(window, 'location', {
-  value: { reload: mockReload },
-  writable: true,
-});
+const reloadSpy = vi
+  .spyOn(DebugPanelModule.pageReloader, 'reload')
+  .mockImplementation(() => undefined);
 
 describe('DebugPanel', () => {
   const mockService = {
@@ -48,7 +45,7 @@ describe('DebugPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockReload.mockClear();
+    reloadSpy.mockClear();
     // Set to development mode by default
     vi.stubEnv('DEV', true);
 
@@ -79,7 +76,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     // Check that all flags are displayed
     expect(screen.getByText('FLOOR_PLAN')).toBeInTheDocument();
@@ -100,7 +97,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     expect(screen.getByText(/no feature flags defined/i)).toBeInTheDocument();
   });
@@ -114,7 +111,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     // Button shows "Toggle" text and has aria-label with flag name
     const toggleButton = screen.getByRole('button', { name: /toggle floor_plan/i });
@@ -131,7 +128,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     const toggleButton = screen.getByRole('button', { name: /toggle floor_plan/i });
     fireEvent.click(toggleButton);
@@ -139,7 +136,7 @@ describe('DebugPanel', () => {
     // Should call enable since flag is currently false
     expect(mockService.enable).toHaveBeenCalledWith('FLOOR_PLAN');
     expect(mockService.disable).not.toHaveBeenCalled();
-    expect(mockReload).toHaveBeenCalled();
+    expect(reloadSpy).toHaveBeenCalled();
   });
 
   it('should call disable and reload when toggle button clicked for enabled flag', () => {
@@ -151,7 +148,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     const toggleButton = screen.getByRole('button', { name: /toggle floor_plan/i });
     fireEvent.click(toggleButton);
@@ -159,7 +156,7 @@ describe('DebugPanel', () => {
     // Should call disable since flag is currently true
     expect(mockService.disable).toHaveBeenCalledWith('FLOOR_PLAN');
     expect(mockService.enable).not.toHaveBeenCalled();
-    expect(mockReload).toHaveBeenCalled();
+    expect(reloadSpy).toHaveBeenCalled();
   });
 
   it('should not show toggle buttons in production mode', () => {
@@ -171,7 +168,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     // No toggle buttons should be present in production
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
@@ -186,7 +183,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     expect(screen.getByText(/dev mode/i)).toBeInTheDocument();
   });
@@ -200,7 +197,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     expect(screen.queryByText(/dev mode/i)).not.toBeInTheDocument();
   });
@@ -213,7 +210,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     // Check heading exists
     expect(screen.getByText('Feature Flags')).toBeInTheDocument();
@@ -231,7 +228,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     expect(screen.getByText('Home Assistant Connection')).toBeInTheDocument();
     expect(
@@ -247,7 +244,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     expect(screen.getByText('Entity Debug')).toBeInTheDocument();
     expect(
@@ -262,7 +259,7 @@ describe('DebugPanel', () => {
       service: mockService,
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     expect(screen.queryByText('Home Assistant Connection')).not.toBeInTheDocument();
   });
@@ -278,7 +275,7 @@ describe('DebugPanel', () => {
     mockHaClient.getStates.mockResolvedValue([{ entity_id: 'light.kitchen' }]);
     mockHaClient.getServices.mockResolvedValue([{ domain: 'light', services: {} }]);
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     fireEvent.click(screen.getByRole('button', { name: /home assistant connection smoke test/i }));
 
@@ -299,7 +296,7 @@ describe('DebugPanel', () => {
 
     mockHaClient.connect.mockRejectedValue(new Error('bad token'));
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     fireEvent.click(screen.getByRole('button', { name: /home assistant connection smoke test/i }));
 
@@ -357,7 +354,7 @@ describe('DebugPanel', () => {
       return { unsubscribe: mockUnsubscribe };
     });
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     fireEvent.click(
       screen.getByRole('button', { name: /toggle light\.norad_corner_torch via home assistant/i })
@@ -395,7 +392,7 @@ describe('DebugPanel', () => {
     });
     mockHaClient.callService.mockRejectedValue(new Error('service failed'));
 
-    render(<DebugPanel />);
+    render(<DebugPanelModule.DebugPanel />);
 
     fireEvent.click(
       screen.getByRole('button', { name: /toggle light\.norad_corner_torch via home assistant/i })

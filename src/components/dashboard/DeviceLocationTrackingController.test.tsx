@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { TYPES } from '../../core/types';
@@ -12,7 +12,12 @@ import type { IHomeAssistantConnectionConfig } from '../../interfaces/IHomeAssis
 import { useDeviceLocationStore } from '../../stores/useDeviceLocationStore';
 import { useDeviceTrackerMetadataStore } from '../../stores/useDeviceTrackerMetadataStore';
 import type { HaEntityState } from '../../types/home-assistant';
-import { DeviceLocationTrackingController } from './DeviceLocationTrackingController';
+import {
+  computeInitials,
+  deriveBaseUrlFromWebSocketUrl,
+  DeviceLocationTrackingController,
+  resolveEntityPictureUrl,
+} from './DeviceLocationTrackingController';
 
 declare global {
   interface Window {
@@ -88,70 +93,76 @@ describe('DeviceLocationTrackingController', () => {
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(fetchStates).toHaveBeenCalledTimes(1);
       expect(subscribeToStateChanges).toHaveBeenCalledTimes(2);
     });
 
     // Emit a tracker location update. It should only be accepted because it's assigned.
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'device_tracker.phone_jeremy',
-          state: 'home',
-          attributes: {
-            x: 1,
-            y: 2,
-            confidence: 80,
-            last_seen: '2026-01-11T00:00:00.000Z',
-          },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'device_tracker.phone_jeremy',
+            state: 'home',
+            attributes: {
+              x: 1,
+              y: 2,
+              confidence: 80,
+              last_seen: '2026-01-11T00:00:00.000Z',
+            },
+          })
+        );
+      }
+    });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         useDeviceLocationStore.getState().locationsByEntityId['device_tracker.phone_jeremy']
       ).toBeTruthy();
     });
 
     // Now unassign the tracker from the person.
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'person.jeremy',
-          state: 'home',
-          attributes: {
-            friendly_name: 'Jeremy',
-            device_trackers: [],
-          },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'person.jeremy',
+            state: 'home',
+            attributes: {
+              friendly_name: 'Jeremy',
+              device_trackers: [],
+            },
+          })
+        );
+      }
+    });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         useDeviceLocationStore.getState().locationsByEntityId['device_tracker.phone_jeremy']
       ).toBeUndefined();
     });
 
     // Even if the tracker continues to send updates, it should no longer be accepted.
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'device_tracker.phone_jeremy',
-          state: 'home',
-          attributes: {
-            x: 3,
-            y: 4,
-            confidence: 80,
-            last_seen: '2026-01-11T00:00:01.000Z',
-          },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'device_tracker.phone_jeremy',
+            state: 'home',
+            attributes: {
+              x: 3,
+              y: 4,
+              confidence: 80,
+              last_seen: '2026-01-11T00:00:01.000Z',
+            },
+          })
+        );
+      }
+    });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         useDeviceLocationStore.getState().locationsByEntityId['device_tracker.phone_jeremy']
       ).toBeUndefined();
@@ -159,9 +170,179 @@ describe('DeviceLocationTrackingController', () => {
 
     unmount();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(unsubscribe).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it('seeds initial locations from fetchStates snapshot for assigned trackers', async () => {
+    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
+    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
+
+    useDeviceLocationStore.getState().clear();
+    useDeviceTrackerMetadataStore.getState().clear();
+
+    const handlers: Array<(nextState: HaEntityState) => void> = [];
+    const unsubscribe = vi.fn(async () => undefined);
+
+    const fetchStates = vi.fn(async () => [
+      {
+        entity_id: 'person.jeremy',
+        state: 'home',
+        attributes: {
+          friendly_name: 'Jeremy',
+          device_trackers: ['device_tracker.phone_jeremy'],
+        },
+        last_changed: '2026-01-11T00:00:00.000Z',
+        last_updated: '2026-01-11T00:00:00.000Z',
+        context: { id: 'test', parent_id: null, user_id: null },
+      } satisfies HaEntityState,
+      {
+        entity_id: 'device_tracker.phone_jeremy',
+        state: 'home',
+        attributes: {
+          x: 1,
+          y: 2,
+          confidence: 80,
+          last_seen: '2026-01-11T00:00:00.000Z',
+        },
+        last_changed: '2026-01-11T00:00:00.000Z',
+        last_updated: '2026-01-11T00:00:00.000Z',
+        context: { id: 'test', parent_id: null, user_id: null },
+      } satisfies HaEntityState,
+    ]);
+
+    const subscribeToStateChanges = vi.fn(async (h: (newState: HaEntityState) => void) => {
+      handlers.push(h);
+      return { unsubscribe };
+    });
+
+    const entityService: IEntityService = {
+      fetchStates,
+      subscribeToStateChanges,
+    };
+
+    const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
+
+    await waitFor(() => {
+      expect(fetchStates).toHaveBeenCalledTimes(1);
+      expect(subscribeToStateChanges).toHaveBeenCalledTimes(2);
+    });
+
+    // Without any emitted state_changed updates, the snapshot should have seeded the store.
+    await waitFor(() => {
+      expect(
+        useDeviceLocationStore.getState().locationsByEntityId['device_tracker.phone_jeremy']
+      ).toBeTruthy();
+    });
+
+    unmount();
+
+    await waitFor(() => {
+      expect(unsubscribe).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('accepts updates for alternate tracker entity ids when they share the same device_id as an assigned tracker', async () => {
+    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
+    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
+
+    useDeviceLocationStore.getState().clear();
+    useDeviceTrackerMetadataStore.getState().clear();
+
+    const handlers: Array<(nextState: HaEntityState) => void> = [];
+    const unsubscribe = vi.fn(async () => undefined);
+
+    const entityService: IEntityService = {
+      fetchStates: vi.fn(async () => [
+        {
+          entity_id: 'person.jeremy',
+          state: 'home',
+          attributes: {
+            friendly_name: 'Jeremy',
+            // Assigned to one entity id...
+            device_trackers: ['device_tracker.jeremy_phone'],
+          },
+          last_changed: '2026-01-11T00:00:00.000Z',
+          last_updated: '2026-01-11T00:00:00.000Z',
+          context: { id: 'test', parent_id: null, user_id: null },
+        } satisfies HaEntityState,
+      ]),
+      subscribeToStateChanges: vi.fn(async (h: (newState: HaEntityState) => void) => {
+        handlers.push(h);
+        return { unsubscribe };
+      }),
+    };
+
+    const fetchByEntityId = vi.fn(async () => ({
+      // ...but metadata indicates both entity ids point at the same HA device registry entry.
+      'device_tracker.jeremy_phone': { deviceId: 'dev-1', name: 'Jeremy Phone' },
+      'device_tracker.phone_jeremy': { deviceId: 'dev-1', name: 'Jeremy Phone (alt)' },
+    }));
+
+    const useServiceSpy = vi
+      .spyOn(useServiceModule, 'useService')
+      .mockImplementation((typeId: symbol): unknown => {
+        if (typeId === TYPES.IDeviceTrackerMetadataService) {
+          const svc: IDeviceTrackerMetadataService = { fetchByEntityId };
+          return svc;
+        }
+        if (typeId === TYPES.IHomeAssistantConnectionConfig) {
+          const cfg: Pick<
+            IHomeAssistantConnectionConfig,
+            'getConfig' | 'getEffectiveWebSocketUrl'
+          > = {
+            getConfig: vi.fn(() => ({ baseUrl: undefined, webSocketUrl: '' })),
+            getEffectiveWebSocketUrl: vi.fn(() => ''),
+          };
+          return cfg;
+        }
+        if (typeId === TYPES.IEntityService) return entityService;
+        return {};
+      });
+
+    const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
+
+    await waitFor(() => {
+      expect(fetchByEntityId).toHaveBeenCalledTimes(1);
+      expect(entityService.fetchStates).toHaveBeenCalledTimes(1);
+      expect(entityService.subscribeToStateChanges).toHaveBeenCalledTimes(2);
+      expect(Object.keys(useDeviceTrackerMetadataStore.getState().metadataByEntityId)).toHaveLength(
+        2
+      );
+    });
+
+    // Emit a location update for the *other* entity id.
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'device_tracker.phone_jeremy',
+            state: 'home',
+            attributes: {
+              x: 10,
+              y: 20,
+              confidence: 80,
+              last_seen: '2026-01-11T00:00:00.000Z',
+            },
+          })
+        );
+      }
+    });
+
+    await waitFor(() => {
+      expect(
+        useDeviceLocationStore.getState().locationsByEntityId['device_tracker.phone_jeremy']
+      ).toBeTruthy();
+    });
+
+    unmount();
+
+    await waitFor(() => {
+      expect(unsubscribe).toHaveBeenCalledTimes(2);
+    });
+
+    useServiceSpy.mockRestore();
   });
 
   it('upserts tracker labels from person device_trackers on state changes', async () => {
@@ -186,24 +367,26 @@ describe('DeviceLocationTrackingController', () => {
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(subscribeToStateChanges).toHaveBeenCalledTimes(2);
     });
 
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'person.jeremy',
-          attributes: {
-            friendly_name: 'Jeremy Smith',
-            entity_picture: '/api/image_proxy/image/abc',
-            device_trackers: ['device_tracker.phone_jeremy'],
-          },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'person.jeremy',
+            attributes: {
+              friendly_name: 'Jeremy Smith',
+              entity_picture: '/api/image_proxy/image/abc',
+              device_trackers: ['device_tracker.phone_jeremy'],
+            },
+          })
+        );
+      }
+    });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         useDeviceTrackerMetadataStore.getState().metadataByEntityId['device_tracker.phone_jeremy']
       ).toMatchObject({
@@ -215,7 +398,7 @@ describe('DeviceLocationTrackingController', () => {
 
     unmount();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(unsubscribe).toHaveBeenCalled();
     });
   });
@@ -237,14 +420,14 @@ describe('DeviceLocationTrackingController', () => {
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
 
     // allow the effect to run
-    await vi.waitFor(() => {
+    await waitFor(() => {
       // One subscription for tracking + one for person label syncing.
       expect(subscribeToStateChanges).toHaveBeenCalledTimes(2);
     });
 
     unmount();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(unsubscribe).toHaveBeenCalledTimes(2);
     });
   });
@@ -267,7 +450,7 @@ describe('DeviceLocationTrackingController', () => {
 
     render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(subscribeToStateChanges).toHaveBeenCalledTimes(0);
       expect(warnSpy).toHaveBeenCalled();
     });
@@ -302,7 +485,7 @@ describe('DeviceLocationTrackingController', () => {
 
     render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(fetchStates).toHaveBeenCalledTimes(1);
       // Tracking service subscription still happens, person subscription does not.
       expect(subscribeToStateChanges).toHaveBeenCalledTimes(1);
@@ -354,59 +537,65 @@ describe('DeviceLocationTrackingController', () => {
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(subscribeToStateChanges).toHaveBeenCalledTimes(2);
     });
 
     // Assign with mixed junk entries; only the valid device_tracker.* should be allowed.
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'person.jeremy',
-          attributes: {
-            friendly_name: 'Jeremy',
-            device_trackers: [
-              123,
-              'phone_jeremy',
-              'tracker.phone_jeremy',
-              'device_tracker.phone_jeremy',
-            ],
-          },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'person.jeremy',
+            attributes: {
+              friendly_name: 'Jeremy',
+              device_trackers: [
+                123,
+                'phone_jeremy',
+                'tracker.phone_jeremy',
+                'device_tracker.phone_jeremy',
+              ],
+            },
+          })
+        );
+      }
+    });
 
     // Valid tracker should be accepted.
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'device_tracker.phone_jeremy',
-          state: 'home',
-          attributes: { x: 1, y: 2, confidence: 80, last_seen: '2026-01-11T00:00:00.000Z' },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'device_tracker.phone_jeremy',
+            state: 'home',
+            attributes: { x: 1, y: 2, confidence: 80, last_seen: '2026-01-11T00:00:00.000Z' },
+          })
+        );
+      }
+    });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         useDeviceLocationStore.getState().locationsByEntityId['device_tracker.phone_jeremy']
       ).toBeTruthy();
     });
 
     // If device_trackers becomes non-array, it should be treated as empty and pruned.
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'person.jeremy',
-          attributes: {
-            friendly_name: 'Jeremy',
-            device_trackers: 'not-an-array',
-          },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'person.jeremy',
+            attributes: {
+              friendly_name: 'Jeremy',
+              device_trackers: 'not-an-array',
+            },
+          })
+        );
+      }
+    });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         useDeviceLocationStore.getState().locationsByEntityId['device_tracker.phone_jeremy']
       ).toBeUndefined();
@@ -414,7 +603,7 @@ describe('DeviceLocationTrackingController', () => {
 
     unmount();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(unsubscribe).toHaveBeenCalledTimes(2);
     });
   });
@@ -440,23 +629,25 @@ describe('DeviceLocationTrackingController', () => {
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(subscribeToStateChanges).toHaveBeenCalledTimes(2);
     });
 
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'person.jeremy',
-          attributes: {
-            friendly_name: '   ',
-            device_trackers: ['device_tracker.phone_jeremy'],
-          },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'person.jeremy',
+            attributes: {
+              friendly_name: '   ',
+              device_trackers: ['device_tracker.phone_jeremy'],
+            },
+          })
+        );
+      }
+    });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         useDeviceTrackerMetadataStore.getState().metadataByEntityId['device_tracker.phone_jeremy']
       ).toBeUndefined();
@@ -506,21 +697,21 @@ describe('DeviceLocationTrackingController', () => {
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(fetchByEntityId).toHaveBeenCalledTimes(1);
       expect(
         useDeviceTrackerMetadataStore.getState().metadataByEntityId['device_tracker.phone_jeremy']
       ).toMatchObject({ name: 'Jeremy', alias: 'phone:jeremy' });
     });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(window.__hassDashDebug?.deviceTrackerMetadata).toEqual(metadataByEntityId);
       expect(typeof window.__hassDashDebug?.getDeviceTrackerMetadataStoreState).toBe('function');
     });
 
     unmount();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(unsubscribe).toHaveBeenCalledTimes(2);
     });
 
@@ -578,24 +769,26 @@ describe('DeviceLocationTrackingController', () => {
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(subscribeToStateChanges).toHaveBeenCalledTimes(2);
     });
 
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'person.jeremy',
-          attributes: {
-            friendly_name: 'Jeremy Smith',
-            entity_picture: '/api/image_proxy/image/abc',
-            device_trackers: ['device_tracker.phone_jeremy'],
-          },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'person.jeremy',
+            attributes: {
+              friendly_name: 'Jeremy Smith',
+              entity_picture: '/api/image_proxy/image/abc',
+              device_trackers: ['device_tracker.phone_jeremy'],
+            },
+          })
+        );
+      }
+    });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         useDeviceTrackerMetadataStore.getState().metadataByEntityId['device_tracker.phone_jeremy']
       ).toMatchObject({
@@ -657,24 +850,26 @@ describe('DeviceLocationTrackingController', () => {
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(subscribeToStateChanges).toHaveBeenCalledTimes(2);
     });
 
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'person.jeremy',
-          attributes: {
-            friendly_name: 'Jeremy',
-            entity_picture: 'https://cdn.example/avatar.png',
-            device_trackers: ['device_tracker.phone_jeremy'],
-          },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'person.jeremy',
+            attributes: {
+              friendly_name: 'Jeremy',
+              entity_picture: 'https://cdn.example/avatar.png',
+              device_trackers: ['device_tracker.phone_jeremy'],
+            },
+          })
+        );
+      }
+    });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         useDeviceTrackerMetadataStore.getState().metadataByEntityId['device_tracker.phone_jeremy']
       ).toMatchObject({
@@ -725,7 +920,7 @@ describe('DeviceLocationTrackingController', () => {
 
     render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(fetchByEntityId).toHaveBeenCalledTimes(1);
       expect(warnSpy).toHaveBeenCalled();
     });
@@ -788,24 +983,26 @@ describe('DeviceLocationTrackingController', () => {
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(subscribeToStateChanges).toHaveBeenCalledTimes(2);
     });
 
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'person.jeremy',
-          attributes: {
-            friendly_name: 'Jeremy',
-            entity_picture: '/api/image_proxy/image/abc',
-            device_trackers: ['device_tracker.phone_jeremy'],
-          },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'person.jeremy',
+            attributes: {
+              friendly_name: 'Jeremy',
+              entity_picture: '/api/image_proxy/image/abc',
+              device_trackers: ['device_tracker.phone_jeremy'],
+            },
+          })
+        );
+      }
+    });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         useDeviceTrackerMetadataStore.getState().metadataByEntityId['device_tracker.phone_jeremy']
       ).toMatchObject({
@@ -870,24 +1067,26 @@ describe('DeviceLocationTrackingController', () => {
 
     const { unmount } = render(<DeviceLocationTrackingController entityService={entityService} />);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(subscribeToStateChanges).toHaveBeenCalledTimes(2);
     });
 
-    for (const h of handlers) {
-      h(
-        makeHaEntityState({
-          entity_id: 'person.jeremy',
-          attributes: {
-            friendly_name: 'Jeremy',
-            entity_picture: '/api/image_proxy/image/abc',
-            device_trackers: ['device_tracker.phone_jeremy'],
-          },
-        })
-      );
-    }
+    act(() => {
+      for (const h of handlers) {
+        h(
+          makeHaEntityState({
+            entity_id: 'person.jeremy',
+            attributes: {
+              friendly_name: 'Jeremy',
+              entity_picture: '/api/image_proxy/image/abc',
+              device_trackers: ['device_tracker.phone_jeremy'],
+            },
+          })
+        );
+      }
+    });
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         useDeviceTrackerMetadataStore.getState().metadataByEntityId['device_tracker.phone_jeremy']
       ).toMatchObject({
@@ -897,5 +1096,55 @@ describe('DeviceLocationTrackingController', () => {
 
     unmount();
     useServiceSpy.mockRestore();
+  });
+
+  it('derives a base URL from a ws/wss URL', () => {
+    expect(deriveBaseUrlFromWebSocketUrl('ws://example.local:8123/api/websocket')).toBe(
+      'http://example.local:8123/'
+    );
+    expect(deriveBaseUrlFromWebSocketUrl('wss://example.local:8123/api/websocket')).toBe(
+      'https://example.local:8123/'
+    );
+  });
+
+  it('returns undefined base URL for invalid or non-websocket URLs', () => {
+    expect(deriveBaseUrlFromWebSocketUrl('not a url')).toBeUndefined();
+    expect(
+      deriveBaseUrlFromWebSocketUrl('http://example.local:8123/api/websocket')
+    ).toBeUndefined();
+  });
+
+  it('resolves entity_picture URLs (absolute, data/blob, and relative paths)', () => {
+    expect(resolveEntityPictureUrl('  ', 'https://example.local:8123/')).toBeUndefined();
+
+    expect(
+      resolveEntityPictureUrl('https://cdn.example/avatar.png', 'https://example.local:8123/')
+    ).toBe('https://cdn.example/avatar.png');
+    expect(
+      resolveEntityPictureUrl('data:image/png;base64,abc', 'https://example.local:8123/')
+    ).toBe('data:image/png;base64,abc');
+    expect(
+      resolveEntityPictureUrl('blob:https://example.local/123', 'https://example.local:8123/')
+    ).toBe('blob:https://example.local/123');
+
+    expect(resolveEntityPictureUrl('/api/image/1', 'https://example.local:8123/')).toBe(
+      'https://example.local:8123/api/image/1'
+    );
+
+    // If no baseUrl is available, keep the path for the browser to resolve.
+    expect(resolveEntityPictureUrl('/api/image/1', undefined)).toBe('/api/image/1');
+
+    // Non-leading-slash relative paths are returned as-is.
+    expect(resolveEntityPictureUrl('local/path.png', 'https://example.local:8123/')).toBe(
+      'local/path.png'
+    );
+  });
+
+  it('computes initials from person names', () => {
+    expect(computeInitials('')).toBeUndefined();
+    expect(computeInitials('   ')).toBeUndefined();
+    expect(computeInitials('Jeremy')).toBe('J');
+    expect(computeInitials('Jeremy Smith')).toBe('JS');
+    expect(computeInitials('  Mary   Jane   Watson  ')).toBe('MW');
   });
 });

@@ -11,6 +11,7 @@ import type { DeviceLocation } from '../stores/useDeviceLocationStore';
 
 export interface IDeviceLocationStore {
   upsert(entityId: string, location: DeviceLocation): void;
+  remove?(entityId: string): void;
 }
 
 // Backwards-compat alias (the service treats this dependency as write-only)
@@ -88,6 +89,13 @@ export class DeviceLocationTrackingService {
   }
 
   private handleEntityState(next: HaEntityState): void {
+    if (next.entity_id.startsWith('device_tracker.') && isAwayState(next.state)) {
+      this.store.remove?.(next.entity_id);
+      this.throttleByEntityId.delete(next.entity_id);
+      this.lastSeenMsByEntityId.delete(next.entity_id);
+      return;
+    }
+
     const updates = extractDeviceLocationUpdateFromHaEntityState(next, this.minConfidence);
     for (const update of updates) {
       if (!this.shouldAcceptUpdate(update)) continue;
@@ -155,4 +163,12 @@ const mapUpdateToDeviceLocation = (update: DeviceLocationUpdate): DeviceLocation
     lastSeen: update.lastSeen,
     receivedAt: update.receivedAt,
   };
+};
+
+const isAwayState = (state: unknown): boolean => {
+  // Common HA device_tracker states: "home" | "not_home".
+  // Some integrations may use "away" or other strings.
+  if (typeof state !== 'string') return false;
+  const normalized = state.trim().toLowerCase();
+  return normalized === 'not_home' || normalized === 'away';
 };

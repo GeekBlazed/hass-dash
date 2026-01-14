@@ -886,11 +886,24 @@ button.qa {
   color: var(--node-blue);
 }
 
+.device-marker.device-marker--stale {
+  color: var(--text-muted);
+}
+
 .device-pin {
   filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55));
 }
 
 .device-label {
+  fill: currentColor;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.device-stale-label {
   fill: currentColor;
   font-weight: 650;
   letter-spacing: 0.02em;

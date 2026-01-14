@@ -5,6 +5,7 @@ import {
   type TrackingDebugOverlayMode,
 } from '../../../features/tracking/trackingDebugOverlayConfig';
 import { getTrackingStaleTimeoutMs } from '../../../features/tracking/trackingStaleTimeoutConfig';
+import { getTrackingStaleWarningMs } from '../../../features/tracking/trackingStaleWarningConfig';
 import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import type { DeviceLocation } from '../../../stores/useDeviceLocationStore';
 import { useDeviceLocationStore } from '../../../stores/useDeviceLocationStore';
@@ -12,12 +13,18 @@ import { useDeviceTrackerMetadataStore } from '../../../stores/useDeviceTrackerM
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+// Keep in sync with `public/scripts.js` prototype renderer sizing.
+// This avoids a “first draw” flash where markers are created after the prototype
+// sizing pass and would otherwise render with default (very large) SVG text sizes.
+const DEVICE_PIN_SCALE = 3.15;
+
 const TRACKING_ATTR = 'data-hass-dash-tracking';
 const ENTITY_ID_ATTR = 'data-entity-id';
 const DEVICE_ID_ATTR = 'data-device-id';
 const TRACKING_KIND_ATTR = 'data-hass-dash-tracking-kind';
 const ORIG_TRANSFORM_ATTR = 'data-hass-dash-orig-transform';
 const DEBUG_LABEL_ATTR = 'data-hass-dash-tracking-debug';
+const STALE_LABEL_ATTR = 'data-hass-dash-tracking-stale';
 
 const createSvgElement = <T extends keyof SVGElementTagNameMap>(
   tag: T
@@ -53,6 +60,66 @@ const readViewBox = (svg: SVGSVGElement): { x: number; y: number; w: number; h: 
 
   // Fall back to the current viewBox.
   return readViewBoxRaw(svg.getAttribute('viewBox'));
+};
+
+const readUnitsPerPx = (): number | null => {
+  const svg = document.getElementById('floorplan-svg');
+  if (!(svg instanceof SVGSVGElement)) return null;
+
+  const rect = svg.getBoundingClientRect();
+  if (!rect.width) return null;
+
+  // For sizing, we must use the *current* viewBox so markers stay the same
+  // on-screen size during zooming (matching `public/scripts.js`).
+  // Fall back to the base viewBox only if the current viewBox is missing.
+  const current = readViewBoxRaw(svg.getAttribute('viewBox'));
+  const vb = current ?? readViewBox(svg);
+  if (!vb?.w) return null;
+
+  return vb.w / rect.width;
+};
+
+const applyMarkerSizing = (marker: SVGGElement, unitsPerPx: number): void => {
+  // Match `public/scripts.js` sizing rules.
+  const devicePinHeightInUserUnits = 34 * DEVICE_PIN_SCALE * unitsPerPx;
+  const devicePinWidthInUserUnits = 26 * DEVICE_PIN_SCALE * unitsPerPx;
+  const deviceLabelGapInUserUnits = 6 * DEVICE_PIN_SCALE * unitsPerPx;
+  const deviceLabelFontSizeInUserUnits = 11 * unitsPerPx;
+
+  const use = marker.querySelector<SVGUseElement>('use.device-pin');
+  if (use) {
+    use.setAttribute('width', String(devicePinWidthInUserUnits));
+    use.setAttribute('height', String(devicePinHeightInUserUnits));
+    use.setAttribute('x', String(-devicePinWidthInUserUnits / 2));
+    use.setAttribute('y', String(-devicePinHeightInUserUnits));
+  }
+
+  const label = marker.querySelector<SVGTextElement>('text.device-label');
+  if (label) {
+    label.setAttribute('font-size', String(deviceLabelFontSizeInUserUnits * 1.35));
+    label.setAttribute('x', '0');
+    label.setAttribute('y', String(-devicePinHeightInUserUnits - deviceLabelGapInUserUnits / 4));
+  }
+
+  // Avatar/initials overlay within the pin head.
+  const avatarSizeInUserUnits = devicePinWidthInUserUnits * 0.54 + 2 * unitsPerPx;
+  const avatarCenterY =
+    -devicePinHeightInUserUnits + devicePinHeightInUserUnits * 0.375 + 4 * unitsPerPx;
+
+  const avatarImage = marker.querySelector<SVGImageElement>('image.device-avatar-image');
+  if (avatarImage) {
+    avatarImage.setAttribute('width', String(avatarSizeInUserUnits));
+    avatarImage.setAttribute('height', String(avatarSizeInUserUnits));
+    avatarImage.setAttribute('x', String(-avatarSizeInUserUnits / 2));
+    avatarImage.setAttribute('y', String(avatarCenterY - avatarSizeInUserUnits / 2));
+  }
+
+  const avatarText = marker.querySelector<SVGTextElement>('text.device-avatar-text');
+  if (avatarText) {
+    avatarText.setAttribute('font-size', String(avatarSizeInUserUnits * 0.42));
+    avatarText.setAttribute('x', '0');
+    avatarText.setAttribute('y', String(avatarCenterY));
+  }
 };
 
 const flipYIfPossible = (y: number): number => {
@@ -102,6 +169,35 @@ const computeInitials = (name: string): string | undefined => {
 
   const initials = `${firstChar}${lastChar}`.trim().toUpperCase();
   return initials || undefined;
+};
+
+const PREFETCHED_AVATAR_URLS_LIMIT = 200;
+const prefetchedAvatarUrls = new Set<string>();
+
+const prefetchAvatarUrl = (avatarUrl: string): void => {
+  const url = avatarUrl.trim();
+  if (!url) return;
+
+  // SSR/tests safety: only prefetch when the browser Image API exists.
+  if (typeof Image === 'undefined') return;
+
+  if (prefetchedAvatarUrls.has(url)) return;
+
+  // Bound memory: if we somehow see lots of avatars, prefer clearing vs. unbounded growth.
+  if (prefetchedAvatarUrls.size >= PREFETCHED_AVATAR_URLS_LIMIT) {
+    prefetchedAvatarUrls.clear();
+  }
+
+  prefetchedAvatarUrls.add(url);
+
+  try {
+    const img = new Image();
+    // Hint that decoding doesn't need to block paint.
+    img.decoding = 'async';
+    img.src = url;
+  } catch {
+    // Best-effort only.
+  }
 };
 
 const upsertAvatar = (
@@ -167,6 +263,7 @@ const upsertAvatar = (
   }
 
   if (avatarUrl) {
+    prefetchAvatarUrl(avatarUrl);
     image.setAttribute('href', avatarUrl);
     image.setAttribute('xlink:href', avatarUrl);
     image.removeAttribute('display');
@@ -271,6 +368,33 @@ const upsertDebugLabel = (
   });
 };
 
+const upsertStaleLabel = (marker: SVGGElement, ageMinutes: number | null): void => {
+  const existing = marker.querySelector<SVGTextElement>(`text[${STALE_LABEL_ATTR}="true"]`);
+  if (!ageMinutes || ageMinutes <= 0) {
+    existing?.remove();
+    return;
+  }
+
+  const el = existing ?? createSvgElement('text');
+  if (!existing) {
+    el.setAttribute(STALE_LABEL_ATTR, 'true');
+    el.setAttribute('class', 'device-stale-label');
+    el.setAttribute('x', '0');
+    el.setAttribute('y', '1.1');
+    el.setAttribute('text-anchor', 'middle');
+    el.setAttribute('dominant-baseline', 'hanging');
+    el.setAttribute('font-size', '0.20');
+    el.setAttribute('fill', 'currentColor');
+    el.setAttribute('pointer-events', 'none');
+    marker.appendChild(el);
+  }
+
+  const desired = `> ${ageMinutes} minutes`;
+  if (el.textContent !== desired) {
+    el.textContent = desired;
+  }
+};
+
 const syncMarkers = (
   layer: SVGGElement,
   isEnabled: boolean,
@@ -280,8 +404,12 @@ const syncMarkers = (
     { name?: string; alias?: string; avatarUrl?: string; initials?: string }
   >,
   showDebugOverlay: boolean,
-  debugMode: TrackingDebugOverlayMode
+  debugMode: TrackingDebugOverlayMode,
+  nowMs: number,
+  staleWarningMs: number
 ): void => {
+  const unitsPerPx = readUnitsPerPx();
+
   const existingTrackingMarkers = new Map<string, SVGGElement>();
   layer.querySelectorAll<SVGGElement>(`g[${TRACKING_ATTR}="true"]`).forEach((marker) => {
     const entityId = marker.getAttribute(ENTITY_ID_ATTR);
@@ -293,6 +421,8 @@ const syncMarkers = (
   if (!isEnabled) {
     for (const marker of existingTrackingMarkers.values()) {
       upsertDebugLabel(marker, null, debugMode);
+      upsertStaleLabel(marker, null);
+      marker.classList.remove('device-marker--stale');
 
       const kind = marker.getAttribute(TRACKING_KIND_ATTR);
       if (kind === 'bound') {
@@ -318,6 +448,8 @@ const syncMarkers = (
   for (const [entityId, marker] of existingTrackingMarkers.entries()) {
     if (!desiredEntityIds.has(entityId)) {
       upsertDebugLabel(marker, null, debugMode);
+      upsertStaleLabel(marker, null);
+      marker.classList.remove('device-marker--stale');
 
       const kind = marker.getAttribute(TRACKING_KIND_ATTR);
       if (kind === 'bound') {
@@ -339,6 +471,10 @@ const syncMarkers = (
   }
 
   for (const [entityId, location] of Object.entries(locationsByEntityId)) {
+    const ageMs = nowMs - location.receivedAt;
+    const isStale = staleWarningMs > 0 && ageMs >= staleWarningMs;
+    const ageMinutes = isStale ? Math.floor(ageMs / 60_000) : null;
+
     const x = location.position.x;
     const y = location.position.y;
 
@@ -411,6 +547,19 @@ const syncMarkers = (
     const initials = meta?.initials?.trim() || computeInitials(preferredLabel);
     upsertAvatar(marker, avatarUrl, initials);
 
+    // Ensure consistent sizing on first paint (especially when markers are created
+    // after the prototype renderer's sizing pass).
+    if (unitsPerPx !== null) {
+      applyMarkerSizing(marker, unitsPerPx);
+    }
+
+    if (isStale) {
+      marker.classList.add('device-marker--stale');
+    } else {
+      marker.classList.remove('device-marker--stale');
+    }
+    upsertStaleLabel(marker, ageMinutes);
+
     marker.setAttribute('transform', `translate(${x} ${yRender})`);
 
     if (showDebugOverlay) {
@@ -438,16 +587,27 @@ const filterNonStaleLocations = (
 const getNextStaleCheckDelayMs = (
   locationsByEntityId: Record<string, DeviceLocation>,
   nowMs: number,
+  staleWarningMs: number,
   staleTimeoutMs: number
 ): number | null => {
   let nextCheckAtMs: number | null = null;
 
   for (const location of Object.values(locationsByEntityId)) {
-    // We hide when ageMs > staleTimeoutMs, so schedule for +1ms past the boundary.
-    const candidateAtMs = location.receivedAt + staleTimeoutMs + 1;
-    if (candidateAtMs <= nowMs) return 0;
-    if (nextCheckAtMs === null || candidateAtMs < nextCheckAtMs) {
-      nextCheckAtMs = candidateAtMs;
+    // 1) Stale styling boundary (ageMs >= staleWarningMs)
+    if (staleWarningMs > 0) {
+      const warnAtMs = location.receivedAt + staleWarningMs;
+      if (warnAtMs <= nowMs) {
+        // Already stale; nothing to schedule for warning.
+      } else if (nextCheckAtMs === null || warnAtMs < nextCheckAtMs) {
+        nextCheckAtMs = warnAtMs;
+      }
+    }
+
+    // 2) Hide boundary (ageMs > staleTimeoutMs) => schedule for +1ms past.
+    const hideAtMs = location.receivedAt + staleTimeoutMs + 1;
+    if (hideAtMs <= nowMs) return 0;
+    if (nextCheckAtMs === null || hideAtMs < nextCheckAtMs) {
+      nextCheckAtMs = hideAtMs;
     }
   }
 
@@ -465,6 +625,7 @@ export function TrackedDeviceMarkersBridge() {
   // Dev-only: never show this overlay in production builds.
   const showDebugOverlay = debugOverlayFlagEnabled && !import.meta.env.PROD;
   const debugMode = getTrackingDebugOverlayMode();
+  const staleWarningMs = getTrackingStaleWarningMs();
   const staleTimeoutMs = getTrackingStaleTimeoutMs();
 
   useEffect(() => {
@@ -485,7 +646,9 @@ export function TrackedDeviceMarkersBridge() {
       filteredLocationsByEntityId,
       metadataByEntityId,
       showDebugOverlay,
-      debugMode
+      debugMode,
+      nowMs,
+      staleWarningMs
     );
 
     // scripts.js clears and re-renders the devices layer (e.g., during reload).
@@ -497,7 +660,9 @@ export function TrackedDeviceMarkersBridge() {
         filteredLocationsByEntityId,
         metadataByEntityId,
         showDebugOverlay,
-        debugMode
+        debugMode,
+        nowMs,
+        staleWarningMs
       );
     });
 
@@ -505,7 +670,12 @@ export function TrackedDeviceMarkersBridge() {
 
     const nextDelayMs =
       isEnabled === true
-        ? getNextStaleCheckDelayMs(filteredLocationsByEntityId, nowMs, staleTimeoutMs)
+        ? getNextStaleCheckDelayMs(
+            filteredLocationsByEntityId,
+            nowMs,
+            staleWarningMs,
+            staleTimeoutMs
+          )
         : null;
 
     const timerId =
@@ -527,6 +697,7 @@ export function TrackedDeviceMarkersBridge() {
     metadataByEntityId,
     showDebugOverlay,
     debugMode,
+    staleWarningMs,
     staleTimeoutMs,
     staleTick,
   ]);

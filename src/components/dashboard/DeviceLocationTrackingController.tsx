@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 
 import { TYPES } from '../../core/types';
+import { extractDeviceLocationUpdateFromHaEntityState } from '../../features/tracking/espresense/espresenseLocationExtractor';
+import { getEspresenseMinConfidence } from '../../features/tracking/espresense/espresenseTrackingConfig';
 import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { useService } from '../../hooks/useService';
 import type { IDeviceTrackerMetadataService } from '../../interfaces/IDeviceTrackerMetadataService';
@@ -20,7 +22,7 @@ type HassDashDebugWindow = Window & {
 
 const logger = createLogger('hass-dash');
 
-const deriveBaseUrlFromWebSocketUrl = (webSocketUrl: string): string | undefined => {
+export const deriveBaseUrlFromWebSocketUrl = (webSocketUrl: string): string | undefined => {
   try {
     const url = new URL(webSocketUrl.trim());
 
@@ -39,7 +41,7 @@ const deriveBaseUrlFromWebSocketUrl = (webSocketUrl: string): string | undefined
   }
 };
 
-const resolveEntityPictureUrl = (
+export const resolveEntityPictureUrl = (
   entityPicture: string,
   baseUrl: string | undefined
 ): string | undefined => {
@@ -63,7 +65,7 @@ const resolveEntityPictureUrl = (
   return raw;
 };
 
-const computeInitials = (name: string): string | undefined => {
+export const computeInitials = (name: string): string | undefined => {
   const trimmed = name.trim();
   if (!trimmed) return undefined;
 
@@ -90,6 +92,8 @@ export function DeviceLocationTrackingController({
 }) {
   const { isEnabled: trackingEnabled } = useFeatureFlag('DEVICE_TRACKING');
   const { isEnabled: haEnabled } = useFeatureFlag('HA_CONNECTION');
+
+  const metadataByEntityId = useDeviceTrackerMetadataStore((s) => s.metadataByEntityId);
 
   // Only show trackers that are assigned to a Home Assistant person.
   // We track this in-memory so we can filter incoming updates and prune stale locations.
@@ -157,6 +161,10 @@ export function DeviceLocationTrackingController({
         if (!allowedTrackerEntityIdsRef.current.has(entityId)) return;
         useDeviceLocationStore.getState().upsert(entityId, location);
       },
+      remove: (entityId) => {
+        if (!allowedTrackerEntityIdsRef.current.has(entityId)) return;
+        useDeviceLocationStore.getState().remove(entityId);
+      },
     });
 
     void service.start().catch((error: unknown) => {
@@ -176,8 +184,29 @@ export function DeviceLocationTrackingController({
 
     const recomputeAllowlistAndPrune = (): void => {
       const nextAllowed = new Set<string>();
+      const allowedDeviceIds = new Set<string>();
+
       for (const ids of personTrackersByPersonEntityIdRef.current.values()) {
-        for (const id of ids) nextAllowed.add(id);
+        for (const id of ids) {
+          nextAllowed.add(id);
+
+          const meta = metadataByEntityId[id];
+          const deviceId = typeof meta?.deviceId === 'string' ? meta.deviceId : undefined;
+          if (deviceId) allowedDeviceIds.add(deviceId);
+        }
+      }
+
+      // Some Home Assistant setups can end up with multiple `device_tracker.*` entities for the
+      // same underlying device (e.g. rename / duplicate MQTT discovery object_id). We want
+      // people-assigned trackers to continue working even if the entity id that receives the
+      // ESPresense attributes differs from the one stored under `person.*.device_trackers`.
+      if (allowedDeviceIds.size > 0) {
+        for (const [entityId, meta] of Object.entries(metadataByEntityId)) {
+          const deviceId = typeof meta?.deviceId === 'string' ? meta.deviceId : undefined;
+          if (!deviceId) continue;
+          if (!allowedDeviceIds.has(deviceId)) continue;
+          nextAllowed.add(entityId);
+        }
       }
 
       allowedTrackerEntityIdsRef.current = nextAllowed;
@@ -253,6 +282,47 @@ export function DeviceLocationTrackingController({
         }
         recomputeAllowlistAndPrune();
 
+        // Seed initial locations from the snapshot so trackers render even if
+        // they don't emit a post-subscribe `state_changed` immediately.
+        // This keeps the UI aligned with HA "last known" state.
+        const minConfidence = getEspresenseMinConfidence();
+        const store = useDeviceLocationStore.getState();
+        for (const state of states) {
+          const entityId = state.entity_id;
+          if (!allowedTrackerEntityIdsRef.current.has(entityId)) continue;
+
+          // If HA considers the tracker Away, do not seed a marker.
+          // (Live updates will remove it immediately as well.)
+          if (typeof state.state === 'string') {
+            const normalized = state.state.trim().toLowerCase();
+            if (normalized === 'not_home' || normalized === 'away') {
+              store.remove(entityId);
+              continue;
+            }
+          }
+
+          const receivedAtCandidate = Date.parse(state.last_updated);
+          const receivedAt = Number.isFinite(receivedAtCandidate)
+            ? receivedAtCandidate
+            : Date.now();
+
+          const updates = extractDeviceLocationUpdateFromHaEntityState(
+            state,
+            minConfidence,
+            receivedAt
+          );
+
+          for (const update of updates) {
+            store.upsert(update.entityId, {
+              position: update.position,
+              geo: update.geo,
+              confidence: update.confidence,
+              lastSeen: update.lastSeen,
+              receivedAt: update.receivedAt,
+            });
+          }
+        }
+
         subscription = await entityService.subscribeToStateChanges(handleStateChange);
       } catch (error: unknown) {
         if (!import.meta.env.DEV) return;
@@ -268,7 +338,7 @@ export function DeviceLocationTrackingController({
       subscription = null;
       void sub?.unsubscribe();
     };
-  }, [trackingEnabled, haEnabled, entityService]);
+  }, [trackingEnabled, haEnabled, entityService, connectionConfig, metadataByEntityId]);
 
   return null;
 }

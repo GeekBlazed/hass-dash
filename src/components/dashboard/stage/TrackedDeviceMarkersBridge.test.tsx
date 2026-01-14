@@ -11,6 +11,7 @@ describe('TrackedDeviceMarkersBridge', () => {
     vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
     vi.stubEnv('VITE_FEATURE_TRACKING_DEBUG_OVERLAY', 'false');
     vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'xyz');
+    vi.stubEnv('VITE_TRACKING_STALE_WARNING_MINUTES', '10');
     vi.stubEnv('VITE_TRACKING_STALE_TIMEOUT_MINUTES', '30');
     useDeviceLocationStore.persist.clearStorage();
     useDeviceLocationStore.setState({ locationsByEntityId: {} });
@@ -451,6 +452,8 @@ describe('TrackedDeviceMarkersBridge', () => {
     try {
       // 0.001 minutes = 60ms
       vi.stubEnv('VITE_TRACKING_STALE_TIMEOUT_MINUTES', '0.001');
+      // 0.0005 minutes = 30ms
+      vi.stubEnv('VITE_TRACKING_STALE_WARNING_MINUTES', '0.0005');
 
       render(
         <>
@@ -481,10 +484,20 @@ describe('TrackedDeviceMarkersBridge', () => {
       );
       expect(markerBefore).toBeTruthy();
 
-      await vi.advanceTimersByTimeAsync(61);
+      // Before hide threshold, marker should be stale-styled.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(31);
+      });
 
-      // Flush the timeout-driven staleTick update + re-sync.
-      await act(async () => {});
+      const markerStale = layer?.querySelector<SVGGElement>(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(markerStale).toBeTruthy();
+      expect(markerStale?.classList.contains('device-marker--stale')).toBe(true);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30);
+      });
 
       const markerAfter = layer?.querySelector(
         'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
