@@ -1,4 +1,4 @@
-import { inject, injectable } from 'inversify';
+import { inject, injectable, unmanaged } from 'inversify';
 
 import { TYPES } from '../core/types';
 import type { IConfigService } from '../interfaces/IConfigService';
@@ -17,9 +17,26 @@ export class HomeAssistantConnectionConfigService implements IHomeAssistantConne
   private readonly STORAGE_KEY = 'ha_connection_overrides';
 
   private readonly configService: IConfigService;
+  private readonly pageProtocolProvider: () => string | undefined;
 
-  constructor(@inject(TYPES.IConfigService) configService: IConfigService) {
+  constructor(
+    @inject(TYPES.IConfigService) configService: IConfigService,
+    @unmanaged() pageProtocolProvider?: () => string | undefined
+  ) {
     this.configService = configService;
+    this.pageProtocolProvider =
+      pageProtocolProvider ??
+      (() => {
+        return typeof globalThis !== 'undefined' &&
+          'location' in globalThis &&
+          typeof (globalThis as unknown as { location?: { protocol?: unknown } }).location
+            ?.protocol === 'string'
+          ? ((globalThis as unknown as { location: { protocol: string } }).location.protocol as
+              | 'http:'
+              | 'https:'
+              | string)
+          : undefined;
+      });
   }
 
   getOverrides(): HomeAssistantConnectionConfig {
@@ -110,16 +127,7 @@ export class HomeAssistantConnectionConfigService implements IHomeAssistantConne
     // Browsers block ws:// from https:// pages (mixed content). If the user
     // configured ws:// explicitly but we're running on https, attempt a safe
     // best-effort upgrade to wss://.
-    const pageProtocol =
-      typeof globalThis !== 'undefined' &&
-      'location' in globalThis &&
-      typeof (globalThis as unknown as { location?: { protocol?: unknown } }).location?.protocol ===
-        'string'
-        ? ((globalThis as unknown as { location: { protocol: string } }).location.protocol as
-            | 'http:'
-            | 'https:'
-            | string)
-        : undefined;
+    const pageProtocol = this.pageProtocolProvider();
 
     if (pageProtocol !== 'https:') return raw;
 

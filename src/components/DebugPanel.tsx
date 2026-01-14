@@ -14,6 +14,12 @@ import type { HaStateChangedEventData } from '../types/home-assistant';
  * Only shown when VITE_FEATURE_DEBUG_PANEL is enabled.
  * Allows toggling flags in development mode.
  */
+export const pageReloader = {
+  reload: (): void => {
+    window.location.reload();
+  },
+};
+
 export function DebugPanel() {
   const { flags, service } = useFeatureFlags();
 
@@ -51,7 +57,7 @@ export function DebugPanel() {
       service.enable(flag);
     }
     // Force re-render by causing a state update
-    window.location.reload();
+    pageReloader.reload();
   };
 
   const isDevelopment = import.meta.env.DEV;

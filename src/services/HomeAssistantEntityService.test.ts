@@ -59,6 +59,77 @@ describe('HomeAssistantEntityService', () => {
     expect(result).toHaveLength(1);
   });
 
+  it('fetchStates() falls back to REST when WebSocket returns an empty response', async () => {
+    const http: IHttpClient = {
+      get: vi.fn().mockResolvedValue([{ entity_id: 'light.kitchen' }]),
+      post: vi.fn(),
+    };
+
+    const ha: IHomeAssistantClient = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      connectWithConfig: vi.fn(),
+      disconnect: vi.fn(),
+      isConnected: vi.fn().mockReturnValue(false),
+      getStates: vi.fn().mockResolvedValue(undefined),
+      getState: vi.fn(),
+      getServices: vi.fn(),
+      subscribeToEvents: vi.fn(),
+      callService: vi.fn(),
+    };
+
+    const service = new HomeAssistantEntityService(http, ha);
+    const result = await service.fetchStates();
+
+    expect(ha.getStates).toHaveBeenCalledTimes(1);
+    expect(http.get).toHaveBeenCalledWith('/api/states');
+    expect(result).toHaveLength(1);
+  });
+
+  it('fetchStates() throws if REST returns an empty response', async () => {
+    const http: IHttpClient = {
+      get: vi.fn().mockResolvedValue(undefined),
+      post: vi.fn(),
+    };
+
+    const ha: IHomeAssistantClient = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      connectWithConfig: vi.fn(),
+      disconnect: vi.fn(),
+      isConnected: vi.fn().mockReturnValue(true),
+      getStates: vi.fn().mockRejectedValue(new Error('ws down')),
+      getState: vi.fn(),
+      getServices: vi.fn(),
+      subscribeToEvents: vi.fn(),
+      callService: vi.fn(),
+    };
+
+    const service = new HomeAssistantEntityService(http, ha);
+    await expect(service.fetchStates()).rejects.toThrow(/empty response/i);
+  });
+
+  it('fetchStates() stringifies non-Error failures when surfacing combined error', async () => {
+    const http: IHttpClient = {
+      get: vi.fn().mockRejectedValue('rest down'),
+      post: vi.fn(),
+    };
+
+    const ha: IHomeAssistantClient = {
+      connect: vi.fn().mockRejectedValue('ws connect failed'),
+      connectWithConfig: vi.fn(),
+      disconnect: vi.fn(),
+      isConnected: vi.fn().mockReturnValue(false),
+      getStates: vi.fn(),
+      getState: vi.fn(),
+      getServices: vi.fn(),
+      subscribeToEvents: vi.fn(),
+      callService: vi.fn(),
+    };
+
+    const service = new HomeAssistantEntityService(http, ha);
+    await expect(service.fetchStates()).rejects.toThrow(/ws connect failed/i);
+    await expect(service.fetchStates()).rejects.toThrow(/rest down/i);
+  });
+
   it('fetchStates() surfaces both WebSocket and REST failures', async () => {
     const http: IHttpClient = {
       get: vi.fn().mockRejectedValue(new Error('rest down')),

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { IConfigService } from '../interfaces/IConfigService';
 import { HomeAssistantConnectionConfigService } from './HomeAssistantConnectionConfigService';
@@ -47,19 +47,14 @@ describe('HomeAssistantConnectionConfigService', () => {
       createConfigStub({
         VITE_HA_WEBSOCKET_URL: 'ws://example.com/api/websocket',
         VITE_HA_ACCESS_TOKEN: 'token',
-      })
+      }),
+      () => 'https:'
     );
 
-    // Simulate an https-hosted app. Browsers block ws:// mixed content.
-    vi.stubGlobal('location', { protocol: 'https:' } as unknown as Location);
-    try {
-      expect(svc.getEffectiveWebSocketUrl()).toBe('wss://example.com/api/websocket');
+    expect(svc.getEffectiveWebSocketUrl()).toBe('wss://example.com/api/websocket');
 
-      const validation = svc.validate();
-      expect(validation.effectiveWebSocketUrl).toBe('wss://example.com/api/websocket');
-    } finally {
-      vi.unstubAllGlobals();
-    }
+    const validation = svc.validate();
+    expect(validation.effectiveWebSocketUrl).toBe('wss://example.com/api/websocket');
   });
 
   it('validate() rejects invalid base url scheme', () => {
@@ -126,18 +121,5 @@ describe('HomeAssistantConnectionConfigService', () => {
     expect(svc.getOverrides()).toEqual({});
   });
 
-  it('getOverrides() returns empty object when window is undefined (SSR)', () => {
-    const svc = new HomeAssistantConnectionConfigService(createConfigStub({}));
-
-    // Simulate an SSR/non-browser environment where `window` does not exist.
-    // We also remove/poison sessionStorage to ensure the code path doesn't touch it.
-    vi.stubGlobal('window', undefined as unknown as Window);
-    vi.stubGlobal('sessionStorage', undefined as unknown as Storage);
-
-    try {
-      expect(svc.getOverrides()).toEqual({});
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
+  // SSR behavior is covered in HomeAssistantConnectionConfigService.ssr.test.ts
 });

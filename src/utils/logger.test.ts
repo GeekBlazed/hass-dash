@@ -84,4 +84,29 @@ describe('logger', () => {
     expect(consoleLike.table).toHaveBeenCalled();
     expect(consoleLike.groupEnd).toHaveBeenCalled();
   });
+
+  it('logger does not prefix messages when scope is empty', () => {
+    const consoleLike = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      log: vi.fn(),
+      groupCollapsed: vi.fn(),
+      groupEnd: vi.fn(),
+      table: vi.fn(),
+    };
+
+    const logger = createLogger('', {
+      env: { VITE_LOG_LEVEL: 'debug' },
+      isDev: true,
+      console: consoleLike,
+    });
+
+    logger.debug('hello');
+    logger.debugGroupCollapsed('group');
+
+    expect(consoleLike.debug).toHaveBeenCalledWith('hello');
+    expect(consoleLike.groupCollapsed).toHaveBeenCalledWith('group');
+  });
 });

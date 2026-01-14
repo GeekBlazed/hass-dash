@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
 
 import type { DeviceTrackerMetadata } from '../interfaces/IDeviceTrackerMetadataService';
 
@@ -9,33 +10,46 @@ export type DeviceTrackerMetadataState = {
   clear: () => void;
 };
 
-export const useDeviceTrackerMetadataStore = create<DeviceTrackerMetadataState>((set) => ({
-  metadataByEntityId: {},
-  setAll: (metadataByEntityId) => {
-    set({ metadataByEntityId });
-  },
-  upsert: (entityId, metadata) => {
-    set((state) => {
-      const prev = state.metadataByEntityId[entityId] ?? {};
-
-      // Treat `undefined` as "no update" so partial upserts cannot accidentally
-      // erase values sourced from the HA registries.
-      const filtered = Object.fromEntries(
-        Object.entries(metadata).filter(([, value]) => value !== undefined)
-      ) as Partial<DeviceTrackerMetadata>;
-
-      return {
-        metadataByEntityId: {
-          ...state.metadataByEntityId,
-          [entityId]: {
-            ...prev,
-            ...filtered,
-          },
+export const useDeviceTrackerMetadataStore = create<DeviceTrackerMetadataState>()(
+  devtools(
+    persist(
+      (set) => ({
+        metadataByEntityId: {},
+        setAll: (metadataByEntityId) => {
+          set({ metadataByEntityId });
         },
-      };
-    });
-  },
-  clear: () => {
-    set({ metadataByEntityId: {} });
-  },
-}));
+        upsert: (entityId, metadata) => {
+          set((state) => {
+            const prev = state.metadataByEntityId[entityId] ?? {};
+
+            // Treat `undefined` as "no update" so partial upserts cannot accidentally
+            // erase values sourced from the HA registries.
+            const filtered = Object.fromEntries(
+              Object.entries(metadata).filter(([, value]) => value !== undefined)
+            ) as Partial<DeviceTrackerMetadata>;
+
+            return {
+              metadataByEntityId: {
+                ...state.metadataByEntityId,
+                [entityId]: {
+                  ...prev,
+                  ...filtered,
+                },
+              },
+            };
+          });
+        },
+        clear: () => {
+          set({ metadataByEntityId: {} });
+        },
+      }),
+      {
+        name: 'hass-dash:device-tracker-metadata',
+        version: 1,
+        partialize: (state) => ({
+          metadataByEntityId: state.metadataByEntityId,
+        }),
+      }
+    )
+  )
+);

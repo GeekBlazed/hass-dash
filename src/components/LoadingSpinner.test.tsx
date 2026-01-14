@@ -9,4 +9,11 @@ describe('LoadingSpinner', () => {
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.getByText(/loading data/i)).toBeInTheDocument();
   });
+
+  it('defaults the label to "Loading" when not provided', () => {
+    render(<LoadingSpinner />);
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByText(/^loading$/i)).toBeInTheDocument();
+  });
 });
