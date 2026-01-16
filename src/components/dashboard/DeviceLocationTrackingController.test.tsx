@@ -86,6 +86,28 @@ describe('DeviceLocationTrackingController', () => {
       return { unsubscribe };
     });
 
+    const fetchByEntityId = vi.fn(async () => ({}));
+    const useServiceSpy = vi
+      .spyOn(useServiceModule, 'useService')
+      .mockImplementation((typeId: symbol): unknown => {
+        if (typeId === TYPES.IDeviceTrackerMetadataService) {
+          const svc: IDeviceTrackerMetadataService = { fetchByEntityId };
+          return svc;
+        }
+        if (typeId === TYPES.IHomeAssistantConnectionConfig) {
+          const cfg: Pick<
+            IHomeAssistantConnectionConfig,
+            'getConfig' | 'getEffectiveWebSocketUrl'
+          > = {
+            getConfig: vi.fn(() => ({ baseUrl: undefined, webSocketUrl: '' })),
+            getEffectiveWebSocketUrl: vi.fn(() => ''),
+          };
+          return cfg;
+        }
+
+        return {};
+      });
+
     const entityService: IEntityService = {
       fetchStates,
       subscribeToStateChanges,
@@ -173,6 +195,8 @@ describe('DeviceLocationTrackingController', () => {
     await waitFor(() => {
       expect(unsubscribe).toHaveBeenCalledTimes(2);
     });
+
+    useServiceSpy.mockRestore();
   });
 
   it('seeds initial locations from fetchStates snapshot for assigned trackers', async () => {
@@ -217,6 +241,28 @@ describe('DeviceLocationTrackingController', () => {
       return { unsubscribe };
     });
 
+    const fetchByEntityId = vi.fn(async () => ({}));
+    const useServiceSpy = vi
+      .spyOn(useServiceModule, 'useService')
+      .mockImplementation((typeId: symbol): unknown => {
+        if (typeId === TYPES.IDeviceTrackerMetadataService) {
+          const svc: IDeviceTrackerMetadataService = { fetchByEntityId };
+          return svc;
+        }
+        if (typeId === TYPES.IHomeAssistantConnectionConfig) {
+          const cfg: Pick<
+            IHomeAssistantConnectionConfig,
+            'getConfig' | 'getEffectiveWebSocketUrl'
+          > = {
+            getConfig: vi.fn(() => ({ baseUrl: undefined, webSocketUrl: '' })),
+            getEffectiveWebSocketUrl: vi.fn(() => ''),
+          };
+          return cfg;
+        }
+
+        return {};
+      });
+
     const entityService: IEntityService = {
       fetchStates,
       subscribeToStateChanges,
@@ -241,6 +287,8 @@ describe('DeviceLocationTrackingController', () => {
     await waitFor(() => {
       expect(unsubscribe).toHaveBeenCalledTimes(2);
     });
+
+    useServiceSpy.mockRestore();
   });
 
   it('accepts updates for alternate tracker entity ids when they share the same device_id as an assigned tracker', async () => {

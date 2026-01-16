@@ -11,6 +11,7 @@ import { DeviceLocationTrackingController } from './DeviceLocationTrackingContro
 import { HaAreaClimateOverlayBridge } from './HaAreaClimateOverlayBridge';
 import { HaLightHotwireBridge } from './HaLightHotwireBridge';
 import { HomeAssistantEntityStoreController } from './HomeAssistantEntityStoreController';
+import { LegacyPrototypeLoader } from './LegacyPrototypeLoader';
 import { HaRoomLightingOverlayBridge } from './stage/HaRoomLightingOverlayBridge';
 
 export function DashboardShell() {
@@ -76,6 +77,7 @@ export function DashboardShell() {
 
   return (
     <div className="viewport">
+      <LegacyPrototypeLoader />
       <HaLightHotwireBridge />
       <HaAreaClimateOverlayBridge />
       <HaRoomLightingOverlayBridge />

@@ -4,6 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=22",
+    "pnpm": "9.x"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -12,10 +16,13 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,md}\"",
     "type-check": "tsc --noEmit",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
+    "test": "node scripts/vitest-batched.mjs",
+    "test:watch": "node scripts/vitest-run.mjs",
+    "test:all": "node scripts/vitest-batched.mjs --include-slow",
+    "test:ui": "node scripts/vitest-run.mjs --ui",
     "test:coverage": "node scripts/vitest-coverage.mjs",
-    "test:run": "vitest run"
+    "test:coverage:all": "node scripts/vitest-coverage.mjs --include-slow",
+    "test:run": "node scripts/vitest-run.mjs run"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

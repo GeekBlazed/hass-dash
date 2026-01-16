@@ -36,8 +36,8 @@ All presented in a **minimalistic, color-coded interface** that makes sense at a
 
 ### Prerequisites
 
-- **Node.js:** 20.x or later (LTS recommended)
-- **pnpm:** 8.x or later
+- **Node.js:** 20.19+ (required)
+- **pnpm:** 9.x (required)
 - **Git:** Latest version
 
 To install pnpm globally:

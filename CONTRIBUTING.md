@@ -41,8 +41,8 @@ This project adheres to the [Contributor Covenant Code of Conduct](https://www.c
 
 ### Prerequisites
 
-- **Node.js:** 20+ (LTS version)
-- **pnpm:** 8+
+- **Node.js:** 20.19+ (required)
+- **pnpm:** 9.x (required)
 - **Git:** Latest version
 - **VS Code:** Recommended (with project extensions)
 - **Home Assistant:** Instance for testing (can be local or remote)
