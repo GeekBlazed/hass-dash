@@ -304,7 +304,7 @@ describe('TrackedDeviceMarkersBridge', () => {
     });
   });
 
-  it('binds to an existing prototype marker and restores on disable', async () => {
+  it('binds to an existing SVG marker and restores on disable', async () => {
     render(
       <>
         <FloorplanSvg />
@@ -315,7 +315,7 @@ describe('TrackedDeviceMarkersBridge', () => {
     const layer = document.getElementById('devices-layer');
     expect(layer).toBeTruthy();
 
-    // Simulate scripts.js marker
+    // Simulate an existing marker
     const existing = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     existing.setAttribute('class', 'device-marker');
     existing.setAttribute('data-device-id', 'device_tracker.phone_jeremy');

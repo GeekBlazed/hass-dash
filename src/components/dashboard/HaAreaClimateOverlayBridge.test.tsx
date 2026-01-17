@@ -103,10 +103,6 @@ describe('HaAreaClimateOverlayBridge', () => {
   });
 
   it('unhides an existing climate label when the climate overlay is visible', () => {
-    // The legacy prototype renderer creates `.room-climate` nodes hidden by default,
-    // and historically toggled them via script when the climate panel is shown.
-    // If that toggle doesn't run, the bridge should still ensure visibility matches
-    // the panel state.
     document.body.innerHTML = `
       <section id="climate-panel" class="tile climate-panel"></section>
       <svg id="floorplan-svg" viewBox="0 0 10 10">

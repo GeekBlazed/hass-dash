@@ -41,7 +41,6 @@ const mockStore = {
   setFloorplanLoading: vi.fn(),
   setFloorplanLoaded: vi.fn(),
   setFloorplanError: vi.fn(),
-  setLightingModel: vi.fn(),
 };
 
 const useServiceMock = vi.mocked(useService);
@@ -55,7 +54,6 @@ describe('DashboardShell', () => {
     mockStore.setFloorplanLoading.mockReset();
     mockStore.setFloorplanLoaded.mockReset();
     mockStore.setFloorplanError.mockReset();
-    mockStore.setLightingModel.mockReset();
 
     vi.useRealTimers();
   });
@@ -70,7 +68,6 @@ describe('DashboardShell', () => {
 
     useServiceMock.mockReturnValue({
       getFloorplan: vi.fn(),
-      getLighting: vi.fn(),
     });
 
     render(<DashboardShell />);
@@ -86,11 +83,7 @@ describe('DashboardShell', () => {
     const floorplanSource = {
       getFloorplan: vi.fn().mockRejectedValue(new Error('floorplan exploded')),
     };
-    const lightingSource = {
-      getLighting: vi.fn().mockResolvedValue({}),
-    };
-
-    useServiceMock.mockReturnValueOnce(floorplanSource).mockReturnValueOnce(lightingSource);
+    useServiceMock.mockReturnValueOnce(floorplanSource);
 
     render(<DashboardShell />);
 
@@ -99,8 +92,6 @@ describe('DashboardShell', () => {
     await waitFor(() => {
       expect(mockStore.setFloorplanError).toHaveBeenCalledWith('floorplan exploded');
     });
-
-    expect(mockStore.setLightingModel).toHaveBeenCalled();
   });
 
   it('uses a generic floorplan error when rejection reason is not an Error', async () => {
@@ -109,11 +100,7 @@ describe('DashboardShell', () => {
     const floorplanSource = {
       getFloorplan: vi.fn().mockRejectedValue('nope'),
     };
-    const lightingSource = {
-      getLighting: vi.fn().mockResolvedValue({}),
-    };
-
-    useServiceMock.mockReturnValueOnce(floorplanSource).mockReturnValueOnce(lightingSource);
+    useServiceMock.mockReturnValueOnce(floorplanSource);
 
     render(<DashboardShell />);
 
@@ -133,11 +120,7 @@ describe('DashboardShell', () => {
     const floorplanSource = {
       getFloorplan: vi.fn().mockReturnValue(floorplanPromise),
     };
-    const lightingSource = {
-      getLighting: vi.fn().mockReturnValue(floorplanPromise),
-    };
-
-    useServiceMock.mockReturnValueOnce(floorplanSource).mockReturnValueOnce(lightingSource);
+    useServiceMock.mockReturnValueOnce(floorplanSource);
 
     const { unmount } = render(<DashboardShell />);
     unmount();
@@ -150,6 +133,5 @@ describe('DashboardShell', () => {
 
     expect(mockStore.setFloorplanLoaded).not.toHaveBeenCalled();
     expect(mockStore.setFloorplanError).not.toHaveBeenCalled();
-    expect(mockStore.setLightingModel).not.toHaveBeenCalled();
   });
 });

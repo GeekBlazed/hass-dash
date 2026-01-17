@@ -6,6 +6,21 @@ The goal is **UI parity** (layout, panel switching behavior, and overlay visibil
 
 ---
 
+## Status (January 2026)
+
+This migration is **complete**.
+
+Notes:
+
+- The production dashboard now lives under `src/components/dashboard/` and is the default experience.
+- The app has moved beyond the “parity-only” milestone described here:
+  - Lighting and climate are now Home Assistant-backed (not local-only YAML/prototype models).
+  - The old `*--IGNORE*` prototype component approach was removed.
+
+This document is kept as historical context and as a checklist of what was built.
+
+---
+
 ## Goals
 
 - Recreate the prototype UI in React (sidebar + quick actions + stage/floorplan + map controls).
@@ -19,9 +34,11 @@ The goal is **UI parity** (layout, panel switching behavior, and overlay visibil
 
 ## Non-goals (for the UI parity milestone)
 
-- Home Assistant integration (REST/WebSocket).
-- Persisting lighting changes back to YAML.
-- Adding new features beyond what the prototype already demonstrates.
+Original parity non-goals (superseded by the current app):
+
+- Home Assistant integration (REST/WebSocket). (Superseded: implemented.)
+- Persisting lighting changes back to YAML. (Won't do: lighting is HA-backed.)
+- Adding new features beyond what the prototype already demonstrates. (Superseded: app evolved.)
 
 ---
 
@@ -49,9 +66,9 @@ The goal is **UI parity** (layout, panel switching behavior, and overlay visibil
 ### Lighting specifics
 
 - Lighting panel lists only lights with `state: on`.
-- If there are no ON lights (or YAML missing/unparseable), show the empty message.
+- If there are no ON lights, show the empty message.
 - Rooms that have lights get a lightbulb toggle button under the room label in a dedicated overlay layer.
-- Toggling lighting is **local-only** (in-memory) for now.
+- Toggling lighting is HA-backed (optimistic UI + HA service call).
 
 ---
 
@@ -73,6 +90,8 @@ This keeps the production app maintainable and makes it easy to evolve the data 
 
 ### 1) Freeze the prototype as the source-of-truth spec
 
+Status: Won't do (prototype artifact no longer tracked in this repo).
+
 - Identify the UI states that must match:
   - Which quick actions exist and what they do
   - Which panels exist and what they show
@@ -88,11 +107,15 @@ This keeps the production app maintainable and makes it easy to evolve the data 
 
 ### 2) Implement parity UI directly in the Dashboard
 
+Status: Done.
+
 The parity UI now lives directly under `src/components/dashboard/` and is rendered by `Dashboard`.
 
 ---
 
 ### 3) Implement the prototype layout in React (no data yet)
+
+Status: Won't do (superseded by the real dashboard implementation under `src/components/dashboard/`).
 
 Create a new top-level feature component (example naming):
 
@@ -112,6 +135,8 @@ Use Tailwind tokens already present in the repo (do not hard-code new colors).
 ---
 
 ### 4) Implement panel state + Quick Actions in React
+
+Status: Done.
 
 Create a small, explicit state machine:
 
@@ -135,6 +160,8 @@ Rules:
 
 ### 5) Port the panels (static first)
 
+Status: Done (panels are implemented and tested; data is now HA-backed rather than local-only).
+
 Implement React versions of:
 
 - Agenda panel
@@ -156,6 +183,8 @@ Start with static content or mocked model objects to verify layout and scrolling
 
 ### 6) Port the floorplan renderer into React
 
+Status: Done (inline SVG renderer with pan/zoom).
+
 Short-term (fastest UI parity):
 
 - Use an inline `<svg>` inside a React component.
@@ -165,7 +194,7 @@ Short-term (fastest UI parity):
 
 Longer-term (per roadmap):
 
-- Move to Konva (`react-konva`) once the floorplan data model is stable.
+- Move to Konva (`react-konva`) once the floorplan data model is stable. (Out of scope for parity; not started.)
 
 #### Acceptance Criteria (Step 6)
 
@@ -176,6 +205,8 @@ Longer-term (per roadmap):
 ---
 
 ### 7) Add overlay layers (Climate + Lighting)
+
+Status: Done.
 
 Represent layers explicitly:
 
@@ -196,6 +227,11 @@ Visibility rules:
 ---
 
 ### 8) Move prototype parsing/normalization logic into TypeScript modules
+
+Status: Partially done.
+
+- Done: floorplan parsing/normalization lives in TypeScript modules and is loaded via a data source.
+- Won't do: prototype-only lighting/climate YAML parsing; those data paths were removed in favor of HA-backed entities.
 
 Extract (or re-implement cleanly) into TS (examples):
 
@@ -221,6 +257,8 @@ Recommended responsibilities:
 ---
 
 ### 9) Decide how prototype data is supplied to React during the parity phase
+
+Status: Done (for floorplan).
 
 You have two viable options:
 
@@ -257,6 +295,10 @@ Cons:
 
 ### 10) Wire panels to real data models (still local-only)
 
+Status: Out of scope / superseded.
+
+The app now uses Home Assistant-backed entities for lighting/climate. The “local-only model” approach described here is not used.
+
 - Load YAML (or JSON) into models.
 - Feed models into panels and overlay renderers.
 
@@ -272,6 +314,8 @@ Lighting parity rules:
 ---
 
 ### 11) Add DI + services (optional for parity, helpful for future)
+
+Status: Done.
 
 If you want to keep architecture consistent:
 
@@ -290,6 +334,8 @@ Then swap implementations later:
 ---
 
 ### 12) Hardening: accessibility, testing, and regression protection
+
+Status: Done (core parity behaviors are covered by RTL/unit tests; quick actions are buttons and keyboard-accessible).
 
 - Validate keyboard navigation:
   - Quick actions are buttons
@@ -448,12 +494,13 @@ These names are suggestions to keep the port organized; they should still follow
 
 ## Done definition (UI parity milestone)
 
+Status: Done.
+
 - React UI matches prototype layout and behavior for:
   - panel switching
   - overlay visibility
   - lighting empty state
   - lighting ON list scroll
   - map controls / pan / zoom
-- No new UX beyond prototype.
 - Covered by RTL/unit tests.
-- Feature-flagged and safe to merge.
+- Note: the app is no longer feature-flagged for parity; the parity dashboard is the default UI.

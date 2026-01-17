@@ -1,7 +1,14 @@
 import { useMemo } from 'react';
 
+import {
+  DEFAULT_AREA_TEMP_ENTITY_CANDIDATES,
+  getAreaClimateEntityMappingFromEnv,
+} from '../../../features/climate/areaClimateEntityMapping';
 import { useEntityStore } from '../../../stores/useEntityStore';
+import { useHouseholdAreaEntityIndexStore } from '../../../stores/useHouseholdAreaEntityIndexStore';
 import type { HaEntityState } from '../../../types/home-assistant';
+
+type SensorKind = 'temperature' | 'humidity';
 
 const readNumber = (entity: HaEntityState | undefined): number | undefined => {
   if (!entity) return undefined;
@@ -15,30 +22,175 @@ const readUnit = (entity: HaEntityState | undefined): string => {
   return typeof unit === 'string' && unit.trim() ? unit.trim() : '°F';
 };
 
+const isPercent = (entity: HaEntityState | undefined): boolean => {
+  return readUnit(entity) === '%';
+};
+
+const readPercentNumber = (entity: HaEntityState | undefined): number | undefined => {
+  if (!entity) return undefined;
+  const value = readNumber(entity);
+  if (typeof value !== 'number') return undefined;
+  if (!isPercent(entity)) return undefined;
+  // Some HA template sensors use sentinel values (e.g. -100) to indicate "unknown".
+  if (value < 0 || value > 100) return undefined;
+  return value;
+};
+
+const formatPercent = (value: number): string => {
+  // Keep one decimal when present (e.g. 43.2%), but avoid noisy trailing .0.
+  return `${value.toFixed(1).replace(/\.0$/, '')}%`;
+};
+
+const matchesSensorKind = (entity: HaEntityState | undefined, kind: SensorKind): boolean => {
+  if (!entity) return false;
+
+  const attrs = entity.attributes as Record<string, unknown> | undefined;
+  const deviceClass = typeof attrs?.device_class === 'string' ? attrs.device_class : '';
+  const unit = readUnit(entity);
+
+  if (kind === 'humidity') {
+    return deviceClass === 'humidity' || unit === '%';
+  }
+
+  return deviceClass === 'temperature' || unit.includes('°');
+};
+
+const normalizeRoomId = (roomId: string): string => {
+  return roomId
+    .trim()
+    .replace(/[\s-]+/g, '_')
+    .toLowerCase();
+};
+
+const findFirstMatchingEntityFromIndex = (
+  entityIdsByKind: Record<string, true> | undefined,
+  entitiesById: Record<string, HaEntityState>,
+  kind: SensorKind
+): HaEntityState | undefined => {
+  if (!entityIdsByKind) return undefined;
+
+  const ids = Object.keys(entityIdsByKind).sort();
+  for (const id of ids) {
+    const entity = entitiesById[id];
+    if (!entity) continue;
+    if (!matchesSensorKind(entity, kind)) continue;
+    if (typeof readNumber(entity) !== 'number') continue;
+    return entity;
+  }
+
+  return undefined;
+};
+
+const findFirstMatchingCandidate = (
+  candidates: string[],
+  entitiesById: Record<string, HaEntityState>
+): HaEntityState | undefined => {
+  for (const id of candidates) {
+    const entity = entitiesById[id];
+    if (!entity) continue;
+    if (typeof readNumber(entity) !== 'number') continue;
+    return entity;
+  }
+  return undefined;
+};
+
 export function ClimatePanel({ isHidden = false }: { isHidden?: boolean }) {
-  const meanEntity = useEntityStore(
-    (s) => s.entitiesById['sensor.household_temperature_mean_weighted']
+  const entitiesById = useEntityStore((s) => s.entitiesById);
+  const householdEntityIdsByAreaId = useHouseholdAreaEntityIndexStore(
+    (s) => s.householdEntityIdsByAreaId
   );
-  const minEntity = useEntityStore((s) => s.entitiesById['sensor.household_temperature_minimum']);
-  const maxEntity = useEntityStore((s) => s.entitiesById['sensor.household_temperature_maximum']);
+  const areaNameById = useHouseholdAreaEntityIndexStore((s) => s.areaNameById);
 
-  const unit = useMemo(
-    () => readUnit(meanEntity ?? minEntity ?? maxEntity),
-    [meanEntity, minEntity, maxEntity]
-  );
-  const measuredTemp = readNumber(meanEntity);
-  const measuredHumidity = undefined;
-  const modeLabel = '—';
+  const mapping = useMemo(() => getAreaClimateEntityMappingFromEnv(), []);
 
-  const { minTemp, maxTemp } = useMemo(() => {
-    const minTempValue = readNumber(minEntity);
-    const maxTempValue = readNumber(maxEntity);
+  const { unit, measuredTemp, measuredHumidity, minTemp, maxTemp } = useMemo(() => {
+    // Prefer the precomputed household summary sensors when available.
+    const meanEntity = entitiesById['sensor.household_temperature_mean_weighted'];
+    const minEntity = entitiesById['sensor.household_temperature_minimum'];
+    const maxEntity = entitiesById['sensor.household_temperature_maximum'];
+    const humidityEntity = entitiesById['sensor.household_humidity_weighted_mean'];
+
+    const mean = readNumber(meanEntity);
+    const min = readNumber(minEntity);
+    const max = readNumber(maxEntity);
+    const householdHumidity = readPercentNumber(humidityEntity);
+
+    const unitCandidate = readUnit(meanEntity ?? minEntity ?? maxEntity);
+
+    // Humidity is available as a household summary sensor in some setups.
+    // Keep the existing best-effort aggregation from the area index as a
+    // fallback.
+    const hums: number[] = [];
+    for (const byKind of Object.values(householdEntityIdsByAreaId)) {
+      for (const id of Object.keys(byKind.humidity ?? {})) {
+        const entity = entitiesById[id];
+        const v = readPercentNumber(entity);
+        if (typeof v === 'number') {
+          hums.push(v);
+        }
+      }
+    }
+
+    const avg = (values: number[]): number | undefined => {
+      if (values.length === 0) return undefined;
+      return values.reduce((a, b) => a + b, 0) / values.length;
+    };
+
+    // If none of the household temperature summaries exist yet, fall back to a
+    // best-effort aggregation using the existing per-room candidate logic.
+    if (typeof mean !== 'number' && typeof min !== 'number' && typeof max !== 'number') {
+      const temps: number[] = [];
+      let fallbackUnit: string | undefined;
+
+      // Use the area index and area names to find a representative temperature
+      // sensor per area/room.
+      for (const [areaId, byKind] of Object.entries(householdEntityIdsByAreaId)) {
+        const areaName = areaNameById[areaId] ?? '';
+        const roomId = normalizeRoomId(areaName || areaId);
+
+        const configured = mapping[roomId];
+        const tempCandidates = configured?.temperature
+          ? [configured.temperature]
+          : DEFAULT_AREA_TEMP_ENTITY_CANDIDATES(roomId);
+
+        const tempEntity = findFirstMatchingCandidate(tempCandidates, entitiesById);
+        const tempEntityFromIndex =
+          !tempEntity && byKind
+            ? findFirstMatchingEntityFromIndex(byKind.temperature, entitiesById, 'temperature')
+            : undefined;
+
+        const resolvedTempEntity = tempEntity ?? tempEntityFromIndex;
+        const t = readNumber(resolvedTempEntity);
+        if (typeof t === 'number') {
+          temps.push(t);
+          if (!fallbackUnit) fallbackUnit = readUnit(resolvedTempEntity);
+        }
+      }
+
+      const nextUnit = fallbackUnit ?? unitCandidate;
+      const nextMeasuredTemp = avg(temps);
+      const nextMinTemp = temps.length ? Math.min(...temps) : undefined;
+      const nextMaxTemp = temps.length ? Math.max(...temps) : undefined;
+
+      return {
+        unit: nextUnit,
+        measuredTemp: nextMeasuredTemp,
+        measuredHumidity: typeof householdHumidity === 'number' ? householdHumidity : avg(hums),
+        minTemp: nextMinTemp,
+        maxTemp: nextMaxTemp,
+      };
+    }
 
     return {
-      minTemp: minTempValue,
-      maxTemp: maxTempValue,
+      unit: unitCandidate,
+      measuredTemp: mean,
+      measuredHumidity: typeof householdHumidity === 'number' ? householdHumidity : avg(hums),
+      minTemp: min,
+      maxTemp: max,
     };
-  }, [minEntity, maxEntity]);
+  }, [areaNameById, entitiesById, householdEntityIdsByAreaId, mapping]);
+
+  const modeLabel = '—';
 
   return (
     <section
@@ -54,7 +206,7 @@ export function ClimatePanel({ isHidden = false }: { isHidden?: boolean }) {
           <div>
             <strong>Humidity</strong>:{' '}
             <span id="thermostat-humidity" data-managed-by="react">
-              {typeof measuredHumidity === 'number' ? `${Math.round(measuredHumidity)}%` : '—'}
+              {typeof measuredHumidity === 'number' ? formatPercent(measuredHumidity) : '—'}
             </span>
           </div>
           <div>

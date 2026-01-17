@@ -13,8 +13,8 @@ import { useDeviceTrackerMetadataStore } from '../../../stores/useDeviceTrackerM
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-// Keep in sync with `public/scripts.js` prototype renderer sizing.
-// This avoids a “first draw” flash where markers are created after the prototype
+// Keep in sync with the SVG renderer sizing.
+// This avoids a “first draw” flash where markers are created after the
 // sizing pass and would otherwise render with default (very large) SVG text sizes.
 const DEVICE_PIN_SCALE = 3.15;
 
@@ -54,7 +54,7 @@ const readViewBoxRaw = (
 };
 
 const readViewBox = (svg: SVGSVGElement): { x: number; y: number; w: number; h: number } | null => {
-  // Prefer the prototype renderer's base viewBox (stable across pan/zoom).
+  // Prefer the floorplan renderer's base viewBox (stable across pan/zoom).
   const base = readViewBoxRaw(svg.getAttribute('data-base-viewbox'));
   if (base) return base;
 
@@ -70,7 +70,7 @@ const readUnitsPerPx = (): number | null => {
   if (!rect.width) return null;
 
   // For sizing, we must use the *current* viewBox so markers stay the same
-  // on-screen size during zooming (matching `public/scripts.js`).
+  // on-screen size during zooming.
   // Fall back to the base viewBox only if the current viewBox is missing.
   const current = readViewBoxRaw(svg.getAttribute('viewBox'));
   const vb = current ?? readViewBox(svg);
@@ -80,7 +80,7 @@ const readUnitsPerPx = (): number | null => {
 };
 
 const applyMarkerSizing = (marker: SVGGElement, unitsPerPx: number): void => {
-  // Match `public/scripts.js` sizing rules.
+  // Match sizing rules.
   const devicePinHeightInUserUnits = 34 * DEVICE_PIN_SCALE * unitsPerPx;
   const devicePinWidthInUserUnits = 26 * DEVICE_PIN_SCALE * unitsPerPx;
   const deviceLabelGapInUserUnits = 6 * DEVICE_PIN_SCALE * unitsPerPx;
@@ -129,7 +129,7 @@ const flipYIfPossible = (y: number): number => {
   const vb = readViewBox(svg);
   if (!vb) return y;
 
-  // Mirror the prototype renderer: YAML coordinates treat +Y as north/up,
+  // YAML coordinates treat +Y as north/up,
   // SVG increases +Y downward so we flip within the current viewBox.
   return 2 * vb.y + vb.h - y;
 };
@@ -484,7 +484,7 @@ const syncMarkers = (
 
     let marker = existingTrackingMarkers.get(entityId);
     if (!marker) {
-      // Prefer updating an existing prototype-rendered marker when possible.
+      // Prefer updating an existing SVG-defined marker when possible.
       const existing = getMarkerIdsForEntityId(entityId)
         .map((id) =>
           layer.querySelector<SVGGElement>(`g.device-marker[${DEVICE_ID_ATTR}="${CSS.escape(id)}"]`)
@@ -535,7 +535,7 @@ const syncMarkers = (
       }
     }
 
-    // Keep labels up-to-date (both created and prototype-bound markers).
+    // Keep labels up-to-date (both created and bound-to-existing markers).
     const preferredLabel = getPreferredDeviceLabel(entityId, metadataByEntityId);
     const labelEl = marker.querySelector<SVGTextElement>('text.device-label');
     if (labelEl && labelEl.textContent !== preferredLabel) {
@@ -548,7 +548,7 @@ const syncMarkers = (
     upsertAvatar(marker, avatarUrl, initials);
 
     // Ensure consistent sizing on first paint (especially when markers are created
-    // after the prototype renderer's sizing pass).
+    // after an earlier renderer sizing pass).
     if (unitsPerPx !== null) {
       applyMarkerSizing(marker, unitsPerPx);
     }
@@ -651,7 +651,7 @@ export function TrackedDeviceMarkersBridge() {
       staleWarningMs
     );
 
-    // scripts.js clears and re-renders the devices layer (e.g., during reload).
+    // The devices layer can be cleared/re-rendered by other code; re-apply markers.
     // Observe child list changes so our tracked markers are re-applied promptly.
     const observer = new MutationObserver(() => {
       syncMarkers(

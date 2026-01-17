@@ -1,28 +1,11 @@
-import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 
 export function DashboardQuickActions() {
   const activePanel = useDashboardStore((state) => state.activePanel);
   const setActivePanel = useDashboardStore((state) => state.setActivePanel);
 
-  const { isEnabled: reactRendererEnabled, service: featureFlags } = useFeatureFlag(
-    'REACT_FLOORPLAN_RENDERER'
-  );
-
   const togglePanel = (panel: Exclude<typeof activePanel, null>) => {
     setActivePanel(activePanel === panel ? null : panel);
-  };
-
-  const toggleReactFloorplanRenderer = (): void => {
-    if (reactRendererEnabled) {
-      featureFlags.disable('REACT_FLOORPLAN_RENDERER');
-    } else {
-      featureFlags.enable('REACT_FLOORPLAN_RENDERER');
-    }
-
-    // The app is not currently reactive to sessionStorage flag override changes,
-    // so reload to apply the new renderer mode immediately.
-    window.location.reload();
   };
 
   return (
@@ -81,13 +64,7 @@ export function DashboardQuickActions() {
         </svg>
         <div className="label">Media</div>
       </button>
-      <button
-        className="qa"
-        type="button"
-        aria-label="Security (prototype)"
-        aria-pressed={reactRendererEnabled}
-        onClick={toggleReactFloorplanRenderer}
-      >
+      <button className="qa" type="button" aria-label="Security" aria-disabled="true" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
             fill="currentColor"
@@ -96,7 +73,7 @@ export function DashboardQuickActions() {
         </svg>
         <div className="label">Security</div>
       </button>
-      <a className="qa" href="#top" aria-label="Cameras (prototype)">
+      <a className="qa" href="#top" aria-label="Cameras">
         <svg viewBox="0 0 401.931 401.931" aria-hidden="true">
           <path
             fill="currentColor"

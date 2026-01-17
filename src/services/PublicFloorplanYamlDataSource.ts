@@ -1,7 +1,7 @@
 import { injectable } from 'inversify';
-import type { FloorplanModel } from '../features/prototype/model/floorplan';
-import { normalizeFloorplan } from '../features/prototype/model/floorplan';
-import { parseYaml } from '../features/prototype/parsing/parseYaml';
+import type { FloorplanModel } from '../features/model/floorplan';
+import { normalizeFloorplan } from '../features/model/floorplan';
+import { parseYaml } from '../features/parsing/parseYaml';
 import type { IFloorplanDataSource } from '../interfaces/IFloorplanDataSource';
 
 @injectable()
