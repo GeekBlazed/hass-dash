@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 
 import { TYPES } from '../../../core/types';
-import type { FloorplanModel } from '../../../features/prototype/model/floorplan';
+import type { FloorplanModel } from '../../../features/model/floorplan';
 import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import { useService } from '../../../hooks/useService';
 import type { IHomeAssistantClient } from '../../../interfaces/IHomeAssistantClient';
@@ -257,7 +257,7 @@ const computeRoomLightGroups = (
 };
 
 const isLightingOverlayVisible = (activePanel: string | null): boolean => {
-  // Mirror prototype behavior: light toggles only show when lighting panel is active.
+  // light toggles only show when lighting panel is active.
   return activePanel === 'lighting';
 };
 
@@ -268,7 +268,6 @@ export function HaRoomLightingOverlayBridge() {
   const hasLoggedMountRef = useRef(false);
   const hasLoggedDebugListenersRef = useRef(false);
   const lastToggleCountRef = useRef<number | null>(null);
-  const lastOverlayStatusKeyRef = useRef<string | null>(null);
 
   const delegatedRef = useRef<{
     enabled: boolean;
@@ -325,7 +324,6 @@ export function HaRoomLightingOverlayBridge() {
       if (!toggle) return;
 
       if (debugDelegated) {
-        // eslint-disable-next-line no-console
         console.debug('[lights] delegated pointerdown matched toggle', {
           roomId: toggle.getAttribute('data-room-id') ?? '',
         });
@@ -358,7 +356,6 @@ export function HaRoomLightingOverlayBridge() {
         const resolved = hassdashToggle ?? fallbackToggle;
 
         if (debugDelegated) {
-          // eslint-disable-next-line no-console
           console.debug('[lights] delegated pointerup fallback invoke', {
             roomId: resolved.getAttribute('data-room-id') ?? '',
             isHassdash: resolved.hasAttribute('data-hassdash'),
@@ -384,7 +381,6 @@ export function HaRoomLightingOverlayBridge() {
 
       if (!resolvedToggle || !resolvedToggle.isConnected) {
         if (debugDelegated) {
-          // eslint-disable-next-line no-console
           console.warn('[lights] delegated pointerup: no connected toggle', {
             recordConnected: record.toggle.isConnected,
             hasTargetToggle: Boolean(toggleFromTarget),
@@ -402,7 +398,6 @@ export function HaRoomLightingOverlayBridge() {
       const resolved = hassdashToggle ?? resolvedToggle;
 
       if (debugDelegated) {
-        // eslint-disable-next-line no-console
         console.debug('[lights] delegated pointerup invoke', {
           roomId: resolved.getAttribute('data-room-id') ?? '',
           isHassdash: resolved.hasAttribute('data-hassdash'),
@@ -426,7 +421,6 @@ export function HaRoomLightingOverlayBridge() {
       if (toggle.classList.contains('is-hidden')) return;
 
       if (debugDelegated) {
-        // eslint-disable-next-line no-console
         console.debug('[lights] delegated click matched toggle', {
           roomId: toggle.getAttribute('data-room-id') ?? '',
         });
@@ -450,11 +444,13 @@ export function HaRoomLightingOverlayBridge() {
     document.addEventListener('pointerup', onDelegatedPointerUp, { capture: true });
     document.addEventListener('click', onDelegatedClick, { capture: true });
 
+    const delegatedStateForCleanup = delegatedRef.current;
+
     return () => {
       document.removeEventListener('pointerdown', onDelegatedPointerDown, { capture: true });
       document.removeEventListener('pointerup', onDelegatedPointerUp, { capture: true });
       document.removeEventListener('click', onDelegatedClick, { capture: true });
-      delegatedRef.current.downByPointerId.clear();
+      delegatedStateForCleanup.downByPointerId.clear();
 
       // Important for React StrictMode in dev: effects run setup → cleanup → setup.
       // If we keep the guard set to true, the second setup will bail out and
@@ -685,7 +681,6 @@ export function HaRoomLightingOverlayBridge() {
     };
 
     if (!haEnabled) {
-      // HA is disabled: ensure we don't block the prototype renderer.
       lightsLayer.removeAttribute('data-managed-by');
 
       // Remove only the HA-driven toggles that we created.
@@ -702,51 +697,24 @@ export function HaRoomLightingOverlayBridge() {
       return;
     }
 
-    const hasHaLights = Object.keys(entitiesById).some((id) => id.startsWith('light.'));
-    const overlayStatusKey = `${haEnabled ? '1' : '0'}|${hasHaLights ? '1' : '0'}|${activePanel ?? ''}`;
-    if (lastOverlayStatusKeyRef.current !== overlayStatusKey) {
-      lastOverlayStatusKeyRef.current = overlayStatusKey;
-      logger.info('[lights] HA overlay status', {
-        haEnabled,
-        hasHaLights,
-        activePanel,
-      });
+    lightsLayer.setAttribute('data-managed-by', 'react');
+
+    // Ensure the lights layer is painted above other layers so it can receive clicks.
+    // In SVG, the last child wins (top-most paint order).
+    const parent = lightsLayer.parentElement;
+    if (parent) parent.appendChild(lightsLayer);
+
+    // Ensure the clickable toggle is always the HA-backed one by removing any
+    // non-managed/stale toggles that might still be around.
+    const nonManagedToggles = lightsLayer.querySelectorAll<SVGGElement>(
+      'g.light-toggle:not([data-hassdash])'
+    );
+    for (const el of nonManagedToggles) {
+      el.remove();
     }
-    if (hasHaLights) {
-      // Prevent the prototype renderer from creating its own local-only light toggles.
-      lightsLayer.setAttribute('data-managed-by', 'react');
 
-      // Ensure the lights layer is painted above other layers so it can receive clicks.
-      // In SVG, the last child wins (top-most paint order).
-      const parent = lightsLayer.parentElement;
-      if (parent) parent.appendChild(lightsLayer);
-
-      // Ensure the clickable toggle is always the HA-backed one by removing any
-      // prototype-created toggles that might still be around.
-      const nonHaToggles = lightsLayer.querySelectorAll<SVGGElement>(
-        'g.light-toggle:not([data-hassdash])'
-      );
-      for (const el of nonHaToggles) {
-        el.remove();
-      }
-
-      if (debugEvents && nonHaToggles.length) {
-        logger.debug('[lights] HA enabled; removed non-HA toggles:', nonHaToggles.length);
-      }
-    } else {
-      // No HA lights: don't interfere with the prototype.
-      lightsLayer.removeAttribute('data-managed-by');
-      const existing = lightsLayer.querySelectorAll<SVGGElement>('g.light-toggle[data-hassdash]');
-      for (const el of existing) {
-        el.remove();
-      }
-
-      if (debugEvents) {
-        logger.debug('[lights] No HA lights; removed hassdash toggles:', existing.length);
-      }
-
-      detachDebugCapture();
-      return;
+    if (debugEvents && nonManagedToggles.length) {
+      logger.debug('[lights] removed non-managed toggles:', nonManagedToggles.length);
     }
 
     const roomIds = findRoomsInDom(document);
@@ -920,7 +888,15 @@ export function HaRoomLightingOverlayBridge() {
         rafId = null;
       }
     };
-  }, [haEnabled, haClient, roomIndex, entitiesById, householdEntityIds, activePanel]);
+  }, [
+    haEnabled,
+    haClient,
+    roomIndex,
+    entitiesById,
+    householdEntityIds,
+    activePanel,
+    optimisticSetState,
+  ]);
 
   return null;
 }

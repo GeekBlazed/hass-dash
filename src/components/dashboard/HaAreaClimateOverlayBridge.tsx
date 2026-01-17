@@ -6,6 +6,7 @@ import {
   getAreaClimateEntityMappingFromEnv,
 } from '../../features/climate/areaClimateEntityMapping';
 import { useEntityStore } from '../../stores/useEntityStore';
+import { useHouseholdAreaEntityIndexStore } from '../../stores/useHouseholdAreaEntityIndexStore';
 import type { HaEntityId, HaEntityState } from '../../types/home-assistant';
 
 type AreaClimateValue = {
@@ -78,6 +79,65 @@ const normalizeRoomId = (roomId: string): string => {
     .trim()
     .replace(/[\s-]+/g, '_')
     .toLowerCase();
+};
+
+const resolveBestAreaIdForRoom = (
+  roomId: string,
+  roomLabel: string,
+  areaNameById: Record<string, string | undefined>
+): string | null => {
+  const roomNorm = normalizeRoomId(roomId);
+  const labelNorm = normalizeRoomId(roomLabel);
+
+  let best: { areaId: string; score: number } | null = null;
+
+  for (const [areaId, areaNameRaw] of Object.entries(areaNameById)) {
+    const areaName = typeof areaNameRaw === 'string' ? areaNameRaw.trim() : '';
+    if (!areaName) continue;
+
+    const areaNorm = normalizeRoomId(areaName);
+
+    // Prefer exact matches.
+    if (areaNorm === roomNorm) return areaId;
+    if (areaNorm === labelNorm) {
+      best = best && best.score >= 90 ? best : { areaId, score: 90 };
+      continue;
+    }
+
+    // Soft matches.
+    let score = 0;
+    if (roomNorm && areaNorm.includes(roomNorm)) score = Math.max(score, 70);
+    if (labelNorm && areaNorm.includes(labelNorm)) score = Math.max(score, 65);
+    if (roomNorm && roomNorm.includes(areaNorm)) score = Math.max(score, 50);
+    if (labelNorm && labelNorm.includes(areaNorm)) score = Math.max(score, 45);
+    if (score <= 0) continue;
+
+    if (!best || score > best.score) {
+      best = { areaId, score };
+    }
+  }
+
+  return best?.areaId ?? null;
+};
+
+const findFirstMatchingEntityIdFromIndex = (
+  entityIdsByKind: Record<string, true> | undefined,
+  entitiesById: Record<string, HaEntityState>,
+  kind: SensorKind
+): HaEntityState | undefined => {
+  if (!entityIdsByKind) return undefined;
+
+  // Keep selection stable across runs.
+  const ids = Object.keys(entityIdsByKind).sort();
+  for (const id of ids) {
+    const entity = entitiesById[id];
+    if (!entity) continue;
+    if (!matchesSensorKind(entity, kind)) continue;
+    if (typeof readNumber(entity) !== 'number') continue;
+    return entity;
+  }
+
+  return undefined;
 };
 
 const extractObjectId = (entityId: string): string => {
@@ -249,7 +309,7 @@ const findOrCreateClimateTextEl = (
   climateEl.setAttribute('class', 'room-climate');
   climateEl.setAttribute('data-room-id', roomId);
 
-  // Match prototype behavior: elements are hidden by default and shown when the climate overlay is active.
+  // elements are hidden by default and shown when the climate overlay is active.
   if (!getClimateOverlayVisibleNow()) {
     climateEl.classList.add('is-hidden');
   }
@@ -260,10 +320,13 @@ const findOrCreateClimateTextEl = (
 
 const computeAreaClimateText = (
   roomId: string,
+  roomLabel: string,
   entitiesById: Record<string, HaEntityState>,
   mapping: ReturnType<typeof getAreaClimateEntityMappingFromEnv>,
   householdEntityIds: HouseholdEntityIdLookup,
-  allowAttributeFallback: boolean
+  allowAttributeFallback: boolean,
+  householdEntityIdsByAreaId: Record<string, Record<SensorKind | 'light', Record<string, true>>>,
+  areaNameById: Record<string, string | undefined>
 ): AreaClimateValue | null => {
   const configured = mapping[roomId];
 
@@ -353,12 +416,28 @@ const computeAreaClimateText = (
     humidityUnlabeledCandidate ??
     humidityUnlabeledHeuristic;
 
-  const temp = readNumber(tempEntity);
-  const humidity = readNumber(humidityEntity);
+  // Fallback: use the HA Area Registry-derived index if room-id heuristics fail.
+  // This supports entity ids that don't include the room name.
+  const areaId = resolveBestAreaIdForRoom(roomId, roomLabel, areaNameById);
+  const byKind = areaId ? householdEntityIdsByAreaId[areaId] : undefined;
+  const tempEntityFromAreaIndex =
+    !tempEntity && byKind
+      ? findFirstMatchingEntityIdFromIndex(byKind.temperature, entitiesById, 'temperature')
+      : undefined;
+  const humidityEntityFromAreaIndex =
+    !humidityEntity && byKind
+      ? findFirstMatchingEntityIdFromIndex(byKind.humidity, entitiesById, 'humidity')
+      : undefined;
+
+  const resolvedTempEntity = tempEntity ?? tempEntityFromAreaIndex;
+  const resolvedHumidityEntity = humidityEntity ?? humidityEntityFromAreaIndex;
+
+  const temp = readNumber(resolvedTempEntity);
+  const humidity = readNumber(resolvedHumidityEntity);
 
   const parts: string[] = [];
   if (typeof temp === 'number') {
-    const unit = readUnit(tempEntity);
+    const unit = readUnit(resolvedTempEntity);
     parts.push(`${Math.round(temp)}${unit}`);
   }
   if (typeof humidity === 'number') {
@@ -372,6 +451,10 @@ const computeAreaClimateText = (
 export function HaAreaClimateOverlayBridge() {
   const entitiesById = useEntityStore((s) => s.entitiesById);
   const householdEntityIds = useEntityStore((s) => s.householdEntityIds);
+  const householdEntityIdsByAreaId = useHouseholdAreaEntityIndexStore(
+    (s) => s.householdEntityIdsByAreaId
+  );
+  const areaNameById = useHouseholdAreaEntityIndexStore((s) => s.areaNameById);
 
   const allowAttributeFallback = useMemo(
     () => Object.keys(householdEntityIds).length === 0,
@@ -385,12 +468,16 @@ export function HaAreaClimateOverlayBridge() {
       const isOverlayVisible = getClimateOverlayVisibleNow();
       const groups = getLabelGroups();
       for (const { roomId, group, label } of groups) {
+        const roomLabel = label.textContent?.trim() ?? '';
         const value = computeAreaClimateText(
           roomId,
+          roomLabel,
           entitiesById,
           mapping,
           householdEntityIds,
-          allowAttributeFallback
+          allowAttributeFallback,
+          householdEntityIdsByAreaId,
+          areaNameById
         );
 
         const existing = group.querySelector<SVGTextElement>(
@@ -426,7 +513,14 @@ export function HaAreaClimateOverlayBridge() {
     return () => {
       observer.disconnect();
     };
-  }, [allowAttributeFallback, entitiesById, householdEntityIds, mapping]);
+  }, [
+    allowAttributeFallback,
+    areaNameById,
+    entitiesById,
+    householdEntityIds,
+    householdEntityIdsByAreaId,
+    mapping,
+  ]);
 
   return null;
 }

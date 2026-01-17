@@ -64,7 +64,7 @@ export function DashboardQuickActions() {
         </svg>
         <div className="label">Media</div>
       </button>
-      <a className="qa" href="#top" aria-label="Security (prototype)">
+      <button className="qa" type="button" aria-label="Security" aria-disabled="true" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
             fill="currentColor"
@@ -72,8 +72,8 @@ export function DashboardQuickActions() {
           />
         </svg>
         <div className="label">Security</div>
-      </a>
-      <a className="qa" href="#top" aria-label="Cameras (prototype)">
+      </button>
+      <a className="qa" href="#top" aria-label="Cameras">
         <svg viewBox="0 0 401.931 401.931" aria-hidden="true">
           <path
             fill="currentColor"

@@ -2,6 +2,7 @@ rules:
   # heading-order: false # Disable this rule
 exclude:
   - 'tests/**/*.html' # Skip files in the tests directory
+  - 'coverage/**' # Skip generated coverage reports
 global-components:
   AxeButton: button # Treat <AxeButton> as a <button>
 global-libraries:

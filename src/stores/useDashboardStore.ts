@@ -1,10 +1,7 @@
-import { produce } from 'immer';
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
-import type { ClimateModel } from '../features/prototype/model/climate';
-import type { FloorplanModel } from '../features/prototype/model/floorplan';
-import type { LightingModel } from '../features/prototype/model/lighting';
+import type { FloorplanModel } from '../features/model/floorplan';
 
 export type DashboardPanel = 'agenda' | 'climate' | 'lighting' | 'media' | null;
 
@@ -14,42 +11,14 @@ export interface StageView {
   scale: number;
 }
 
-export interface LocalLightState {
-  id: string;
-  name?: string;
-  state: 'on' | 'off';
-  brightness?: number;
-  colorTemp?: number;
-}
-
-export interface LocalThermostatState {
-  setTemperature?: number;
-  hvacMode?: string;
-  fanMode?: string;
-  measuredTemperature?: number;
-  measuredHumidity?: number;
-}
-
-export interface LocalAreaClimateState {
-  areaId: string;
-  temp?: number;
-  humidity?: number | null;
-}
-
-export interface LocalLightingModel {
-  lights: Record<string, LocalLightState>;
-}
-
-export interface LocalClimateModel {
-  thermostat: LocalThermostatState;
-  areas: Record<string, LocalAreaClimateState>;
-}
-
 export type FloorplanLoadState = 'idle' | 'loading' | 'loaded' | 'error';
 
 interface DashboardState {
   activePanel: DashboardPanel;
   setActivePanel: (panel: DashboardPanel) => void;
+
+  isMapControlsOpen: boolean;
+  setMapControlsOpen: (open: boolean) => void;
 
   stageView: StageView;
   setStageView: (view: Partial<StageView>) => void;
@@ -63,34 +32,12 @@ interface DashboardState {
   setFloorplanLoading: () => void;
   setFloorplanLoaded: (model: FloorplanModel) => void;
   setFloorplanError: (message: string) => void;
-
-  // Local-only prototype models (while HA is not integrated)
-  lighting: LocalLightingModel;
-  setLightingModel: (model: LightingModel) => void;
-  setLightState: (lightId: string, next: Partial<Omit<LocalLightState, 'id'>>) => void;
-  setLightOn: (lightId: string, on: boolean) => void;
-  clearLighting: () => void;
-
-  climate: LocalClimateModel;
-  setClimateModel: (model: ClimateModel) => void;
-  setThermostat: (next: Partial<LocalThermostatState>) => void;
-  setAreaClimate: (areaId: string, next: Partial<Omit<LocalAreaClimateState, 'areaId'>>) => void;
-  clearClimate: () => void;
 }
 
 const DEFAULT_STAGE_VIEW: StageView = {
   x: 0,
   y: 0,
   scale: 1,
-};
-
-const DEFAULT_LIGHTING: LocalLightingModel = {
-  lights: {},
-};
-
-const EMPTY_CLIMATE: LocalClimateModel = {
-  thermostat: {},
-  areas: {},
 };
 
 const DEFAULT_FLOORPLAN: DashboardState['floorplan'] = {
@@ -106,6 +53,11 @@ export const useDashboardStore = create<DashboardState>()(
         activePanel: 'climate',
         setActivePanel: (panel) => {
           set({ activePanel: panel });
+        },
+
+        isMapControlsOpen: false,
+        setMapControlsOpen: (open) => {
+          set({ isMapControlsOpen: open });
         },
 
         stageView: DEFAULT_STAGE_VIEW,
@@ -146,103 +98,15 @@ export const useDashboardStore = create<DashboardState>()(
             },
           });
         },
-
-        lighting: DEFAULT_LIGHTING,
-        setLightingModel: (model) => {
-          set((state) =>
-            produce(state, (draft) => {
-              draft.lighting.lights = {};
-              for (const light of model.lights) {
-                draft.lighting.lights[light.id] = {
-                  id: light.id,
-                  name: light.name,
-                  state: light.state,
-                  brightness: light.brightness,
-                  colorTemp: light.colorTemp,
-                };
-              }
-            })
-          );
-        },
-        setLightState: (lightId, next) => {
-          set((state) =>
-            produce(state, (draft) => {
-              const existing: LocalLightState =
-                draft.lighting.lights[lightId] ??
-                ({ id: lightId, state: 'off' } satisfies LocalLightState);
-              draft.lighting.lights[lightId] = { ...existing, ...next };
-            })
-          );
-        },
-        setLightOn: (lightId, on) => {
-          set((state) =>
-            produce(state, (draft) => {
-              const existing: LocalLightState =
-                draft.lighting.lights[lightId] ??
-                ({ id: lightId, state: 'off' } satisfies LocalLightState);
-              draft.lighting.lights[lightId] = {
-                ...existing,
-                state: on ? 'on' : 'off',
-              };
-            })
-          );
-        },
-        clearLighting: () => {
-          set({ lighting: DEFAULT_LIGHTING });
-        },
-
-        climate: EMPTY_CLIMATE,
-        setClimateModel: (model) => {
-          set((state) =>
-            produce(state, (draft) => {
-              draft.climate.thermostat = {
-                setTemperature: model.thermostat.setTemperature,
-                hvacMode: model.thermostat.hvacMode,
-                fanMode: model.thermostat.fanMode,
-                measuredTemperature: model.thermostat.measuredTemperature,
-                measuredHumidity: model.thermostat.measuredHumidity,
-              };
-
-              draft.climate.areas = {};
-              for (const area of model.areas) {
-                draft.climate.areas[area.areaId] = {
-                  areaId: area.areaId,
-                  temp: area.temp,
-                  humidity: area.humidity ?? null,
-                };
-              }
-            })
-          );
-        },
-        setThermostat: (next) => {
-          set((state) =>
-            produce(state, (draft) => {
-              draft.climate.thermostat = { ...draft.climate.thermostat, ...next };
-            })
-          );
-        },
-        setAreaClimate: (areaId, next) => {
-          set((state) =>
-            produce(state, (draft) => {
-              const existing: LocalAreaClimateState =
-                draft.climate.areas[areaId] ?? ({ areaId } satisfies LocalAreaClimateState);
-              draft.climate.areas[areaId] = { ...existing, ...next };
-            })
-          );
-        },
-        clearClimate: () => {
-          set({ climate: EMPTY_CLIMATE });
-        },
       }),
       {
         name: 'hass-dash:dashboard',
         version: 1,
         partialize: (state) => ({
           activePanel: state.activePanel,
+          isMapControlsOpen: state.isMapControlsOpen,
           stageView: state.stageView,
           floorplan: state.floorplan,
-          lighting: state.lighting,
-          climate: state.climate,
         }),
       }
     ),

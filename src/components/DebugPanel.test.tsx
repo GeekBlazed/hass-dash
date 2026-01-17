@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { container } from '../core/di-container';
 import { useFeatureFlags } from '../hooks/useFeatureFlag';
+import { pageReloader } from '../utils/pageReloader';
 import * as DebugPanelModule from './DebugPanel';
 
 // Mock the useFeatureFlags hook
@@ -15,9 +16,7 @@ vi.mock('../core/di-container', () => ({
   },
 }));
 
-const reloadSpy = vi
-  .spyOn(DebugPanelModule.pageReloader, 'reload')
-  .mockImplementation(() => undefined);
+const reloadSpy = vi.spyOn(pageReloader, 'reload').mockImplementation(() => undefined);
 
 describe('DebugPanel', () => {
   const mockService = {

@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { TYPES } from '../../core/types';
 import { useService } from '../../hooks/useService';
 import type { IFloorplanDataSource } from '../../interfaces/IFloorplanDataSource';
-import type { ILightingDataSource } from '../../interfaces/ILightingDataSource';
 import { useDashboardStore } from '../../stores/useDashboardStore';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardStage } from './DashboardStage';
@@ -17,12 +16,10 @@ export function DashboardShell() {
   const [reloadNonce, setReloadNonce] = useState(0);
 
   const floorplanSource = useService<IFloorplanDataSource>(TYPES.IFloorplanDataSource);
-  const lightingSource = useService<ILightingDataSource>(TYPES.ILightingDataSource);
 
   const setFloorplanLoading = useDashboardStore((s) => s.setFloorplanLoading);
   const setFloorplanLoaded = useDashboardStore((s) => s.setFloorplanLoaded);
   const setFloorplanError = useDashboardStore((s) => s.setFloorplanError);
-  const setLightingModel = useDashboardStore((s) => s.setLightingModel);
 
   useEffect(() => {
     let disposed = false;
@@ -35,10 +32,7 @@ export function DashboardShell() {
     setFloorplanLoading();
 
     void (async () => {
-      const [floorplan, lighting] = await Promise.allSettled([
-        floorplanSource.getFloorplan(),
-        lightingSource.getLighting(),
-      ]);
+      const [floorplan] = await Promise.allSettled([floorplanSource.getFloorplan()]);
 
       if (disposed) return;
 
@@ -51,24 +45,12 @@ export function DashboardShell() {
             : 'Failed to load floorplan.';
         setFloorplanError(message);
       }
-
-      if (lighting.status === 'fulfilled') {
-        setLightingModel(lighting.value);
-      }
     })();
 
     return () => {
       disposed = true;
     };
-  }, [
-    reloadNonce,
-    floorplanSource,
-    lightingSource,
-    setFloorplanLoading,
-    setFloorplanLoaded,
-    setFloorplanError,
-    setLightingModel,
-  ]);
+  }, [reloadNonce, floorplanSource, setFloorplanLoading, setFloorplanLoaded, setFloorplanError]);
 
   const retryFloorplan = () => {
     setReloadNonce((n) => n + 1);
@@ -81,7 +63,7 @@ export function DashboardShell() {
       <HaRoomLightingOverlayBridge />
       <HomeAssistantEntityStoreController />
       <DeviceLocationTrackingController />
-      <div className="frame" role="application" aria-label="Floorplan prototype">
+      <div className="frame" role="application" aria-label="Floorplan dashboard">
         <div className="app">
           <DashboardSidebar />
           <DashboardStage onRetryFloorplan={retryFloorplan} />

@@ -43,7 +43,6 @@ describe('HaRoomLightingOverlayBridge', () => {
     // Ensure debug query flags don't leak between tests.
     window.history.replaceState({}, '', '/');
     useEntityStore.getState().clear();
-    useDashboardStore.getState().clearLighting();
 
     // jsdom in this environment doesn't implement elementFromPoint, but the
     // delegated pointer handlers rely on it.
@@ -235,9 +234,7 @@ describe('HaRoomLightingOverlayBridge', () => {
     getSpy.mockRestore();
   });
 
-  it('logs debug when HA is enabled but there are no HA lights (debugLights)', () => {
-    window.history.replaceState({}, '', '/?debugLights=1');
-
+  it('removes stale hassdash toggles when there are no room light groups', () => {
     document.body.innerHTML = `
       <svg id="floorplan-svg" viewBox="0 0 10 10">
         <g id="labels-layer">
@@ -251,7 +248,7 @@ describe('HaRoomLightingOverlayBridge', () => {
       </svg>
     `;
 
-    // Intentionally do NOT upsert any `light.*` entities so `hasHaLights` is false.
+    // Intentionally do NOT upsert any `light.*` entities so no room light groups exist.
     useEntityStore.getState().upsert({
       entity_id: 'sensor.any',
       state: '1',
@@ -263,7 +260,7 @@ describe('HaRoomLightingOverlayBridge', () => {
 
     render(<HaRoomLightingOverlayBridge />);
 
-    // The bridge should remove hassdash-created toggles when HA lights are absent.
+    // The bridge should remove hassdash-created toggles when no groups are desired.
     expect(document.querySelector('#lights-layer g.light-toggle[data-hassdash]')).toBeNull();
   });
 
@@ -989,7 +986,7 @@ describe('HaRoomLightingOverlayBridge', () => {
     cancelSpy.mockRestore();
   });
 
-  it('removes prototype (non-HA) toggles when HA lights exist (debug path enabled)', () => {
+  it('removes non-managed (non-hassdash) toggles when HA is enabled (debug path enabled)', () => {
     const originalUrl = window.location.href;
     window.history.pushState({}, '', '/?debugLights=1');
 
@@ -1012,7 +1009,7 @@ describe('HaRoomLightingOverlayBridge', () => {
 
     render(<HaRoomLightingOverlayBridge />);
 
-    // Prototype toggle should be removed.
+    // Non-managed toggle should be removed.
     expect(document.querySelector('#lights-layer g.light-toggle:not([data-hassdash])')).toBeNull();
 
     // HA-backed toggle should exist.

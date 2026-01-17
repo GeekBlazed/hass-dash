@@ -4,7 +4,6 @@
   --accent-light: #ffc97d;
   --accent-dark: #e5a352;
 
-  /* Prototype marker color */
   --node-blue: #1864b5;
 
   --panel-bg: #090909;
@@ -200,7 +199,8 @@ button.qa {
   background: rgba(18, 18, 18, 0.42);
 }
 
-.qa[aria-expanded='true'] {
+.qa[aria-expanded='true'],
+.qa[aria-pressed='true'] {
   transform: translateY(-1px);
   border-color: rgba(255, 201, 125, 0.28);
   background: rgba(18, 18, 18, 0.42);

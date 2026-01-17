@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useDashboardStore } from '../../stores/useDashboardStore';
 import { useEntityStore } from '../../stores/useEntityStore';
+import { useHouseholdAreaEntityIndexStore } from '../../stores/useHouseholdAreaEntityIndexStore';
 import type { HaEntityState } from '../../types/home-assistant';
 import { Dashboard } from './Dashboard';
 
@@ -19,8 +20,10 @@ describe('Dashboard', () => {
   beforeEach(() => {
     useDashboardStore.persist.clearStorage();
     useEntityStore.persist.clearStorage();
+    useHouseholdAreaEntityIndexStore.getState().clear();
     useDashboardStore.setState({
       activePanel: 'climate',
+      isMapControlsOpen: false,
       stageView: { x: 0, y: 0, scale: 1 },
     });
 
@@ -29,7 +32,7 @@ describe('Dashboard', () => {
 
   it('should render the floorplan application shell', async () => {
     await renderAndSettle(<Dashboard />);
-    expect(screen.getByRole('application', { name: /floorplan prototype/i })).toBeInTheDocument();
+    expect(screen.getByRole('application', { name: /floorplan dashboard/i })).toBeInTheDocument();
   });
 
   it('should render the sidebar brand and weather summary', async () => {
@@ -62,10 +65,47 @@ describe('Dashboard', () => {
       .upsert(makeEntity('sensor.household_temperature_mean_weighted', '73.6'));
     useEntityStore.getState().upsert(makeEntity('sensor.household_temperature_minimum', '70.1'));
     useEntityStore.getState().upsert(makeEntity('sensor.household_temperature_maximum', '78.2'));
+    useEntityStore.getState().upsert({
+      ...makeEntity('sensor.household_humidity_weighted_mean', '45.2'),
+      attributes: { unit_of_measurement: '%', device_class: 'humidity', friendly_name: 'Humidity' },
+    });
 
     await renderAndSettle(<Dashboard />);
     expect(screen.getByLabelText(/climate controls/i)).toBeInTheDocument();
     expect(screen.getByText(/74°F/i)).toBeInTheDocument();
+    expect(screen.getByText(/45\.2%/i)).toBeInTheDocument();
+  });
+
+  it('should ignore invalid household humidity and fall back to calculated average', async () => {
+    const makeEntity = (entityId: string, state: string): HaEntityState => ({
+      entity_id: entityId,
+      state,
+      attributes: { unit_of_measurement: '%', device_class: 'humidity', friendly_name: entityId },
+      last_changed: '2026-01-01T00:00:00.000Z',
+      last_updated: '2026-01-01T00:00:00.000Z',
+      context: { id: 'ctx', parent_id: null, user_id: null },
+    });
+
+    // Household summary humidity present but invalid (common sentinel value in templates)
+    useEntityStore.getState().upsert(makeEntity('sensor.household_humidity_weighted_mean', '-100'));
+
+    // Provide one area humidity sensor so the calculated fallback can produce a sensible value.
+    useHouseholdAreaEntityIndexStore.setState({
+      householdEntityIdsByAreaId: {
+        area_a: {
+          temperature: {},
+          humidity: { 'sensor.kitchen_humidity': true },
+          light: {},
+        },
+      },
+      areaNameById: { area_a: 'Kitchen' },
+    });
+
+    useEntityStore.getState().upsert(makeEntity('sensor.kitchen_humidity', '43.2'));
+
+    await renderAndSettle(<Dashboard />);
+    expect(screen.getByLabelText(/climate controls/i)).toBeInTheDocument();
+    expect(screen.getByText(/43\.2%/i)).toBeInTheDocument();
   });
 
   it('should render the floorplan stage and svg container', async () => {

@@ -2,6 +2,7 @@ import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEntityStore } from '../../stores/useEntityStore';
+import { useHouseholdAreaEntityIndexStore } from '../../stores/useHouseholdAreaEntityIndexStore';
 import type { HaEntityState } from '../../types/home-assistant';
 import { HaAreaClimateOverlayBridge } from './HaAreaClimateOverlayBridge';
 
@@ -45,6 +46,7 @@ describe('HaAreaClimateOverlayBridge', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     useEntityStore.getState().clear();
+    useHouseholdAreaEntityIndexStore.getState().clear();
   });
 
   afterEach(() => {
@@ -103,10 +105,6 @@ describe('HaAreaClimateOverlayBridge', () => {
   });
 
   it('unhides an existing climate label when the climate overlay is visible', () => {
-    // The legacy prototype renderer creates `.room-climate` nodes hidden by default,
-    // and historically toggled them via script when the climate panel is shown.
-    // If that toggle doesn't run, the bridge should still ensure visibility matches
-    // the panel state.
     document.body.innerHTML = `
       <section id="climate-panel" class="tile climate-panel"></section>
       <svg id="floorplan-svg" viewBox="0 0 10 10">
@@ -457,5 +455,222 @@ describe('HaAreaClimateOverlayBridge', () => {
     expect(() => {
       render(<HaAreaClimateOverlayBridge />);
     }).not.toThrow();
+  });
+
+  it('falls back to the HA area registry index when room-id heuristics fail', () => {
+    document.body.innerHTML = `
+      <section id="climate-panel" class="tile climate-panel"></section>
+      <svg id="floorplan-svg" viewBox="0 0 10 10">
+        <g id="labels-layer">
+          <g class="room-label-group" data-room-id="kitchen">
+            <text class="room-label" x="5" y="5">Kitchen</text>
+          </g>
+        </g>
+      </svg>
+    `;
+
+    // These ids intentionally do NOT include "kitchen" so the object_id heuristics fail.
+    useEntityStore.getState().upsert(makeSensor('sensor.ambient_temperature', 71.6, '°F'));
+    useEntityStore.getState().upsert(makeSensor('sensor.ambient_humidity', 40.2, '%'));
+
+    useHouseholdAreaEntityIndexStore.getState().setIndex({
+      areaNameById: {
+        area_kitchen: 'Kitchen',
+      },
+      householdDeviceIdsByAreaId: {
+        area_kitchen: [],
+      },
+      householdEntityIdsByAreaId: {
+        area_kitchen: {
+          temperature: ['sensor.ambient_temperature'],
+          humidity: ['sensor.ambient_humidity'],
+          light: [],
+        },
+      },
+    });
+
+    render(<HaAreaClimateOverlayBridge />);
+
+    const el = document.querySelector(
+      '#labels-layer text.room-climate[data-room-id="kitchen"]'
+    ) as SVGTextElement | null;
+
+    expect(el).not.toBeNull();
+    expect(el?.textContent).toBe('72°F • 40%');
+  });
+
+  it('uses entity-registry household ids and disables attribute fallback when present', () => {
+    document.body.innerHTML = `
+      <section id="climate-panel" class="tile climate-panel"></section>
+      <svg id="floorplan-svg" viewBox="0 0 10 10">
+        <g id="labels-layer">
+          <g class="room-label-group" data-room-id="family_room">
+            <text class="room-label" x="5" y="5">Family Room</text>
+          </g>
+        </g>
+      </svg>
+    `;
+
+    // Mark ONLY this entity as a household entity via the entity registry list.
+    // This makes `allowAttributeFallback` false inside the bridge.
+    useEntityStore.getState().setHouseholdEntityIds(['sensor.family_room_temperature_household']);
+
+    // This one is NOT in the householdEntityIds list, but has a household-y friendly_name.
+    // With allowAttributeFallback=false it should not be treated as household.
+    useEntityStore
+      .getState()
+      .upsert(makeSensor('sensor.family_room_temperature', 125, '°F', { includeHousehold: true }));
+    useEntityStore
+      .getState()
+      .upsert(
+        makeSensor('sensor.family_room_temperature_household', 72, '°F', {
+          includeHousehold: false,
+        })
+      );
+
+    render(<HaAreaClimateOverlayBridge />);
+
+    const el = document.querySelector(
+      '#labels-layer text.room-climate[data-room-id="family_room"]'
+    ) as SVGTextElement | null;
+
+    expect(el).not.toBeNull();
+    expect(el?.textContent).toBe('72°F');
+  });
+
+  it('detects household label from attributes.name when allowed', () => {
+    document.body.innerHTML = `
+      <section id="climate-panel" class="tile climate-panel"></section>
+      <svg id="floorplan-svg" viewBox="0 0 10 10">
+        <g id="labels-layer">
+          <g class="room-label-group" data-room-id="office">
+            <text class="room-label" x="2" y="3">Office</text>
+          </g>
+        </g>
+      </svg>
+    `;
+
+    // allowAttributeFallback remains true because householdEntityIds is empty.
+    const entity: HaEntityState = {
+      entity_id: 'sensor.office_temperature',
+      state: '70',
+      attributes: {
+        // Not using friendly_name here on purpose.
+        name: 'Household Office Temperature',
+        unit_of_measurement: '°F',
+      },
+      last_changed: '2026-01-01T00:00:00Z',
+      last_updated: '2026-01-01T00:00:00Z',
+      context: { id: 'c', parent_id: null, user_id: null },
+    };
+
+    useEntityStore.getState().upsert(entity);
+
+    render(<HaAreaClimateOverlayBridge />);
+
+    const el = document.querySelector(
+      '#labels-layer text.room-climate[data-room-id="office"]'
+    ) as SVGTextElement | null;
+
+    expect(el).not.toBeNull();
+    expect(el?.textContent).toBe('70°F');
+  });
+
+  it('ignores sensors with non-numeric state', () => {
+    document.body.innerHTML = `
+      <section id="climate-panel" class="tile climate-panel"></section>
+      <svg id="floorplan-svg" viewBox="0 0 10 10">
+        <g id="labels-layer">
+          <g class="room-label-group" data-room-id="kitchen">
+            <text class="room-label" x="5" y="5">Kitchen</text>
+          </g>
+        </g>
+      </svg>
+    `;
+
+    const bad: HaEntityState = {
+      entity_id: 'sensor.kitchen_temperature',
+      state: 'unknown',
+      attributes: { unit_of_measurement: '°F' },
+      last_changed: '2026-01-01T00:00:00Z',
+      last_updated: '2026-01-01T00:00:00Z',
+      context: { id: 'c', parent_id: null, user_id: null },
+    };
+
+    useEntityStore.getState().upsert(bad);
+
+    render(<HaAreaClimateOverlayBridge />);
+
+    expect(
+      document.querySelector('#labels-layer text.room-climate[data-room-id="kitchen"]')
+    ).toBeNull();
+  });
+
+  it('handles undefined entity entries without creating climate labels', () => {
+    document.body.innerHTML = `
+      <section id="climate-panel" class="tile climate-panel"></section>
+      <svg id="floorplan-svg" viewBox="0 0 10 10">
+        <g id="labels-layer">
+          <g class="room-label-group" data-room-id="kitchen">
+            <text class="room-label" x="5" y="5">Kitchen</text>
+          </g>
+        </g>
+      </svg>
+    `;
+
+    // Force an intentionally-invalid store snapshot to exercise defensive branches.
+    useEntityStore.setState({
+      entitiesById: {
+        'sensor.kitchen_temperature': undefined as unknown as HaEntityState,
+      },
+      householdEntityIds: {},
+      lastUpdatedAt: null,
+    });
+
+    expect(() => {
+      render(<HaAreaClimateOverlayBridge />);
+    }).not.toThrow();
+
+    expect(
+      document.querySelector('#labels-layer text.room-climate[data-room-id="kitchen"]')
+    ).toBeNull();
+  });
+
+  it('can match sensors by device_class even when unit does not indicate kind', () => {
+    document.body.innerHTML = `
+      <section id="climate-panel" class="tile climate-panel"></section>
+      <svg id="floorplan-svg" viewBox="0 0 10 10">
+        <g id="labels-layer">
+          <g class="room-label-group" data-room-id="office">
+            <text class="room-label" x="2" y="3">Office</text>
+          </g>
+        </g>
+      </svg>
+    `;
+
+    const temp: HaEntityState = {
+      entity_id: 'sensor.office_temperature',
+      state: '69.1',
+      attributes: {
+        device_class: 'temperature',
+        // Intentionally omit the degree sign to ensure `device_class` is used.
+        unit_of_measurement: 'C',
+        friendly_name: 'Household Office Temp',
+      },
+      last_changed: '2026-01-01T00:00:00Z',
+      last_updated: '2026-01-01T00:00:00Z',
+      context: { id: 'c', parent_id: null, user_id: null },
+    };
+
+    useEntityStore.getState().upsert(temp);
+
+    render(<HaAreaClimateOverlayBridge />);
+
+    const el = document.querySelector(
+      '#labels-layer text.room-climate[data-room-id="office"]'
+    ) as SVGTextElement | null;
+
+    expect(el).not.toBeNull();
+    expect(el?.textContent).toBe('69C');
   });
 });

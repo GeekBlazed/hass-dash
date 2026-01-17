@@ -3,9 +3,9 @@ import { useDashboardStore } from './useDashboardStore';
 
 const createInitialDashboardState = () => ({
   activePanel: 'climate' as const,
+  isMapControlsOpen: false,
   stageView: { x: 0, y: 0, scale: 1 },
-  lighting: { lights: {} },
-  climate: { thermostat: {}, areas: {} },
+  floorplan: { state: 'idle' as const, model: null, errorMessage: null },
 });
 
 const resetDashboardStore = () => {
@@ -39,101 +39,29 @@ describe('useDashboardStore', () => {
     expect(useDashboardStore.getState().stageView).toEqual({ x: 0, y: 0, scale: 1 });
   });
 
-  it('can set local lighting state (partial updates)', () => {
-    useDashboardStore.getState().setLightState('light.kitchen', { name: 'Kitchen', state: 'on' });
-    useDashboardStore.getState().setLightState('light.kitchen', { brightness: 123 });
+  it('can toggle map controls open/closed', () => {
+    useDashboardStore.getState().setMapControlsOpen(true);
+    expect(useDashboardStore.getState().isMapControlsOpen).toBe(true);
 
-    expect(useDashboardStore.getState().lighting.lights['light.kitchen']).toEqual({
-      id: 'light.kitchen',
-      name: 'Kitchen',
-      state: 'on',
-      brightness: 123,
+    useDashboardStore.getState().setMapControlsOpen(false);
+    expect(useDashboardStore.getState().isMapControlsOpen).toBe(false);
+  });
+
+  it('can set floorplan loading state', () => {
+    useDashboardStore.getState().setFloorplanLoading();
+    expect(useDashboardStore.getState().floorplan).toEqual({
+      state: 'loading',
+      model: null,
+      errorMessage: null,
     });
   });
 
-  it('can toggle local light on/off', () => {
-    useDashboardStore.getState().setLightOn('light.family_room', true);
-    expect(useDashboardStore.getState().lighting.lights['light.family_room']?.state).toBe('on');
-
-    useDashboardStore.getState().setLightOn('light.family_room', false);
-    expect(useDashboardStore.getState().lighting.lights['light.family_room']?.state).toBe('off');
-  });
-
-  it('preserves existing light properties when toggling state', () => {
-    useDashboardStore.getState().setLightState('light.dining', {
-      name: 'Dining',
-      brightness: 200,
-      colorTemp: 3500,
+  it('can set floorplan error state', () => {
+    useDashboardStore.getState().setFloorplanError('nope');
+    expect(useDashboardStore.getState().floorplan).toEqual({
+      state: 'error',
+      model: null,
+      errorMessage: 'nope',
     });
-    useDashboardStore.getState().setLightOn('light.dining', true);
-    expect(useDashboardStore.getState().lighting.lights['light.dining']).toEqual({
-      id: 'light.dining',
-      name: 'Dining',
-      brightness: 200,
-      colorTemp: 3500,
-      state: 'on',
-    });
-    useDashboardStore.getState().setLightOn('light.dining', false);
-    expect(useDashboardStore.getState().lighting.lights['light.dining']).toEqual({
-      id: 'light.dining',
-      name: 'Dining',
-      brightness: 200,
-      colorTemp: 3500,
-      state: 'off',
-    });
-  });
-
-  it('setLightOn overrides previously set state value', () => {
-    useDashboardStore.getState().setLightState('light.porch', {
-      name: 'Porch',
-      state: 'off',
-      brightness: 10,
-    });
-
-    useDashboardStore.getState().setLightOn('light.porch', true);
-
-    expect(useDashboardStore.getState().lighting.lights['light.porch']).toEqual({
-      id: 'light.porch',
-      name: 'Porch',
-      brightness: 10,
-      state: 'on',
-    });
-  });
-
-  it('can clear local lighting model', () => {
-    useDashboardStore.getState().setLightOn('light.studio', true);
-    useDashboardStore.getState().clearLighting();
-
-    expect(useDashboardStore.getState().lighting).toEqual({ lights: {} });
-  });
-
-  it('can set thermostat fields (partial updates)', () => {
-    useDashboardStore.getState().setThermostat({ setTemperature: 70, hvacMode: 'cool' });
-    useDashboardStore.getState().setThermostat({ fanMode: 'auto' });
-
-    expect(useDashboardStore.getState().climate.thermostat).toEqual({
-      setTemperature: 70,
-      hvacMode: 'cool',
-      fanMode: 'auto',
-    });
-  });
-
-  it('can set area climate (partial updates)', () => {
-    useDashboardStore.getState().setAreaClimate('kitchen', { temp: 80, humidity: null });
-    useDashboardStore.getState().setAreaClimate('kitchen', { temp: 81 });
-
-    expect(useDashboardStore.getState().climate.areas.kitchen).toEqual({
-      areaId: 'kitchen',
-      temp: 81,
-      humidity: null,
-    });
-  });
-
-  it('can clear local climate model', () => {
-    useDashboardStore.getState().setThermostat({ setTemperature: 72 });
-    useDashboardStore.getState().setAreaClimate('office', { temp: 76 });
-    useDashboardStore.getState().clearClimate();
-
-    expect(useDashboardStore.getState().climate).toEqual({ thermostat: {}, areas: {} });
   });
 });

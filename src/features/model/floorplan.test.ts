@@ -93,6 +93,56 @@ describe('floorplan model', () => {
         [10, 10],
       ]);
     });
+
+    it('parses bounds/initial view and normalizes nodes (points vs point, z defaulting)', () => {
+      const model = normalizeFloorplan({
+        // gps missing => undefined
+        floors: [
+          {
+            id: 'ground',
+            name: 'Ground',
+            rooms: [],
+            bounds: [
+              [0, 0],
+              [10, 20],
+            ],
+            initial_scale: 2,
+          },
+        ],
+        nodes: [
+          // id missing => uses name; points length 2 => z defaults to 0
+          { name: 'Node A', points: [1, 2], floor: 'ground', room: 'kitchen' },
+          // z invalid => coerced to 0; id/name trimmed
+          { id: ' nodeB ', name: ' node B ', point: [3, 4, 'badz'] },
+          // invalid point => dropped
+          { id: 'bad', name: 'bad', point: ['x', 2] },
+          // non-record => dropped
+          'nope',
+        ],
+      });
+
+      expect(model.gps).toBeUndefined();
+
+      expect(model.floors).toHaveLength(1);
+      expect(model.floors[0]?.bounds).toEqual({ minX: 0, minY: 0, maxX: 10, maxY: 20 });
+      expect(model.floors[0]?.initialView).toEqual({ scale: 2, x: 0, y: 0 });
+
+      expect(model.nodes).toHaveLength(2);
+      expect(model.nodes?.[0]).toEqual({
+        id: 'Node A',
+        name: 'Node A',
+        point: [1, 2, 0],
+        floor: 'ground',
+        room: 'kitchen',
+      });
+      expect(model.nodes?.[1]).toEqual({
+        id: 'nodeB',
+        name: 'node B',
+        point: [3, 4, 0],
+        floor: undefined,
+        room: undefined,
+      });
+    });
   });
 
   describe('getDefaultFloor', () => {

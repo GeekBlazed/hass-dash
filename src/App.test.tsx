@@ -25,8 +25,8 @@ describe('App', () => {
   it('renders the dashboard', async () => {
     await renderAndSettle(<App />);
 
-    // Dashboard renders the prototype-style application shell
-    expect(screen.getByRole('application', { name: /floorplan prototype/i })).toBeInTheDocument();
+    // Dashboard renders the application shell
+    expect(screen.getByRole('application', { name: /floorplan dashboard/i })).toBeInTheDocument();
   });
 
   it('renders quick action buttons', async () => {
@@ -74,7 +74,7 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { name: /component showcase/i })).toBeInTheDocument();
     expect(
-      screen.queryByRole('application', { name: /floorplan prototype/i })
+      screen.queryByRole('application', { name: /floorplan dashboard/i })
     ).not.toBeInTheDocument();
   });
 
