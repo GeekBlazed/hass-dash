@@ -13,7 +13,7 @@ function getCoverageProvider(): 'v8' | 'istanbul' {
   return 'v8';
 }
 
-function getCoverageReporters(): Array<'text-summary' | 'lcovonly'> {
+function getCoverageReporters(): Array<'text-summary' | 'lcovonly' | 'html'> {
   const raw = process.env.VITEST_COVERAGE_REPORTERS;
   if (typeof raw === 'string' && raw.trim().length > 0) {
     const items = raw
@@ -81,6 +81,9 @@ export default defineConfig({
     // Worker pools have been repeatedly OOM'ing in this repo on Windows.
     // Single-threaded execution is slower but unblocks development.
     singleThread: true,
+    // Keep pool selection explicit (even when singleThread is true) so we can
+    // toggle singleThread in CI/local without re-introducing forks OOM issues.
+    pool: getPool(),
     // Prevent huge console output from being buffered/printed for passing tests.
     // This notably helps coverage runs avoid OOM when debug logging is verbose.
     silent: 'passed-only',

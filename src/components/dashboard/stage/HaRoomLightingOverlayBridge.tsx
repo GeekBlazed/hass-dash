@@ -305,7 +305,7 @@ export function HaRoomLightingOverlayBridge() {
     if (hasInstalledDelegatedListenersRef.current) return;
     hasInstalledDelegatedListenersRef.current = true;
 
-    const delegatedState = delegatedRef.current;
+    const delegatedStateForCleanup = delegatedRef.current;
 
     const ACTIVATION_MAX_MOVE_PX = 6;
     const ACTIVATION_MAX_MS = 800;
@@ -450,7 +450,7 @@ export function HaRoomLightingOverlayBridge() {
       document.removeEventListener('pointerdown', onDelegatedPointerDown, { capture: true });
       document.removeEventListener('pointerup', onDelegatedPointerUp, { capture: true });
       document.removeEventListener('click', onDelegatedClick, { capture: true });
-      delegatedState.downByPointerId.clear();
+      delegatedStateForCleanup.downByPointerId.clear();
 
       // Important for React StrictMode in dev: effects run setup → cleanup → setup.
       // If we keep the guard set to true, the second setup will bail out and

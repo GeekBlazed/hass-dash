@@ -6,19 +6,7 @@ import type { IEntityService } from '../interfaces/IEntityService';
 import type { IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
 import { useEntityStore } from '../stores/useEntityStore';
 import type { HaStateChangedEventData } from '../types/home-assistant';
-
-/**
- * Debug Panel Component
- *
- * Displays all feature flags and their current states.
- * Only shown when VITE_FEATURE_DEBUG_PANEL is enabled.
- * Allows toggling flags in development mode.
- */
-export const pageReloader = {
-  reload: (): void => {
-    window.location.reload();
-  },
-};
+import { pageReloader } from '../utils/pageReloader';
 
 export function DebugPanel() {
   const { flags, service } = useFeatureFlags();

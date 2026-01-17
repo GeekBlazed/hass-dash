@@ -15,9 +15,9 @@ import type { HaEntityState } from '../../types/home-assistant';
 import {
   computeInitials,
   deriveBaseUrlFromWebSocketUrl,
-  DeviceLocationTrackingController,
   resolveEntityPictureUrl,
-} from './DeviceLocationTrackingController';
+} from '../../utils/deviceLocationTracking';
+import { DeviceLocationTrackingController } from './DeviceLocationTrackingController';
 
 declare global {
   interface Window {

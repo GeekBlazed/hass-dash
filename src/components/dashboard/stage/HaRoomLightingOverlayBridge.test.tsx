@@ -234,9 +234,7 @@ describe('HaRoomLightingOverlayBridge', () => {
     getSpy.mockRestore();
   });
 
-  it('removes stale hassdash toggles when there are no room light groups (debugLights)', () => {
-    window.history.replaceState({}, '', '/?debugLights=1');
-
+  it('removes stale hassdash toggles when there are no room light groups', () => {
     document.body.innerHTML = `
       <svg id="floorplan-svg" viewBox="0 0 10 10">
         <g id="labels-layer">

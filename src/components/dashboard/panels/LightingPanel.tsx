@@ -19,6 +19,27 @@ export function LightingPanel({ isHidden = true }: { isHidden?: boolean }) {
   const householdEntityIds = useEntityStore((s) => s.householdEntityIds);
   const optimisticSetState = useEntityStore((s) => s.optimisticSetState);
 
+  const turnOff = (entityId: string): void => {
+    void (async () => {
+      const previousState = entitiesById[entityId]?.state;
+      optimisticSetState(entityId, 'off');
+      try {
+        await haClient.connect();
+        await haClient.callService({
+          domain: 'light',
+          service: 'turn_off',
+          service_data: { entity_id: entityId },
+          target: { entity_id: entityId },
+        });
+      } catch {
+        // Best-effort: avoid impacting the rest of the UI.
+        if (typeof previousState === 'string') {
+          optimisticSetState(entityId, previousState);
+        }
+      }
+    })();
+  };
+
   const onLights = useMemo(() => {
     const allLights = Object.values(entitiesById).filter((e) => e.entity_id.startsWith('light.'));
     const filtered =
@@ -46,58 +67,26 @@ export function LightingPanel({ isHidden = true }: { isHidden?: boolean }) {
     >
       <ul id="lighting-list" aria-label="Lights currently on" data-managed-by="react">
         {onLights.map((light) => (
-          <li
-            key={light.id}
-            className="lighting-item"
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              void (async () => {
-                const previousState = entitiesById[light.id]?.state;
-                optimisticSetState(light.id, 'off');
-                try {
-                  await haClient.connect();
-                  await haClient.callService({
-                    domain: 'light',
-                    service: 'turn_off',
-                    service_data: { entity_id: light.id },
-                    target: { entity_id: light.id },
-                  });
-                } catch {
-                  // Best-effort: avoid impacting the rest of the UI.
-                  if (typeof previousState === 'string') {
-                    optimisticSetState(light.id, previousState);
-                  }
-                }
-              })();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
+          <li key={light.id} className="lighting-item">
+            <button
+              type="button"
+              className="lighting-item__button"
+              onClick={() => {
+                turnOff(light.id);
+              }}
+              onKeyDown={(e) => {
+                // In real browsers, <button> activates on Enter/Space, but our
+                // jsdom tests dispatch only a keydown and do not get a synthesized
+                // click. Handle keydown explicitly for accessibility + test parity.
+                if (e.key !== 'Enter' && e.key !== ' ') return;
                 e.preventDefault();
-                void (async () => {
-                  const previousState = entitiesById[light.id]?.state;
-                  optimisticSetState(light.id, 'off');
-                  try {
-                    await haClient.connect();
-                    await haClient.callService({
-                      domain: 'light',
-                      service: 'turn_off',
-                      service_data: { entity_id: light.id },
-                      target: { entity_id: light.id },
-                    });
-                  } catch {
-                    // Best-effort: avoid impacting the rest of the UI.
-                    if (typeof previousState === 'string') {
-                      optimisticSetState(light.id, previousState);
-                    }
-                  }
-                })();
-              }
-            }}
-            aria-label={`Turn off ${light.name ?? light.id}`}
-          >
-            <div className="lighting-name">{light.name ?? light.id}</div>
-            <div className="lighting-meta">{light.roomId.replace(/_/g, ' ')}</div>
+                turnOff(light.id);
+              }}
+              aria-label={`Turn off ${light.name ?? light.id}`}
+            >
+              <div className="lighting-name">{light.name ?? light.id}</div>
+              <div className="lighting-meta">{light.roomId.replace(/_/g, ' ')}</div>
+            </button>
           </li>
         ))}
       </ul>

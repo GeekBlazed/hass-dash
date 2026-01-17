@@ -19,6 +19,7 @@ export function MapControlsToggle({ isOpen, onOpen }: MapControlsToggleProps) {
         onOpen?.();
       }}
     >
+      {/* Search / magnifying glass icon */}
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true">
         <g fill="currentColor" stroke="none">
           <path
