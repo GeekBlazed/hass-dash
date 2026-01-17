@@ -147,10 +147,10 @@ describe('HomeAssistantHouseholdAreaEntityIndexService', () => {
     const connect = vi.fn().mockResolvedValue(undefined);
     const isConnected = vi.fn().mockReturnValue(true);
 
-    let resolveLabel: ((v: unknown[]) => void) | null = null;
-    let resolveAreas: ((v: unknown[]) => void) | null = null;
-    let resolveDevices: ((v: unknown[]) => void) | null = null;
-    let resolveEntities: ((v: unknown[]) => void) | null = null;
+    let resolveLabel!: (v: unknown[]) => void;
+    let resolveAreas!: (v: unknown[]) => void;
+    let resolveDevices!: (v: unknown[]) => void;
+    let resolveEntities!: (v: unknown[]) => void;
 
     const getLabelRegistry = vi.fn(
       () =>
@@ -199,10 +199,10 @@ describe('HomeAssistantHouseholdAreaEntityIndexService', () => {
     expect(getDeviceRegistry).toHaveBeenCalledTimes(1);
     expect(getEntityRegistry).toHaveBeenCalledTimes(1);
 
-    resolveLabel?.([{ label_id: 'label_household', name: 'Household' }]);
-    resolveAreas?.([{ area_id: 'area_a', name: 'Area A' }]);
-    resolveDevices?.([{ id: 'device1', area_id: 'area_a', labels: ['label_household'] }]);
-    resolveEntities?.([
+    resolveLabel([{ label_id: 'label_household', name: 'Household' }]);
+    resolveAreas([{ area_id: 'area_a', name: 'Area A' }]);
+    resolveDevices([{ id: 'device1', area_id: 'area_a', labels: ['label_household'] }]);
+    resolveEntities([
       { entity_id: 'sensor.area_a_temperature', area_id: 'area_a', labels: ['label_household'] },
     ]);
 
