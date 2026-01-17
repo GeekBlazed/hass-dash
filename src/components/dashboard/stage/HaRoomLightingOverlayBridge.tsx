@@ -305,8 +305,6 @@ export function HaRoomLightingOverlayBridge() {
     if (hasInstalledDelegatedListenersRef.current) return;
     hasInstalledDelegatedListenersRef.current = true;
 
-    const delegatedStateForCleanup = delegatedRef.current;
-
     const ACTIVATION_MAX_MOVE_PX = 6;
     const ACTIVATION_MAX_MS = 800;
 
@@ -445,6 +443,8 @@ export function HaRoomLightingOverlayBridge() {
     document.addEventListener('pointerdown', onDelegatedPointerDown, { capture: true });
     document.addEventListener('pointerup', onDelegatedPointerUp, { capture: true });
     document.addEventListener('click', onDelegatedClick, { capture: true });
+
+    const delegatedStateForCleanup = delegatedRef.current;
 
     return () => {
       document.removeEventListener('pointerdown', onDelegatedPointerDown, { capture: true });

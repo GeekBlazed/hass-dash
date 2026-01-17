@@ -338,6 +338,45 @@ pnpm test:coverage
 open coverage/index.html
 ```
 
+### Windows / OOM (Out of Memory) Notes
+
+This repo has a few very large jsdom-heavy tests that can hit Node/Vitest memory limits on Windows.
+
+**Skip known OOM tests (local dev):**
+
+- PowerShell (current session):
+
+  ```powershell
+  $env:VITEST_SKIP_OOM_TESTS = 'true'
+  pnpm -s test:run
+  ```
+
+- One command (PowerShell):
+
+  ```powershell
+  $env:VITEST_SKIP_OOM_TESTS = 'true'; pnpm -s test:run
+  ```
+
+**Coverage runs already do this by default:** `pnpm test:coverage` sets `VITEST_SKIP_OOM_TESTS=true` unless you pass `--include-slow`.
+
+**Increase Node heap for tests (if you still OOM):**
+
+- Regular tests (default 8192MB):
+
+  ```powershell
+  $env:VITEST_HEAP_MB = '12288'
+  pnpm test
+  ```
+
+- Coverage runs (default 16384MB):
+
+  ```powershell
+  $env:VITEST_COVERAGE_HEAP_MB = '24576'
+  pnpm test:coverage
+  ```
+
+These environment variables are read by the test runner scripts under `scripts/` (they are not loaded from `.env`).
+
 #### Test Types Required
 
 1. **Unit Tests** - Test individual functions/classes in isolation

@@ -32,11 +32,17 @@ function getCoverageReporters(): Array<'text-summary' | 'lcovonly' | 'html'> {
 }
 
 function getTestExclude(): string[] | undefined {
-  if (process.env.VITEST_SKIP_OOM_TESTS !== 'true') return undefined;
+  const skipOomTests = process.env.VITEST_SKIP_OOM_TESTS === 'true';
 
   // This test currently OOMs during module import on Windows (even without coverage).
-  // Allow skipping it to keep `pnpm test:coverage` usable.
-  return ['src/components/dashboard/DeviceLocationTrackingController.test.tsx'];
+  // On non-Windows platforms, we always run it to maintain consistent coverage.
+  // On Windows, allow opt-in skipping (via VITEST_SKIP_OOM_TESTS) to keep
+  // `pnpm test:coverage` usable while we work on lowering its memory usage.
+  if (skipOomTests && process.platform === 'win32') {
+    return ['src/components/dashboard/DeviceLocationTrackingController.test.tsx'];
+  }
+
+  return undefined;
 }
 
 function getCoverageAll(): boolean {
@@ -79,10 +85,10 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     exclude: getTestExclude(),
     // Worker pools have been repeatedly OOM'ing in this repo on Windows.
-    // Single-threaded execution is slower but unblocks development.
-    singleThread: true,
-    // Keep pool selection explicit (even when singleThread is true) so we can
-    // toggle singleThread in CI/local without re-introducing forks OOM issues.
+    // Run test files serially (single worker) to keep memory stable.
+    fileParallelism: false,
+    // Keep pool selection explicit so we can toggle `fileParallelism` in CI/local
+    // without re-introducing forks OOM issues.
     pool: getPool(),
     // Prevent huge console output from being buffered/printed for passing tests.
     // This notably helps coverage runs avoid OOM when debug logging is verbose.
@@ -92,9 +98,10 @@ export default defineConfig({
       // Istanbul instruments every module and can be extremely memory hungry in large jsdom suites.
       // V8 coverage is substantially lighter and avoids fork-worker OOM in CI.
       provider: getCoverageProvider(),
-      all: getCoverageAll(),
-      // Narrow coverage work to app sources to keep coverage processing memory bounded.
-      include: ['src/**/*.{ts,tsx}'],
+      // In Vitest v4, `coverage.all` was removed. To collect coverage for *all* source files
+      // (including untouched ones), we conditionally set `coverage.include`.
+      // When omitted, Vitest only includes files that were covered by tests.
+      ...(getCoverageAll() ? { include: ['src/**/*.{ts,tsx}'] } : {}),
       // `text` is very verbose (full per-file table). `text-summary` keeps CLI output readable.
       // Keep report generation lightweight to avoid OOM during coverage runs.
       reporter: getCoverageReporters(),

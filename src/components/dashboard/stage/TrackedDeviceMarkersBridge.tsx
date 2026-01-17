@@ -10,6 +10,7 @@ import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import type { DeviceLocation } from '../../../stores/useDeviceLocationStore';
 import { useDeviceLocationStore } from '../../../stores/useDeviceLocationStore';
 import { useDeviceTrackerMetadataStore } from '../../../stores/useDeviceTrackerMetadataStore';
+import { computeInitials } from '../../../utils/deviceLocationTracking';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -149,26 +150,6 @@ const getPreferredDeviceLabel = (
   const alias = meta?.alias?.trim();
   if (alias) return alias;
   return getDeviceLabel(entityId);
-};
-
-const computeInitials = (name: string): string | undefined => {
-  const trimmed = name.trim();
-  if (!trimmed) return undefined;
-
-  const parts = trimmed
-    .split(/\s+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  if (parts.length === 0) return undefined;
-
-  const first = parts[0];
-  const last = parts.length > 1 ? parts[parts.length - 1] : '';
-  const firstChar = first[0] ?? '';
-  const lastChar = last ? (last[0] ?? '') : '';
-
-  const initials = `${firstChar}${lastChar}`.trim().toUpperCase();
-  return initials || undefined;
 };
 
 const PREFETCHED_AVATAR_URLS_LIMIT = 200;
