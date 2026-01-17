@@ -1,82 +1,32 @@
-import { useMemo } from 'react';
-import { container } from '../core/di-container';
+import { useSyncExternalStore } from 'react';
+
 import { TYPES } from '../core/types';
 import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
+import { useService } from './useService';
 
-/**
- * Custom React hook for feature flags
- *
- * Provides a simple interface to check if features are enabled.
- * The service is retrieved from the DI container as a singleton.
- *
- * @param flag - The feature flag name (e.g., 'FLOOR_PLAN', 'HA_CONNECTION')
- * @returns Object containing isEnabled boolean and the flag service
- *
- * @example
- * ```tsx
- * function MyComponent() {
- *   const { isEnabled } = useFeatureFlag('FLOOR_PLAN');
- *
- *   if (!isEnabled) return null;
- *
- *   return <FloorPlan />;
- * }
- * ```
- */
-export function useFeatureFlag(flag: string) {
-  // Get the feature flag service from DI container
-  // Using useMemo to ensure we only get it once per component lifecycle
-  const featureFlagService = useMemo(
-    () => container.get<IFeatureFlagService>(TYPES.IFeatureFlagService),
-    []
+export function useFeatureFlag(flag: string): { isEnabled: boolean; service: IFeatureFlagService } {
+  const service = useService<IFeatureFlagService>(TYPES.IFeatureFlagService);
+
+  const isEnabled = useSyncExternalStore(
+    (listener) => service.subscribe(listener),
+    () => service.isEnabled(flag),
+    () => service.isEnabled(flag)
   );
 
-  // Check if the specific flag is enabled
-  const isEnabled = featureFlagService.isEnabled(flag);
-
-  return {
-    isEnabled,
-    service: featureFlagService,
-  };
+  return { isEnabled, service };
 }
 
-/**
- * Custom React hook to get all feature flags
- *
- * Returns all feature flags and their current states.
- * Useful for debug panels and feature flag management UI.
- *
- * @returns Object containing all flags and the flag service
- *
- * @example
- * ```tsx
- * function DebugPanel() {
- *   const { flags, service } = useFeatureFlags();
- *
- *   return (
- *     <div>
- *       {Object.entries(flags).map(([name, enabled]) => (
- *         <div key={name}>
- *           {name}: {enabled ? 'ON' : 'OFF'}
- *         </div>
- *       ))}
- *     </div>
- *   );
- * }
- * ```
- */
-export function useFeatureFlags() {
-  // Get the feature flag service from DI container
-  const featureFlagService = useMemo(
-    () => container.get<IFeatureFlagService>(TYPES.IFeatureFlagService),
-    []
+export function useFeatureFlags(): {
+  flags: Record<string, boolean>;
+  service: IFeatureFlagService;
+} {
+  const service = useService<IFeatureFlagService>(TYPES.IFeatureFlagService);
+
+  const flags = useSyncExternalStore(
+    (listener) => service.subscribe(listener),
+    () => service.getAll(),
+    () => service.getAll()
   );
 
-  // Get all flags
-  const flags = featureFlagService.getAll();
-
-  return {
-    flags,
-    service: featureFlagService,
-  };
+  return { flags, service };
 }

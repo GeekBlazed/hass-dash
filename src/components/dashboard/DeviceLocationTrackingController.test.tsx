@@ -58,9 +58,6 @@ describe('DeviceLocationTrackingController', () => {
   };
 
   it('only upserts locations for device_trackers assigned to a person and removes them when unassigned', async () => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
-
     useDeviceLocationStore.getState().clear();
     useDeviceTrackerMetadataStore.getState().clear();
 
@@ -200,9 +197,6 @@ describe('DeviceLocationTrackingController', () => {
   });
 
   it('seeds initial locations from fetchStates snapshot for assigned trackers', async () => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
-
     useDeviceLocationStore.getState().clear();
     useDeviceTrackerMetadataStore.getState().clear();
 
@@ -292,9 +286,6 @@ describe('DeviceLocationTrackingController', () => {
   });
 
   it('accepts updates for alternate tracker entity ids when they share the same device_id as an assigned tracker', async () => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
-
     useDeviceLocationStore.getState().clear();
     useDeviceTrackerMetadataStore.getState().clear();
 
@@ -394,8 +385,6 @@ describe('DeviceLocationTrackingController', () => {
   });
 
   it('upserts tracker labels from person device_trackers on state changes', async () => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
     vi.stubEnv('VITE_HA_BASE_URL', 'http://ha.example:8123');
 
     useDeviceTrackerMetadataStore.getState().clear();
@@ -451,10 +440,7 @@ describe('DeviceLocationTrackingController', () => {
     });
   });
 
-  it('subscribes on mount and unsubscribes on unmount when flags enabled', async () => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
-
+  it('subscribes on mount and unsubscribes on unmount', async () => {
     const unsubscribe = vi.fn(async () => undefined);
     const subscribeToStateChanges = vi.fn(async () => ({
       unsubscribe,
@@ -480,39 +466,9 @@ describe('DeviceLocationTrackingController', () => {
     });
   });
 
-  it('does not start when HA_CONNECTION is disabled and warns in dev', async () => {
-    const restoreDev = forceDevMode();
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'false');
-
-    const subscribeToStateChanges = vi.fn(async () => ({
-      unsubscribe: vi.fn(async () => undefined),
-    }));
-
-    const entityService: IEntityService = {
-      fetchStates: vi.fn(async () => []),
-      subscribeToStateChanges,
-    };
-
-    render(<DeviceLocationTrackingController entityService={entityService} />);
-
-    await waitFor(() => {
-      expect(subscribeToStateChanges).toHaveBeenCalledTimes(0);
-      expect(warnSpy).toHaveBeenCalled();
-    });
-
-    warnSpy.mockRestore();
-    restoreDev();
-  });
-
   it('handles fetchStates failure for person allowlist without subscribing (dev warn)', async () => {
     const restoreDev = forceDevMode();
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
 
     const handlers: Array<(nextState: HaEntityState) => void> = [];
     const unsubscribe = vi.fn(async () => undefined);
@@ -550,9 +506,6 @@ describe('DeviceLocationTrackingController', () => {
   });
 
   it('ignores invalid device_trackers entries and prunes when device_trackers is not an array', async () => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
-
     useDeviceLocationStore.getState().clear();
     useDeviceTrackerMetadataStore.getState().clear();
 
@@ -657,9 +610,6 @@ describe('DeviceLocationTrackingController', () => {
   });
 
   it('does not upsert labels when person friendly_name is empty/whitespace', async () => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
-
     useDeviceTrackerMetadataStore.getState().clear();
 
     const handlers: Array<(nextState: HaEntityState) => void> = [];
@@ -706,9 +656,6 @@ describe('DeviceLocationTrackingController', () => {
 
   it('exposes loaded device tracker metadata on window in dev mode', async () => {
     const restoreDev = forceDevMode();
-
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
 
     useDeviceTrackerMetadataStore.getState().clear();
 
@@ -768,9 +715,6 @@ describe('DeviceLocationTrackingController', () => {
   });
 
   it('derives baseUrl from wss websocket URL when baseUrl missing (avatar URL resolution)', async () => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
-
     useDeviceTrackerMetadataStore.getState().clear();
 
     const handlers: Array<(nextState: HaEntityState) => void> = [];
@@ -849,9 +793,6 @@ describe('DeviceLocationTrackingController', () => {
   });
 
   it('uses absolute entity_picture URLs as-is and computes single-name initials', async () => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
-
     useDeviceTrackerMetadataStore.getState().clear();
 
     const handlers: Array<(nextState: HaEntityState) => void> = [];
@@ -934,9 +875,6 @@ describe('DeviceLocationTrackingController', () => {
     const restoreDev = forceDevMode();
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
-
     const unsubscribe = vi.fn(async () => undefined);
     const subscribeToStateChanges = vi.fn(async () => ({ unsubscribe }));
 
@@ -979,9 +917,6 @@ describe('DeviceLocationTrackingController', () => {
   });
 
   it('derives baseUrl from ws websocket URL and resolves relative entity_picture', async () => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
-
     useDeviceTrackerMetadataStore.getState().clear();
 
     const handlers: Array<(nextState: HaEntityState) => void> = [];
@@ -1063,9 +998,6 @@ describe('DeviceLocationTrackingController', () => {
   });
 
   it('keeps relative entity_picture unchanged when websocket URL is not ws/wss', async () => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_HA_CONNECTION', 'true');
-
     useDeviceTrackerMetadataStore.getState().clear();
 
     const handlers: Array<(nextState: HaEntityState) => void> = [];

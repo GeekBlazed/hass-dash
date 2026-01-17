@@ -45,6 +45,7 @@ const container = new Container();
 // Bind services to their interfaces
 // All bindings use singleton scope to ensure single instances throughout the app
 container.bind<IConfigService>(TYPES.IConfigService).to(ConfigService).inSingletonScope();
+
 container
   .bind<IFeatureFlagService>(TYPES.IFeatureFlagService)
   .to(FeatureFlagService)

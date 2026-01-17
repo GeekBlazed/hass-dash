@@ -28,14 +28,9 @@ Optional attributes (recommended):
 - `last_seen` (ISO timestamp string)
 - GPS fields (varies by setup): `latitude`, `longitude`, `elevation`
 
-### Feature flags
+### App behavior
 
-Location tracking is behind feature flags.
-
-- `VITE_FEATURE_DEVICE_TRACKING=true`
-- `VITE_FEATURE_HA_CONNECTION=true`
-
-If `DEVICE_TRACKING=true` but Home Assistant connectivity is disabled, tracking will not start.
+Location tracking is always-on when Home Assistant connectivity is configured and the app is connected.
 
 ## Configuration
 
@@ -56,10 +51,10 @@ These settings control how long markers remain visible without new updates:
 
 ### Debug overlay (dev-only)
 
-- `VITE_FEATURE_TRACKING_DEBUG_OVERLAY=true`
-- `VITE_TRACKING_DEBUG_OVERLAY_MODE=xyz | geo`
+- Enable in dev builds with the URL query param: `?debugOverlay`
+- Choose label mode via `VITE_TRACKING_DEBUG_OVERLAY_MODE=xyz | geo`
 
-The debug overlay is intentionally disabled in production builds even if enabled in `.env`.
+The debug overlay is intentionally disabled in production builds.
 
 ## Coordinate system (important)
 
@@ -76,13 +71,10 @@ If markers appear mirrored vertically, confirm:
 
 ### Tracking is enabled but nothing moves
 
-1. Confirm flags are enabled:
-   - `VITE_FEATURE_DEVICE_TRACKING=true`
-   - `VITE_FEATURE_HA_CONNECTION=true`
-2. Confirm Home Assistant is connected (WebSocket connected in the app).
-3. In Home Assistant Developer Tools → States, inspect your `device_tracker.*` entity:
+1. Confirm Home Assistant is connected (WebSocket connected in the app).
+2. In Home Assistant Developer Tools → States, inspect your `device_tracker.*` entity:
    - Ensure it has `attributes.x`, `attributes.y`, `attributes.confidence`.
-4. Check the confidence gate:
+3. Check the confidence gate:
    - Updates with `confidence <= VITE_TRACKING_ESPRESENSE_MIN_CONFIDENCE` are ignored.
 
 ### Markers appear but are offset / mirrored
@@ -94,7 +86,8 @@ If markers appear mirrored vertically, confirm:
 ### Debug overlay is enabled but you don’t see labels
 
 - Debug overlay is dev-only; production builds intentionally disable it.
-- Ensure `VITE_FEATURE_TRACKING_DEBUG_OVERLAY=true` and choose a mode:
+- Ensure you’re running a dev build and have `?debugOverlay` in the URL.
+- Choose a mode:
   - `VITE_TRACKING_DEBUG_OVERLAY_MODE=xyz` or `geo`
 
 ## Privacy & safety notes

@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'react';
 import { TYPES } from '../../core/types';
 import { extractDeviceLocationUpdateFromHaEntityState } from '../../features/tracking/espresense/espresenseLocationExtractor';
 import { getEspresenseMinConfidence } from '../../features/tracking/espresense/espresenseTrackingConfig';
-import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { useService } from '../../hooks/useService';
 import type { IDeviceTrackerMetadataService } from '../../interfaces/IDeviceTrackerMetadataService';
 import type { IEntityService } from '../../interfaces/IEntityService';
@@ -32,9 +31,6 @@ export function DeviceLocationTrackingController({
 }: {
   entityService?: IEntityService;
 }) {
-  const { isEnabled: trackingEnabled } = useFeatureFlag('DEVICE_TRACKING');
-  const { isEnabled: haEnabled } = useFeatureFlag('HA_CONNECTION');
-
   const metadataByEntityId = useDeviceTrackerMetadataStore((s) => s.metadataByEntityId);
 
   // Only show trackers that are assigned to a Home Assistant person.
@@ -54,17 +50,6 @@ export function DeviceLocationTrackingController({
   );
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    if (trackingEnabled && !haEnabled) {
-      logger.warn(
-        'DEVICE_TRACKING is enabled but HA_CONNECTION is disabled. Device tracking will not start.'
-      );
-    }
-  }, [trackingEnabled, haEnabled]);
-
-  useEffect(() => {
-    if (!trackingEnabled || !haEnabled) return;
-
     void deviceTrackerMetadataService
       .fetchByEntityId()
       .then((metadataByEntityId) => {
@@ -117,11 +102,9 @@ export function DeviceLocationTrackingController({
     return () => {
       void service.stop();
     };
-  }, [trackingEnabled, haEnabled, entityService, deviceTrackerMetadataService]);
+  }, [entityService, deviceTrackerMetadataService]);
 
   useEffect(() => {
-    if (!trackingEnabled || !haEnabled) return;
-
     let subscription: { unsubscribe: () => Promise<void> } | null = null;
 
     const recomputeAllowlistAndPrune = (): void => {
@@ -280,7 +263,7 @@ export function DeviceLocationTrackingController({
       subscription = null;
       void sub?.unsubscribe();
     };
-  }, [trackingEnabled, haEnabled, entityService, connectionConfig, metadataByEntityId]);
+  }, [entityService, connectionConfig, metadataByEntityId]);
 
   return null;
 }

@@ -11,12 +11,7 @@ import type {
 } from '../interfaces/IHomeAssistantConnectionConfig';
 import { HomeAssistantConnectionControls } from './HomeAssistantConnectionControls';
 
-const useFeatureFlagMock = vi.hoisted(() => vi.fn());
 const useServiceMock = vi.hoisted(() => vi.fn());
-
-vi.mock('../hooks/useFeatureFlag', () => ({
-  useFeatureFlag: useFeatureFlagMock,
-}));
 
 vi.mock('../hooks/useService', () => ({
   useService: useServiceMock,
@@ -80,29 +75,8 @@ describe('HomeAssistantConnectionControls', () => {
     })),
   });
 
-  it('does not render when HA_CONNECTION feature flag is disabled', () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: false });
-
-    const configSvc = createConnectionConfigStub({
-      config: {},
-      validation: { isValid: false, errors: ['Missing token'] },
-    });
-    const haClient = createClientStub();
-
-    useServiceMock.mockImplementation((token: symbol) => {
-      if (token === TYPES.IHomeAssistantConnectionConfig) return configSvc;
-      if (token === TYPES.IHomeAssistantClient) return haClient;
-      throw new Error('Unexpected DI token');
-    });
-
-    const { container } = render(<HomeAssistantConnectionControls />);
-    expect(container).toBeEmptyDOMElement();
-  });
-
   it('shows validation errors and does not attempt connect when draft is invalid', async () => {
     const user = userEvent.setup();
-
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true });
 
     const configSvc = createConnectionConfigStub({
       config: { baseUrl: '', webSocketUrl: '', accessToken: '' },
@@ -139,8 +113,6 @@ describe('HomeAssistantConnectionControls', () => {
   it('shows websocket URL validation error when websocket url is invalid', async () => {
     const user = userEvent.setup();
 
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true });
-
     const configSvc = createConnectionConfigStub({
       config: { baseUrl: '', webSocketUrl: 'http://example.com', accessToken: 'token' },
       validation: { isValid: false, errors: ['Access token is required.'] },
@@ -173,8 +145,6 @@ describe('HomeAssistantConnectionControls', () => {
   it('shows base URL validation error when base url has an invalid protocol', async () => {
     const user = userEvent.setup();
 
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true });
-
     const configSvc = createConnectionConfigStub({
       config: { baseUrl: 'ftp://example.com', webSocketUrl: '', accessToken: 'token' },
       validation: { isValid: false, errors: ['Access token is required.'] },
@@ -206,8 +176,6 @@ describe('HomeAssistantConnectionControls', () => {
 
   it('accepts base URL scheme casing and can test-connect in dev mode', async () => {
     const user = userEvent.setup();
-
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true });
 
     // Ensure we accept scheme casing (URL() normalizes protocol).
     const configSvc = createConnectionConfigStub({
@@ -242,8 +210,6 @@ describe('HomeAssistantConnectionControls', () => {
 
   it('tests connection successfully in dev mode without mutating overrides', async () => {
     const user = userEvent.setup();
-
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true });
 
     const configSvc = createConnectionConfigStub({
       config: {
@@ -295,8 +261,6 @@ describe('HomeAssistantConnectionControls', () => {
   it('does not mutate existing overrides during a test connection', async () => {
     const user = userEvent.setup();
 
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true });
-
     const previousOverrides: HomeAssistantConnectionConfig = {
       baseUrl: 'https://prev/',
       webSocketUrl: 'wss://prev/api/websocket',
@@ -344,8 +308,6 @@ describe('HomeAssistantConnectionControls', () => {
   it('does not call setOverrides during testConnection in production mode', async () => {
     await withImportMetaEnv({ DEV: false, PROD: true }, async () => {
       const user = userEvent.setup();
-
-      useFeatureFlagMock.mockReturnValue({ isEnabled: true });
 
       const configSvc = createConnectionConfigStub({
         config: {
@@ -396,8 +358,6 @@ describe('HomeAssistantConnectionControls', () => {
   it('saves overrides in dev mode and resets test status to idle', async () => {
     await withImportMetaEnv({ DEV: true, PROD: false }, async () => {
       const user = userEvent.setup();
-
-      useFeatureFlagMock.mockReturnValue({ isEnabled: true });
 
       let configState: HomeAssistantConnectionConfig = {
         baseUrl: 'https://initial/',
@@ -462,8 +422,6 @@ describe('HomeAssistantConnectionControls', () => {
     await withImportMetaEnv({ DEV: true, PROD: false }, async () => {
       const user = userEvent.setup();
 
-      useFeatureFlagMock.mockReturnValue({ isEnabled: true });
-
       let configState: HomeAssistantConnectionConfig = {
         baseUrl: 'https://example/',
         webSocketUrl: 'wss://example/api/websocket',
@@ -524,8 +482,6 @@ describe('HomeAssistantConnectionControls', () => {
     await withImportMetaEnv({ DEV: true, PROD: false }, async () => {
       const user = userEvent.setup();
 
-      useFeatureFlagMock.mockReturnValue({ isEnabled: true });
-
       const configSvc = createConnectionConfigStub({
         config: {
           baseUrl: 'https://example/',
@@ -568,8 +524,6 @@ describe('HomeAssistantConnectionControls', () => {
   it('shows "Unknown error" for non-Error rejections and always disconnects', async () => {
     await withImportMetaEnv({ DEV: false, PROD: true }, async () => {
       const user = userEvent.setup();
-
-      useFeatureFlagMock.mockReturnValue({ isEnabled: true });
 
       const configSvc = createConnectionConfigStub({
         config: {

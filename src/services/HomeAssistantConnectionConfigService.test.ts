@@ -6,7 +6,6 @@ import { HomeAssistantConnectionConfigService } from './HomeAssistantConnectionC
 function createConfigStub(values: Record<string, string | undefined>): IConfigService {
   return {
     getAppVersion: () => '0.1.0',
-    isFeatureEnabled: () => false,
     getConfig: (key: string) => {
       const normalized = key.startsWith('VITE_') ? key : `VITE_${key}`;
       return values[normalized];

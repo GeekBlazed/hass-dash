@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 
 import { TYPES } from '../../core/types';
-import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { useService } from '../../hooks/useService';
 import type { IEntityService } from '../../interfaces/IEntityService';
 import type { IHouseholdAreaEntityIndexService } from '../../interfaces/IHouseholdAreaEntityIndexService';
@@ -18,8 +17,6 @@ export function HomeAssistantEntityStoreController({
 }: {
   entityIds?: ReadonlyArray<string>;
 }) {
-  const { isEnabled: haEnabled } = useFeatureFlag('HA_CONNECTION');
-
   const entityService = useService<IEntityService>(TYPES.IEntityService);
   const householdLabelService = useService<IHouseholdEntityLabelService>(
     TYPES.IHouseholdEntityLabelService
@@ -33,8 +30,6 @@ export function HomeAssistantEntityStoreController({
   const setHouseholdAreaIndex = useHouseholdAreaEntityIndexStore((s) => s.setIndex);
 
   useEffect(() => {
-    if (!haEnabled) return;
-
     const entityIdSet = entityIds ? new Set(entityIds) : null;
     const shouldCapture = (state: HaEntityState): boolean => {
       if (!entityIdSet) return true;
@@ -132,7 +127,6 @@ export function HomeAssistantEntityStoreController({
       }
     };
   }, [
-    haEnabled,
     entityIds,
     entityService,
     householdAreaIndexService,

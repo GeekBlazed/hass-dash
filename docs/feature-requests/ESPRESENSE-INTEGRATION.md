@@ -126,9 +126,9 @@ Define a minimal internal model for accepted updates:
   - `VITE_TRACKING_STALE_TIMEOUT_MINUTES` default `30`
 
 - Debug overlay:
-  - `VITE_FEATURE_TRACKING_DEBUG_OVERLAY`
-  - `VITE_TRACKING_DEBUG_OVERLAY_MODE=xyz|geo`
-  - Must be disabled in production builds.
+  - Dev-only and disabled in production builds.
+  - Enable in dev builds with the URL query param: `?debugOverlay`
+  - Configure labels via `VITE_TRACKING_DEBUG_OVERLAY_MODE=xyz|geo`
 
 ## 8. Constraints & architectural requirements
 

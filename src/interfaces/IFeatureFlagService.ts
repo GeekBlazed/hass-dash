@@ -1,34 +1,33 @@
 /**
- * Feature Flag Service Interface
+ * Feature flag service.
  *
- * Provides access to feature flags for controlling application features.
- * Flags are read from environment variables prefixed with VITE_FEATURE_.
+ * Flags are expected to be defined as Vite env vars:
+ * - VITE_FEATURE_<NAME>=true|false
+ * - VITE_OVERLAY_<NAME>=true|false
+ *
+ * In non-production modes, flags may be overridden at runtime.
  */
 export interface IFeatureFlagService {
   /**
-   * Check if a specific feature flag is enabled
-   * @param flag - The feature flag name (e.g., 'FLOOR_PLAN', 'HA_CONNECTION')
-   * @returns true if the feature is enabled, false otherwise
+   * Returns whether a flag is enabled.
+   *
+   * Accepted inputs:
+   * - 'SOME_FLAG'               -> VITE_FEATURE_SOME_FLAG
+   * - 'FEATURE_SOME_FLAG'       -> VITE_FEATURE_SOME_FLAG
+   * - 'OVERLAY_LIGHTING'        -> VITE_OVERLAY_LIGHTING
+   * - 'VITE_FEATURE_SOME_FLAG'  -> VITE_FEATURE_SOME_FLAG
    */
   isEnabled(flag: string): boolean;
 
-  /**
-   * Get all feature flags and their current states
-   * @returns Record of flag names to boolean values
-   */
+  /** Returns the merged env + override view of all known flags. */
   getAll(): Record<string, boolean>;
 
-  /**
-   * Enable a feature flag (development only)
-   * This method should only be used in development/debug mode
-   * @param flag - The feature flag name to enable
-   */
+  /** Enable a flag override (non-production only). */
   enable(flag: string): void;
 
-  /**
-   * Disable a feature flag (development only)
-   * This method should only be used in development/debug mode
-   * @param flag - The feature flag name to disable
-   */
+  /** Disable a flag override (non-production only). */
   disable(flag: string): void;
+
+  /** Subscribe to override changes (used by React hooks). */
+  subscribe(listener: () => void): () => void;
 }

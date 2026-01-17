@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hass-dash.local/schemas/floorplan.schema.json",
+  "title": "FloorplanModel",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["defaultFloorId", "floors"],
+  "properties": {
+    "defaultFloorId": { "type": "string", "minLength": 1 },
+    "gps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latitude", "longitude", "elevation"],
+      "properties": {
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "elevation": { "type": "number" }
+      }
+    },
+    "floors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/floor" },
+      "minItems": 1
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    }
+  },
+  "$defs": {
+    "point2d": {
+      "type": "array",
+      "prefixItems": [{ "type": "number" }, { "type": "number" }],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "point3d": {
+      "type": "array",
+      "prefixItems": [{ "type": "number" }, { "type": "number" }, { "type": "number" }],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minX", "minY", "maxX", "maxY"],
+      "properties": {
+        "minX": { "type": "number" },
+        "minY": { "type": "number" },
+        "maxX": { "type": "number" },
+        "maxY": { "type": "number" }
+      }
+    },
+    "initialView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scale", "x", "y"],
+      "properties": {
+        "scale": { "type": "number" },
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "room": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "points"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "points": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/point2d" },
+          "minItems": 3
+        }
+      }
+    },
+    "floor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "rooms"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "rooms": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/room" }
+        },
+        "bounds": { "$ref": "#/$defs/bounds" },
+        "initialView": { "$ref": "#/$defs/initialView" }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "point"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "point": { "$ref": "#/$defs/point3d" },
+        "floor": { "type": "string" },
+        "room": { "type": "string" }
+      }
+    }
+  }
+}

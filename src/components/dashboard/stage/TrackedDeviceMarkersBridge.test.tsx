@@ -8,8 +8,7 @@ import { TrackedDeviceMarkersBridge } from './TrackedDeviceMarkersBridge';
 
 describe('TrackedDeviceMarkersBridge', () => {
   beforeEach(() => {
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'true');
-    vi.stubEnv('VITE_FEATURE_TRACKING_DEBUG_OVERLAY', 'false');
+    window.history.replaceState({}, '', '/');
     vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'xyz');
     vi.stubEnv('VITE_TRACKING_STALE_WARNING_MINUTES', '10');
     vi.stubEnv('VITE_TRACKING_STALE_TIMEOUT_MINUTES', '30');
@@ -304,7 +303,7 @@ describe('TrackedDeviceMarkersBridge', () => {
     });
   });
 
-  it('binds to an existing SVG marker and restores on disable', async () => {
+  it('binds to an existing SVG marker and updates its transform', async () => {
     render(
       <>
         <FloorplanSvg />
@@ -337,9 +336,7 @@ describe('TrackedDeviceMarkersBridge', () => {
       expect(existing.getAttribute('data-hass-dash-tracking')).toBe('true');
     });
 
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'false');
-
-    // Force re-render by updating store (bridge effect depends on state + flag)
+    // Force re-render by updating store.
     act(() => {
       useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
         position: { x: 4, y: 5 },
@@ -350,8 +347,9 @@ describe('TrackedDeviceMarkersBridge', () => {
     });
 
     await waitFor(() => {
-      expect(existing.getAttribute('data-hass-dash-tracking')).toBe(null);
-      expect(existing.getAttribute('transform')).toBe('translate(2 3)');
+      // viewBox 0 0 10 10 -> yRender = 10 - 5 = 5
+      expect(existing.getAttribute('data-hass-dash-tracking')).toBe('true');
+      expect(existing.getAttribute('transform')).toBe('translate(4 5)');
     });
   });
 
@@ -386,8 +384,6 @@ describe('TrackedDeviceMarkersBridge', () => {
       expect(existing.getAttribute('transform')).toBe('translate(1 8)');
     });
 
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'false');
-
     act(() => {
       useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
         position: { x: 4, y: 5 },
@@ -398,12 +394,13 @@ describe('TrackedDeviceMarkersBridge', () => {
     });
 
     await waitFor(() => {
-      expect(existing.getAttribute('data-hass-dash-tracking')).toBe(null);
-      expect(existing.getAttribute('transform')).toBe(null);
+      // viewBox 0 0 10 10 -> yRender = 10 - 5 = 5
+      expect(existing.getAttribute('data-hass-dash-tracking')).toBe('true');
+      expect(existing.getAttribute('transform')).toBe('translate(4 5)');
     });
   });
 
-  it('removes created tracking markers when tracking is disabled', async () => {
+  it('keeps created tracking markers updated on subsequent location changes', async () => {
     render(
       <>
         <FloorplanSvg />
@@ -429,8 +426,6 @@ describe('TrackedDeviceMarkersBridge', () => {
       expect(marker).toBeTruthy();
     });
 
-    vi.stubEnv('VITE_FEATURE_DEVICE_TRACKING', 'false');
-
     act(() => {
       useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
         position: { x: 4, y: 5 },
@@ -443,7 +438,8 @@ describe('TrackedDeviceMarkersBridge', () => {
       const marker = layer?.querySelector(
         'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
       );
-      expect(marker).toBeFalsy();
+      expect(marker).toBeTruthy();
+      expect(marker?.getAttribute('transform')).toBe('translate(4 5)');
     });
   });
 
@@ -509,8 +505,8 @@ describe('TrackedDeviceMarkersBridge', () => {
   });
 
   it('renders a dev-only debug label (xyz mode) when enabled', async () => {
-    vi.stubEnv('VITE_FEATURE_TRACKING_DEBUG_OVERLAY', 'true');
     vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'xyz');
+    window.history.replaceState({}, '', '/?debugOverlay');
 
     render(
       <>
@@ -548,8 +544,8 @@ describe('TrackedDeviceMarkersBridge', () => {
   });
 
   it('renders a dev-only debug label (geo mode) when enabled', async () => {
-    vi.stubEnv('VITE_FEATURE_TRACKING_DEBUG_OVERLAY', 'true');
     vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'geo');
+    window.history.replaceState({}, '', '/?debugOverlay');
 
     render(
       <>
@@ -588,8 +584,8 @@ describe('TrackedDeviceMarkersBridge', () => {
   });
 
   it('removes debug label when debug overlay is disabled', async () => {
-    vi.stubEnv('VITE_FEATURE_TRACKING_DEBUG_OVERLAY', 'true');
     vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'xyz');
+    window.history.replaceState({}, '', '/?debugOverlay');
 
     render(
       <>
@@ -617,7 +613,7 @@ describe('TrackedDeviceMarkersBridge', () => {
       expect(marker?.querySelector('text[data-hass-dash-tracking-debug="true"]')).toBeTruthy();
     });
 
-    vi.stubEnv('VITE_FEATURE_TRACKING_DEBUG_OVERLAY', 'false');
+    window.history.replaceState({}, '', '/');
 
     // Force effect by updating the store.
     act(() => {

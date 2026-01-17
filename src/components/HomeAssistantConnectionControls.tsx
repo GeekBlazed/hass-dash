@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 import { TYPES } from '../core/types';
-import { useFeatureFlag } from '../hooks/useFeatureFlag';
 import { useService } from '../hooks/useService';
 import type { IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
 import type {
@@ -27,7 +26,6 @@ type TestStatus =
   | { state: 'error'; message: string };
 
 export function HomeAssistantConnectionControls(): React.ReactElement | null {
-  const { isEnabled } = useFeatureFlag('HA_CONNECTION');
   const connectionConfig = useService<IHomeAssistantConnectionConfig>(
     TYPES.IHomeAssistantConnectionConfig
   );
@@ -46,8 +44,6 @@ export function HomeAssistantConnectionControls(): React.ReactElement | null {
 
   const currentValidation = connectionConfig.validate();
   const draftValidation = validateHomeAssistantConnectionConfig(draft);
-
-  if (!isEnabled) return null;
 
   const isDev = import.meta.env.DEV;
 

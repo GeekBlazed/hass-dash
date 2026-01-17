@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { container } from '../core/di-container';
 import { TYPES } from '../core/types';
-import { useFeatureFlags } from '../hooks/useFeatureFlag';
 import type { IEntityService } from '../interfaces/IEntityService';
 import type { IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
 import { useEntityStore } from '../stores/useEntityStore';
 import type { HaStateChangedEventData } from '../types/home-assistant';
-import { pageReloader } from '../utils/pageReloader';
 
 export function DebugPanel() {
-  const { flags, service } = useFeatureFlags();
-
   const homeAssistantClient = useMemo(
     () => container.get<IHomeAssistantClient>(TYPES.IHomeAssistantClient),
     []
@@ -38,20 +34,10 @@ export function DebugPanel() {
 
   const testLightEntityId = 'light.norad_corner_torch';
 
-  const handleToggle = (flag: string, currentState: boolean) => {
-    if (currentState) {
-      service.disable(flag);
-    } else {
-      service.enable(flag);
-    }
-    // Force re-render by causing a state update
-    pageReloader.reload();
-  };
-
   const isDevelopment = import.meta.env.DEV;
 
-  const showHaSmokeTest = Boolean(flags.HA_CONNECTION) && isDevelopment;
-  const showEntityDebug = Boolean(flags.ENTITY_DEBUG) && isDevelopment;
+  const showHaSmokeTest = isDevelopment;
+  const showEntityDebug = isDevelopment;
 
   const [entityDebugStatus, setEntityDebugStatus] = useState<
     | { state: 'idle' }
@@ -245,49 +231,15 @@ export function DebugPanel() {
       style={{ backgroundColor: 'blue' }}
     >
       <div className="mb-3 flex items-center gap-2">
-        <span className="text-2xl">🚩</span>
-        <h2 className="text-lg font-bold text-blue-900 dark:text-blue-100">Feature Flags</h2>
+        <span className="text-2xl">🛠️</span>
+        <h2 className="text-lg font-bold text-blue-900 dark:text-blue-100">Dev Tools</h2>
       </div>
 
       <div className="space-y-2">
-        {Object.entries(flags).length === 0 ? (
-          <p className="text-sm text-blue-700 dark:text-blue-300">No feature flags defined</p>
-        ) : (
-          Object.entries(flags).map(([name, enabled]) => (
-            <div
-              key={name}
-              className="flex items-center justify-between rounded bg-white p-2 dark:bg-gray-800"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{enabled ? '✅' : '❌'}</span>
-                <code className="font-mono text-sm text-gray-700 dark:text-gray-300">{name}</code>
-              </div>
-
-              {isDevelopment && (
-                <button
-                  onClick={() => handleToggle(name, enabled)}
-                  className="rounded bg-blue-500 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-                  aria-label={`Toggle ${name} flag`}
-                >
-                  Toggle
-                </button>
-              )}
-
-              {!isDevelopment && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {enabled ? 'Enabled' : 'Disabled'}
-                </span>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
-      {isDevelopment && (
-        <p className="mt-3 text-xs text-blue-600 dark:text-blue-400">
-          💡 Dev Mode: Toggle flags to test features. Changes persist in sessionStorage.
+        <p className="text-sm text-blue-700 dark:text-blue-300">
+          Enable this panel with <code>?debug</code> in dev.
         </p>
-      )}
+      </div>
 
       {showHaSmokeTest && (
         <div className="mt-4 rounded bg-white p-3 dark:bg-gray-800">

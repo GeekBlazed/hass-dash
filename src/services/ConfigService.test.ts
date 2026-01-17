@@ -38,35 +38,6 @@ describe('ConfigService', () => {
     });
   });
 
-  describe('isFeatureEnabled', () => {
-    it('should return false for disabled features', () => {
-      // Ensure this test is not affected by developer/local env files.
-      withStubbedEnv({ VITE_FEATURE_FLOOR_PLAN: 'false' }, (service) => {
-        expect(service.isFeatureEnabled('FLOOR_PLAN')).toBe(false);
-      });
-    });
-
-    it('should return false for non-existent features', () => {
-      withStubbedEnv({ VITE_FEATURE_NON_EXISTENT: 'false' }, (service) => {
-        expect(service.isFeatureEnabled('NON_EXISTENT')).toBe(false);
-      });
-    });
-
-    it('should handle feature names in any case', () => {
-      // Ensure this test is not affected by developer/local env files.
-      withStubbedEnv({ VITE_FEATURE_FLOOR_PLAN: 'false' }, (service) => {
-        expect(service.isFeatureEnabled('floor_plan')).toBe(false);
-        expect(service.isFeatureEnabled('FLOOR_PLAN')).toBe(false);
-      });
-    });
-
-    it('should return true when feature is enabled', () => {
-      withStubbedEnv({ VITE_FEATURE_TEST: 'true' }, (service) => {
-        expect(service.isFeatureEnabled('TEST')).toBe(true);
-      });
-    });
-  });
-
   describe('getConfig', () => {
     it('should return config value for existing key', () => {
       withStubbedEnv({ VITE_APP_VERSION: '1.2.3' }, (service) => {

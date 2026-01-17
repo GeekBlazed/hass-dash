@@ -2,15 +2,8 @@ import { render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TYPES } from '../../core/types';
-import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { useService } from '../../hooks/useService';
 import { HomeAssistantEntityStoreController } from './HomeAssistantEntityStoreController';
-
-vi.mock('../../hooks/useFeatureFlag', () => {
-  return {
-    useFeatureFlag: vi.fn(),
-  };
-});
 
 vi.mock('../../hooks/useService', () => {
   return {
@@ -72,7 +65,6 @@ vi.mock('../../stores/useHouseholdAreaEntityIndexStore', () => {
   };
 });
 
-const useFeatureFlagMock = vi.mocked(useFeatureFlag);
 const useServiceMock = vi.mocked(useService);
 
 describe('HomeAssistantEntityStoreController', () => {
@@ -82,7 +74,6 @@ describe('HomeAssistantEntityStoreController', () => {
     upsertMock.mockReset();
     setHouseholdEntityIdsMock.mockReset();
     setHouseholdAreaIndexMock.mockReset();
-    useFeatureFlagMock.mockReset();
     useServiceMock.mockReset();
   });
 
@@ -90,25 +81,7 @@ describe('HomeAssistantEntityStoreController', () => {
     vi.useRealTimers();
   });
 
-  it('does nothing when HA_CONNECTION flag is disabled', () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: false } as never);
-
-    const fetchStates = vi.fn();
-    const subscribeToStateChanges = vi.fn();
-    useServiceMock.mockReturnValue({ fetchStates, subscribeToStateChanges } as never);
-
-    render(<HomeAssistantEntityStoreController />);
-
-    expect(fetchStates).not.toHaveBeenCalled();
-    expect(subscribeToStateChanges).not.toHaveBeenCalled();
-    expect(upsertMock).not.toHaveBeenCalled();
-    expect(setHouseholdEntityIdsMock).not.toHaveBeenCalled();
-    expect(setHouseholdAreaIndexMock).not.toHaveBeenCalled();
-  });
-
   it('upserts only whitelisted entityIds from initial fetch', async () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true } as never);
-
     const fetchStates = vi.fn().mockResolvedValue([
       { entity_id: 'sensor.keep_me', state: '1', attributes: {} },
       { entity_id: 'sensor.ignore_me', state: '2', attributes: {} },
@@ -151,8 +124,6 @@ describe('HomeAssistantEntityStoreController', () => {
   });
 
   it('captures all entities by default (required for room overlays)', async () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true } as never);
-
     const fetchStates = vi.fn().mockResolvedValue([
       { entity_id: 'sensor.room1_temperature', state: '70', attributes: {} },
       { entity_id: 'sensor.room2_temperature', state: '71', attributes: {} },
@@ -220,8 +191,6 @@ describe('HomeAssistantEntityStoreController', () => {
   });
 
   it('logs a warning when initial fetch fails with Error', async () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true } as never);
-
     const fetchStates = vi.fn().mockRejectedValue(new Error('boom'));
     const subscribeToStateChanges = vi.fn().mockResolvedValue({
       unsubscribe: vi.fn().mockResolvedValue(undefined),
@@ -254,8 +223,6 @@ describe('HomeAssistantEntityStoreController', () => {
   });
 
   it('logs a warning when subscribe fails with a non-Error reason', async () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true } as never);
-
     const fetchStates = vi.fn().mockResolvedValue([]);
     const subscribeToStateChanges = vi.fn().mockRejectedValue('nope');
 
@@ -285,8 +252,6 @@ describe('HomeAssistantEntityStoreController', () => {
   });
 
   it('filters state_changed updates and unsubscribes on unmount', async () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true } as never);
-
     const fetchStates = vi.fn().mockResolvedValue([]);
 
     type StateChangedHandler = (next: {

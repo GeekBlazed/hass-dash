@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import { TYPES } from '../../../core/types';
 import type { FloorplanModel } from '../../../features/model/floorplan';
-import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import { useService } from '../../../hooks/useService';
 import type { IHomeAssistantClient } from '../../../interfaces/IHomeAssistantClient';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
@@ -263,7 +262,6 @@ const isLightingOverlayVisible = (activePanel: string | null): boolean => {
 
 export function HaRoomLightingOverlayBridge() {
   const haClient = useService<IHomeAssistantClient>(TYPES.IHomeAssistantClient);
-  const { isEnabled: haEnabled } = useFeatureFlag('HA_CONNECTION');
 
   const hasLoggedMountRef = useRef(false);
   const hasLoggedDebugListenersRef = useRef(false);
@@ -480,7 +478,7 @@ export function HaRoomLightingOverlayBridge() {
     const debugEvents = import.meta.env.DEV && (logLevel === 'debug' || debugViaQuery);
     const debugReason = debugViaQuery ? 'query' : logLevel === 'debug' ? 'env' : 'off';
 
-    delegatedRef.current.enabled = haEnabled;
+    delegatedRef.current.enabled = true;
 
     // Log mount once to avoid spamming when this effect re-runs frequently.
     if (!hasLoggedMountRef.current) {
@@ -680,23 +678,6 @@ export function HaRoomLightingOverlayBridge() {
       void invokeToggle(toggle);
     };
 
-    if (!haEnabled) {
-      lightsLayer.removeAttribute('data-managed-by');
-
-      // Remove only the HA-driven toggles that we created.
-      const existing = lightsLayer.querySelectorAll<SVGGElement>('g.light-toggle[data-hassdash]');
-      for (const el of existing) {
-        el.remove();
-      }
-
-      if (debugEvents) {
-        logger.debug('[lights] HA disabled; removed hassdash toggles:', existing.length);
-      }
-
-      detachDebugCapture();
-      return;
-    }
-
     lightsLayer.setAttribute('data-managed-by', 'react');
 
     // Ensure the lights layer is painted above other layers so it can receive clicks.
@@ -888,15 +869,7 @@ export function HaRoomLightingOverlayBridge() {
         rafId = null;
       }
     };
-  }, [
-    haEnabled,
-    haClient,
-    roomIndex,
-    entitiesById,
-    householdEntityIds,
-    activePanel,
-    optimisticSetState,
-  ]);
+  }, [haClient, roomIndex, entitiesById, householdEntityIds, activePanel, optimisticSetState]);
 
   return null;
 }
