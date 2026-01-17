@@ -653,9 +653,12 @@ export function TrackedDeviceMarkersBridge() {
 
     observer.observe(layer, { childList: true });
 
-    const nextDelayMs = true
-      ? getNextStaleCheckDelayMs(filteredLocationsByEntityId, nowMs, staleWarningMs, staleTimeoutMs)
-      : null;
+    const nextDelayMs = getNextStaleCheckDelayMs(
+      filteredLocationsByEntityId,
+      nowMs,
+      staleWarningMs,
+      staleTimeoutMs
+    );
 
     const timerId =
       nextDelayMs === null

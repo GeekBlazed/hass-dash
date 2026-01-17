@@ -5,6 +5,7 @@ import type {
   HaEntityState,
   HaEvent,
   HaRestServicesDomain,
+  HaTriggerEvent,
 } from '../types/home-assistant';
 import type { HomeAssistantConnectionConfig } from './IHomeAssistantConnectionConfig';
 
@@ -37,6 +38,17 @@ export interface IHomeAssistantClient {
   subscribeToEvents<TData>(
     eventType: string | null,
     handler: (event: HaEvent<TData>) => void
+  ): Promise<IHaSubscription>;
+
+  /**
+   * Optional: Subscribe to triggers via `subscribe_trigger`.
+   *
+   * This can be used to reduce event volume vs. subscribing to all `state_changed`
+   * and filtering client-side.
+   */
+  subscribeToTrigger?(
+    trigger: unknown,
+    handler: (event: HaTriggerEvent) => void
   ): Promise<IHaSubscription>;
 
   callService(params: HaCallServiceParams): Promise<HaCallServiceResult>;

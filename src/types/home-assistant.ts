@@ -113,6 +113,23 @@ export interface HaWsEventMessage<TEvent = HaEvent> {
   event: TEvent;
 }
 
+export interface HaTriggerStateChange {
+  platform: 'state' | string;
+  entity_id: HaEntityId;
+  from_state: HaEntityState | null;
+  to_state: HaEntityState | null;
+  for: unknown;
+  attribute: string | null;
+  description?: string;
+}
+
+export interface HaTriggerEvent {
+  variables: {
+    trigger: HaTriggerStateChange;
+  };
+  context: HaContext;
+}
+
 export interface HaWsPingMessage {
   id: number;
   type: 'ping';

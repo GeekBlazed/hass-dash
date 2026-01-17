@@ -26,6 +26,15 @@ describe('DebugPanel', () => {
     subscribeToStateChanges: vi.fn(),
   };
 
+  const mockWebSocketService = {
+    isConnected: vi.fn<() => boolean>().mockReturnValue(false),
+    subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
+    subscribeConnectionStatus: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
+    send: vi.fn(),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.removeItem('hass-dash:entities');
@@ -39,6 +48,7 @@ describe('DebugPanel', () => {
         return String(token);
       })();
 
+      if (tokenKey.includes('IWebSocketService')) return mockWebSocketService;
       if (tokenKey.includes('IEntityService')) return mockEntityService;
       return mockHaClient;
     });
@@ -48,6 +58,13 @@ describe('DebugPanel', () => {
     render(<DebugPanelModule.DebugPanel />);
     expect(screen.getByRole('heading', { name: /dev tools/i })).toBeInTheDocument();
     expect(screen.getByText(/enable this panel with/i)).toBeInTheDocument();
+  });
+
+  it('renders the WebSocket health section', () => {
+    render(<DebugPanelModule.DebugPanel />);
+    expect(screen.getByRole('heading', { name: /websocket health/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/websocket health/i)).toBeInTheDocument();
+    expect(screen.getByText(/rate \(last 10s\):/i)).toBeInTheDocument();
   });
 
   it('runs the Home Assistant connection smoke test', async () => {

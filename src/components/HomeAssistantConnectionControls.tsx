@@ -82,6 +82,9 @@ export function HomeAssistantConnectionControls(): React.ReactElement | null {
   const testConnection = async (): Promise<void> => {
     setTestStatus({ state: 'running' });
 
+    const wasConnected = homeAssistantClient.isConnected();
+    let connectedForTest = false;
+
     try {
       if (!draftValidation.isValid) {
         setTestStatus({
@@ -91,19 +94,30 @@ export function HomeAssistantConnectionControls(): React.ReactElement | null {
         return;
       }
 
-      // Avoid mutating global overrides during a connection test.
-      // In dev, prefer testing the draft values directly if supported by the client.
-      if (isDev && homeAssistantClient.connectWithConfig) {
-        await homeAssistantClient.connectWithConfig(draft);
+      if (wasConnected) {
+        // Do not disrupt the shared, in-use HA connection.
+        // We can still validate that the current connection is responsive.
+        await homeAssistantClient.getServices();
       } else {
-        await homeAssistantClient.connect();
+        connectedForTest = true;
+
+        // Avoid mutating global overrides during a connection test.
+        // In dev, prefer testing the draft values directly if supported by the client.
+        if (isDev && homeAssistantClient.connectWithConfig) {
+          await homeAssistantClient.connectWithConfig(draft);
+        } else {
+          await homeAssistantClient.connect();
+        }
       }
+
       setTestStatus({ state: 'success' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setTestStatus({ state: 'error', message });
     } finally {
-      homeAssistantClient.disconnect();
+      if (connectedForTest) {
+        homeAssistantClient.disconnect();
+      }
     }
   };
 

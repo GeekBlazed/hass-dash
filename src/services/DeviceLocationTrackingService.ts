@@ -89,6 +89,11 @@ export class DeviceLocationTrackingService {
   }
 
   private handleEntityState(next: HaEntityState): void {
+    // Device tracking is intentionally limited to `device_tracker.*` entities.
+    // Returning early here avoids doing attribute parsing work for unrelated
+    // high-frequency sensors (which can cause UI thrash and WS backpressure).
+    if (!next.entity_id.startsWith('device_tracker.')) return;
+
     if (next.entity_id.startsWith('device_tracker.') && isAwayState(next.state)) {
       this.store.remove?.(next.entity_id);
       this.throttleByEntityId.delete(next.entity_id);

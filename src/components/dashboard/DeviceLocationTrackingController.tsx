@@ -106,6 +106,8 @@ export function DeviceLocationTrackingController({
 
   useEffect(() => {
     let subscription: { unsubscribe: () => Promise<void> } | null = null;
+    let cancelled = false;
+    let retryTimerId: number | null = null;
 
     const recomputeAllowlistAndPrune = (): void => {
       const nextAllowed = new Set<string>();
@@ -251,7 +253,28 @@ export function DeviceLocationTrackingController({
         subscription = await entityService.subscribeToStateChanges(handleStateChange);
       } catch (error: unknown) {
         if (!import.meta.env.DEV) return;
+        if (cancelled) return;
         const message = error instanceof Error ? error.message : String(error);
+
+        const normalized = message.trim().toLowerCase();
+        const isTransientDisconnect =
+          normalized.includes('websocket disconnected') ||
+          normalized.includes('websocket is not connected') ||
+          normalized.includes('home assistant client is not connected');
+
+        if (isTransientDisconnect) {
+          // During Vite HMR / React StrictMode, effects can be torn down and replayed while
+          // the shared HA WebSocket is reconnecting. This can transiently fail get_states.
+          // Avoid warning spam and retry shortly while the effect is still active.
+          if (retryTimerId === null) {
+            retryTimerId = window.setTimeout(() => {
+              retryTimerId = null;
+              if (cancelled) return;
+              void start();
+            }, 500);
+          }
+          return;
+        }
         logger.warn(`Failed to subscribe to person state changes: ${message}`);
       }
     };
@@ -259,6 +282,11 @@ export function DeviceLocationTrackingController({
     void start();
 
     return () => {
+      cancelled = true;
+      if (retryTimerId !== null) {
+        window.clearTimeout(retryTimerId);
+        retryTimerId = null;
+      }
       const sub = subscription;
       subscription = null;
       void sub?.unsubscribe();

@@ -12,6 +12,12 @@ type HaLabelRegistryEntry = {
 
 type HaEntityRegistryEntry = {
   entity_id?: unknown;
+  device_id?: unknown;
+  labels?: unknown;
+};
+
+type HaDeviceRegistryEntry = {
+  id?: unknown;
   labels?: unknown;
 };
 
@@ -70,6 +76,7 @@ export class HomeAssistantEntityLabelService implements IEntityLabelService {
 
     const labelRegistry = (await this.haClient.getLabelRegistry?.()) ?? [];
     const entityRegistry = (await this.haClient.getEntityRegistry?.()) ?? [];
+    const deviceRegistry = (await this.haClient.getDeviceRegistry?.()) ?? [];
 
     const matchingLabelIds = new Set<string>();
     for (const entry of labelRegistry as HaLabelRegistryEntry[]) {
@@ -85,10 +92,27 @@ export class HomeAssistantEntityLabelService implements IEntityLabelService {
       return new Set<HaEntityId>();
     }
 
+    const labeledDeviceIds = new Set<string>();
+    for (const entry of deviceRegistry as HaDeviceRegistryEntry[]) {
+      const deviceId = entry?.id;
+      if (!isNonEmptyString(deviceId)) continue;
+
+      const labels = asStringArray(entry?.labels);
+      if (labels.some((l) => matchingLabelIds.has(l))) {
+        labeledDeviceIds.add(deviceId);
+      }
+    }
+
     const ids = new Set<HaEntityId>();
     for (const entry of entityRegistry as HaEntityRegistryEntry[]) {
       const entityId = entry?.entity_id;
       if (!isNonEmptyString(entityId)) continue;
+
+      const deviceId = entry?.device_id;
+      if (isNonEmptyString(deviceId) && labeledDeviceIds.has(deviceId)) {
+        ids.add(entityId as HaEntityId);
+        continue;
+      }
 
       const labels = asStringArray(entry?.labels);
       if (labels.some((l) => matchingLabelIds.has(l))) {

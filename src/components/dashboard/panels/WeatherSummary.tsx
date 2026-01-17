@@ -88,10 +88,14 @@ const formatHumidity = (value: number | undefined): string => {
 
 export function WeatherSummary() {
   const entitiesById = useEntityStore((s) => s.entitiesById);
+  const lastUpdatedAt = useEntityStore((s) => s.lastUpdatedAt);
   const entityLabelService = useService<IEntityLabelService>(TYPES.IEntityLabelService);
   const [weatherEntityIds, setWeatherEntityIds] = useState<ReadonlySet<string> | null>(null);
 
   useEffect(() => {
+    // If we already resolved the label ids (including an empty set), don't refetch.
+    if (weatherEntityIds !== null) return;
+
     let isCancelled = false;
 
     const run = async () => {
@@ -101,7 +105,8 @@ export function WeatherSummary() {
         setWeatherEntityIds(ids);
       } catch {
         if (isCancelled) return;
-        setWeatherEntityIds(new Set());
+        // Keep as null so we can retry later once HA is connected.
+        setWeatherEntityIds(null);
       }
     };
 
@@ -110,7 +115,9 @@ export function WeatherSummary() {
     return () => {
       isCancelled = true;
     };
-  }, [entityLabelService]);
+    // When the entity store starts receiving updates, HA is very likely connected,
+    // so this is a good time to retry label resolution.
+  }, [entityLabelService, lastUpdatedAt, weatherEntityIds]);
 
   const { temperatureText, humidityText } = useMemo(() => {
     const labeledIds = weatherEntityIds;
