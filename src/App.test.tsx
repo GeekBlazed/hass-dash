@@ -14,10 +14,12 @@ async function renderAndSettle(ui: ReactElement): Promise<void> {
 describe('App', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/');
+    window.sessionStorage.removeItem('hass-dash:devtools');
   });
 
   afterEach(() => {
     window.history.replaceState({}, '', '/');
+    window.sessionStorage.removeItem('hass-dash:devtools');
     vi.unstubAllEnvs();
   });
 

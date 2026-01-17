@@ -57,7 +57,7 @@ describe('DebugPanel', () => {
   it('renders the dev tools header and help text', () => {
     render(<DebugPanelModule.DebugPanel />);
     expect(screen.getByRole('heading', { name: /dev tools/i })).toBeInTheDocument();
-    expect(screen.getByText(/enable this panel with/i)).toBeInTheDocument();
+    expect(screen.getByText(/toggle this panel with/i)).toBeInTheDocument();
   });
 
   it('renders the WebSocket health section', () => {

@@ -317,7 +317,8 @@ export function DebugPanel() {
 
       <div className="space-y-2">
         <p className="text-sm text-blue-700 dark:text-blue-300">
-          Enable this panel with <code>?debug</code> in dev.
+          Toggle this panel with the <span className="font-semibold">cog</span> in the sidebar
+          header, or use <code>?debug</code> in dev.
         </p>
       </div>
 
