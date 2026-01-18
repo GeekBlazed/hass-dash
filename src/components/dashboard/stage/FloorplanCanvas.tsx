@@ -1,10 +1,22 @@
+import { Suspense, lazy, useMemo } from 'react';
+
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { FloorplanEmptyOverlay } from './FloorplanEmptyOverlay';
 import { FloorplanSvg } from './FloorplanSvg';
 import { TrackedDeviceMarkersBridge } from './TrackedDeviceMarkersBridge';
 
+const KonvaFloorplanCanvas = lazy(() => import('./KonvaFloorplanCanvas'));
+
+const shouldUseKonva = (): boolean => {
+  if (!import.meta.env.DEV) return false;
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('konva') === '1';
+};
+
 export function FloorplanCanvas({ onRetry }: { onRetry: () => void }) {
   const floorplan = useDashboardStore((s) => s.floorplan);
+
+  const useKonva = useMemo(() => shouldUseKonva(), []);
 
   const isHidden = floorplan.state !== 'error';
   const message = floorplan.errorMessage ?? 'Failed to load floorplan.';
@@ -12,8 +24,16 @@ export function FloorplanCanvas({ onRetry }: { onRetry: () => void }) {
   return (
     <>
       <FloorplanEmptyOverlay isHidden={isHidden} message={message} onRetry={onRetry} />
-      <FloorplanSvg />
-      <TrackedDeviceMarkersBridge />
+      {useKonva ? (
+        <Suspense fallback={null}>
+          <KonvaFloorplanCanvas />
+        </Suspense>
+      ) : (
+        <>
+          <FloorplanSvg />
+          <TrackedDeviceMarkersBridge />
+        </>
+      )}
     </>
   );
 }

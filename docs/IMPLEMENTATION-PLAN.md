@@ -545,12 +545,11 @@ Feature flags were implemented early for CI/CD, then removed once the app reache
 
 **Tasks:**
 
-- [ ] Install Konva + react-konva
-- [ ] Create FloorPlanCanvas component
-- [ ] Implement pan/zoom controls
-- [ ] Add grid background (optional)
-- [ ] Add keyboard shortcuts (zoom in/out)
-- [ ] **Acceptance:** Canvas renders, user can pan and zoom
+- ✅ Install Konva + react-konva
+- ✅ Create Konva canvas component (dev-only toggle: `?konva=1`)
+- ✅ Implement pan/zoom controls
+- ✅ Add keyboard shortcuts (arrows pan, +/- zoom, `0` reset)
+- ✅ **Acceptance:** Canvas renders, user can pan and zoom
 
 **Feature Flags:** Removed
 
@@ -564,13 +563,12 @@ Feature flags were implemented early for CI/CD, then removed once the app reache
 
 **Tasks:**
 
-- [ ] Create Room component (Konva shapes)
-- [ ] Parse floor plan JSON
-- [ ] Render rooms at correct positions/sizes
-- [ ] Add room labels
-- [ ] Add room hover effects
-- [ ] Add room click handler (log for now)
-- [ ] **Acceptance:** Rooms render correctly, interactive
+- ✅ Create Room component (Konva shapes)
+- ✅ Render rooms from floorplan model
+- ✅ Add room labels
+- ✅ Add room hover effects
+- ✅ Add room click handler (log for now)
+- ✅ **Acceptance:** Rooms render correctly, interactive
 
 **Feature Flags:** Removed
 
