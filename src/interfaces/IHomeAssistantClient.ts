@@ -5,6 +5,7 @@ import type {
   HaEntityState,
   HaEvent,
   HaRestServicesDomain,
+  HaSubscribeTriggerConfig,
   HaTriggerEvent,
 } from '../types/home-assistant';
 import type { HomeAssistantConnectionConfig } from './IHomeAssistantConnectionConfig';
@@ -47,7 +48,7 @@ export interface IHomeAssistantClient {
    * and filtering client-side.
    */
   subscribeToTrigger?(
-    trigger: unknown,
+    trigger: HaSubscribeTriggerConfig,
     handler: (event: HaTriggerEvent) => void
   ): Promise<IHaSubscription>;
 

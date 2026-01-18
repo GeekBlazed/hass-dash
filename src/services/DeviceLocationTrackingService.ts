@@ -94,7 +94,7 @@ export class DeviceLocationTrackingService {
     // high-frequency sensors (which can cause UI thrash and WS backpressure).
     if (!next.entity_id.startsWith('device_tracker.')) return;
 
-    if (next.entity_id.startsWith('device_tracker.') && isAwayState(next.state)) {
+    if (isAwayState(next.state)) {
       this.store.remove?.(next.entity_id);
       this.throttleByEntityId.delete(next.entity_id);
       this.lastSeenMsByEntityId.delete(next.entity_id);

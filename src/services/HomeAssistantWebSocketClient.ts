@@ -13,6 +13,7 @@ import type {
   HaEntityState,
   HaEvent,
   HaRestServicesDomain,
+  HaSubscribeTriggerConfig,
   HaTriggerEvent,
   HaWsEventMessage,
   HaWsResultMessage,
@@ -34,7 +35,7 @@ type SubscriptionRecord =
     }
   | {
       kind: 'trigger';
-      trigger: unknown;
+      trigger: HaSubscribeTriggerConfig;
       handler: SubscriptionHandler;
     };
 
@@ -190,7 +191,7 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
   }
 
   async subscribeToTrigger(
-    trigger: unknown,
+    trigger: HaSubscribeTriggerConfig,
     handler: (event: HaTriggerEvent) => void
   ): Promise<IHaSubscription> {
     const subscriptionId = this.allocateId();

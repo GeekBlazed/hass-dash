@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Layer, Line, Rect, Stage, Text } from 'react-konva';
+import { Group, Layer, Line, Rect, Stage, Text } from 'react-konva';
 
 import { getDefaultFloor } from '../../../features/model/floorplan';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
@@ -292,21 +292,20 @@ export default function KonvaFloorplanCanvas() {
             const [cx, cy] = centroid(room.points);
 
             return (
-              <Line
-                key={room.id}
-                points={flattenPoints(room.points)}
-                closed
-                fill={isHovered ? '#1a1713' : '#121212'}
-                stroke={isHovered ? '#ffc97d' : 'rgba(255, 255, 255, 0.10)'}
-                strokeWidth={0.12}
-                onMouseEnter={() => setHoveredRoomId(room.id)}
-                onMouseLeave={() => setHoveredRoomId((prev) => (prev === room.id ? null : prev))}
-                onClick={() => {
-                  // Iteration 3.3: click handler is log-only for now.
-                  // eslint-disable-next-line no-console
-                  console.log('Room clicked', room.id, room.name);
-                }}
-              >
+              <Group key={room.id}>
+                <Line
+                  points={flattenPoints(room.points)}
+                  closed
+                  fill={isHovered ? '#1a1713' : '#121212'}
+                  stroke={isHovered ? '#ffc97d' : 'rgba(255, 255, 255, 0.10)'}
+                  strokeWidth={0.12}
+                  onMouseEnter={() => setHoveredRoomId(room.id)}
+                  onMouseLeave={() => setHoveredRoomId((prev) => (prev === room.id ? null : prev))}
+                  onClick={() => {
+                    // Iteration 3.3: click handler is log-only for now.
+                    console.log('Room clicked', room.id, room.name);
+                  }}
+                />
                 <Text
                   x={cx}
                   y={cy}
@@ -317,7 +316,7 @@ export default function KonvaFloorplanCanvas() {
                   offsetY={0.35}
                   listening={false}
                 />
-              </Line>
+              </Group>
             );
           })}
 

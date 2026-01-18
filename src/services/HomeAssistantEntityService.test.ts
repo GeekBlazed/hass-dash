@@ -195,6 +195,7 @@ describe('HomeAssistantEntityService', () => {
     await service.subscribeToStateChangesFiltered(['sensor.keep_me'], handler);
 
     expect(ha.subscribeToTrigger).toHaveBeenCalledTimes(1);
+    expect(ha.subscribeToTrigger).toHaveBeenCalledWith(expect.any(Array), expect.any(Function));
     expect(handler).toHaveBeenCalledWith(expect.objectContaining({ entity_id: 'sensor.keep_me' }));
   });
 

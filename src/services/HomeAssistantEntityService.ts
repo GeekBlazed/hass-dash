@@ -6,6 +6,7 @@ import type { IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
 import type {
   HaEntityState,
   HaStateChangedEventData,
+  HaSubscribeTriggerConfig,
   HaTriggerEvent,
 } from '../types/home-assistant';
 
@@ -174,7 +175,7 @@ export class HomeAssistantEntityService implements IEntityService {
       });
     }
 
-    const triggers = entityIds.map((entityId) => ({
+    const triggerConfig: HaSubscribeTriggerConfig = entityIds.map((entityId) => ({
       platform: 'state',
       entity_id: entityId,
     }));
@@ -184,7 +185,7 @@ export class HomeAssistantEntityService implements IEntityService {
         try {
           await this.ensureConnected();
 
-          return await this.haClient.subscribeToTrigger(triggers, (event: HaTriggerEvent) => {
+          return await this.haClient.subscribeToTrigger(triggerConfig, (event: HaTriggerEvent) => {
             const next = event.variables?.trigger?.to_state;
             if (!next) return;
             handler(next);
