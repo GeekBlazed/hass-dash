@@ -1,4 +1,5 @@
 import { useDevToolsStore } from '../../../stores/useDevToolsStore';
+import { PwaInstallButton } from '../../pwa/PwaInstallButton';
 
 export function BrandHeader() {
   const isDevelopment = import.meta.env.DEV;
@@ -28,6 +29,7 @@ export function BrandHeader() {
         </svg>
       )}
       <div className="title">Home</div>
+      <PwaInstallButton />
     </div>
   );
 }

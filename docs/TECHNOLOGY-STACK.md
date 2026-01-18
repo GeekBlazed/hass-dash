@@ -1,4 +1,5 @@
 # Technology Stack Recommendations
+
 <!-- markdownlint-disable MD036 MD060 -->
 
 **Project:** Home Assistant Dashboard (hass-dash)  
@@ -78,7 +79,8 @@ import { HomeAssistantWeatherService } from './services/HomeAssistantWeatherServ
 
 const container = new Container();
 
-container.bind<IWeatherService>('IWeatherService')
+container
+  .bind<IWeatherService>('IWeatherService')
   .to(HomeAssistantWeatherService)
   .inSingletonScope();
 
@@ -130,20 +132,23 @@ export const useEntityStore = create<EntityState>()(
   persist(
     immer((set) => ({
       entities: new Map(),
-      updateEntity: (id, data) => set((state) => {
-        const entity = state.entities.get(id);
-        if (entity) {
-          state.entities.set(id, { ...entity, ...data });
-        }
-      }),
-      clearStaleEntities: () => set((state) => {
-        const now = Date.now();
-        for (const [id, entity] of state.entities) {
-          if (now - entity.lastUpdate > 300000) { // 5 minutes
-            state.entities.delete(id);
+      updateEntity: (id, data) =>
+        set((state) => {
+          const entity = state.entities.get(id);
+          if (entity) {
+            state.entities.set(id, { ...entity, ...data });
           }
-        }
-      }),
+        }),
+      clearStaleEntities: () =>
+        set((state) => {
+          const now = Date.now();
+          for (const [id, entity] of state.entities) {
+            if (now - entity.lastUpdate > 300000) {
+              // 5 minutes
+              state.entities.delete(id);
+            }
+          }
+        }),
     })),
     { name: 'entity-cache' }
   )
@@ -191,10 +196,10 @@ interface FloorPlanProps {
   activeOverlays: string[];
 }
 
-export const FloorPlan: React.FC<FloorPlanProps> = ({ 
-  rooms, 
-  devices, 
-  activeOverlays 
+export const FloorPlan: React.FC<FloorPlanProps> = ({
+  rooms,
+  devices,
+  activeOverlays
 }) => {
   return (
     <Stage width={window.innerWidth} height={window.innerHeight}>
@@ -212,7 +217,7 @@ export const FloorPlan: React.FC<FloorPlanProps> = ({
           />
         ))}
       </Layer>
-      
+
       {activeOverlays.includes('devices') && (
         <Layer name="devices">
           {devices.map(device => (
@@ -258,7 +263,6 @@ export const FloorPlan: React.FC<FloorPlanProps> = ({
   - ARIA attributes built-in
   - Composable and customizable
   - Small bundle impact (tree-shakeable)
-  
 - **Tailwind CSS:**
   - Utility-first CSS for rapid development
   - Excellent dark mode support
@@ -387,13 +391,13 @@ describe('HomeAssistantWeatherService', () => {
     const mockClient: IHomeAssistantClient = {
       getState: vi.fn().mockResolvedValue({
         state: '72',
-        attributes: { unit_of_measurement: '°F' }
-      })
+        attributes: { unit_of_measurement: '°F' },
+      }),
     };
-    
+
     const service = new HomeAssistantWeatherService(mockClient);
     const weather = await service.getCurrentWeather();
-    
+
     expect(weather.temperature).toBe(72);
     expect(mockClient.getState).toHaveBeenCalledWith('weather.home');
   });
@@ -439,18 +443,7 @@ export default defineConfig({
         short_name: 'HassDash',
         description: 'Visual companion app for Home Assistant',
         theme_color: '#3f51b5',
-        icons: [
-          {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-          },
-        ],
+        icons: [],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
@@ -501,9 +494,7 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
   private readonly maxReconnectDelay = 30000;
   private messageId = 1;
 
-  constructor(
-    @inject('IConnectionConfig') private config: IConnectionConfig
-  ) {}
+  constructor(@inject('IConnectionConfig') private config: IConnectionConfig) {}
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -528,10 +519,7 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
       this.ws.onclose = () => {
         console.log('WebSocket closed, reconnecting...');
         setTimeout(() => {
-          this.reconnectDelay = Math.min(
-            this.reconnectDelay * 2,
-            this.maxReconnectDelay
-          );
+          this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay);
           this.connect();
         }, this.reconnectDelay);
       };
@@ -547,10 +535,12 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
 
   send(message: unknown): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        id: this.messageId++,
-        ...message,
-      }));
+      this.ws.send(
+        JSON.stringify({
+          id: this.messageId++,
+          ...message,
+        })
+      );
     }
   }
 
@@ -594,9 +584,7 @@ import { IAuthService } from '../interfaces/IAuthService';
 export class HomeAssistantHttpClient implements IHttpClient {
   private client: AxiosInstance;
 
-  constructor(
-    @inject('IAuthService') private authService: IAuthService
-  ) {
+  constructor(@inject('IAuthService') private authService: IAuthService) {
     this.client = axios.create({
       baseURL: process.env.VITE_HA_BASE_URL,
       timeout: 10000,
@@ -714,10 +702,7 @@ npx husky install
 ```json
 {
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ]
+    "*.{ts,tsx}": ["eslint --fix", "prettier --write"]
   }
 }
 ```
@@ -833,7 +818,7 @@ export interface DevicePlacement {
   "name": "My Home",
   "geolocation": {
     "latitude": 40.7128,
-    "longitude": -74.0060,
+    "longitude": -74.006,
     "altitude": 10
   },
   "floors": [
@@ -1098,20 +1083,20 @@ hass-dash/
 
 ## Summary
 
-| Category | Technology | Rationale |
-|----------|-----------|-----------|
-| **Framework** | React 18+ | Best ecosystem, TypeScript support, DI-friendly |
-| **Build Tool** | Vite 5+ | Fast, modern, great DX, PWA support |
-| **DI Container** | InversifyJS | Full IoC, SOLID enforcement |
-| **State Management** | Zustand + Immer | Simple, performant, TypeScript-friendly |
-| **2D Visualization** | Konva.js | Canvas-based, interactive, performant |
-| **UI Components** | Radix UI + Tailwind | Accessible, customizable, modern |
-| **Testing** | Vitest + RTL + Playwright | Fast, comprehensive, reliable |
-| **PWA** | Vite PWA Plugin | Zero-config, Workbox integration |
-| **HTTP** | Axios | Interceptors, TypeScript support |
-| **WebSocket** | Native + Custom | Full control, no overhead |
-| **Package Manager** | pnpm | Fast, efficient, strict |
-| **Code Quality** | ESLint + Prettier + Husky | Consistent, automated |
+| Category             | Technology                | Rationale                                       |
+| -------------------- | ------------------------- | ----------------------------------------------- |
+| **Framework**        | React 18+                 | Best ecosystem, TypeScript support, DI-friendly |
+| **Build Tool**       | Vite 5+                   | Fast, modern, great DX, PWA support             |
+| **DI Container**     | InversifyJS               | Full IoC, SOLID enforcement                     |
+| **State Management** | Zustand + Immer           | Simple, performant, TypeScript-friendly         |
+| **2D Visualization** | Konva.js                  | Canvas-based, interactive, performant           |
+| **UI Components**    | Radix UI + Tailwind       | Accessible, customizable, modern                |
+| **Testing**          | Vitest + RTL + Playwright | Fast, comprehensive, reliable                   |
+| **PWA**              | Vite PWA Plugin           | Zero-config, Workbox integration                |
+| **HTTP**             | Axios                     | Interceptors, TypeScript support                |
+| **WebSocket**        | Native + Custom           | Full control, no overhead                       |
+| **Package Manager**  | pnpm                      | Fast, efficient, strict                         |
+| **Code Quality**     | ESLint + Prettier + Husky | Consistent, automated                           |
 
 ---
 

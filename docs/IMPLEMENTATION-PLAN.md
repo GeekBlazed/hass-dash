@@ -701,12 +701,12 @@ single-floor floorplan + overlays experience is stable.
 
 **Tasks:**
 
-- [ ] Configure Vite PWA plugin
-- [ ] Create web manifest
-- [ ] Add app icons (all sizes)
-- [ ] Configure service worker
-- [ ] Add install prompt
-- [ ] **Acceptance:** App can be installed on mobile/desktop
+- ✅ Configure Vite PWA plugin
+- ✅ Create web manifest
+- ✅ Add app icons (all sizes)
+- ✅ Configure service worker
+- ✅ Add install prompt
+- ✅ **Acceptance:** App can be installed on mobile/desktop
 
 **Feature Flags:** None (core feature)
 
