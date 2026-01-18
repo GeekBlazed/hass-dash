@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { TYPES } from '../../../core/types';
 import type { FloorplanModel } from '../../../features/model/floorplan';
 import { useService } from '../../../hooks/useService';
-import type { IHomeAssistantClient } from '../../../interfaces/IHomeAssistantClient';
+import type { ILightService } from '../../../interfaces/ILightService';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityId, HaEntityState } from '../../../types/home-assistant';
@@ -255,13 +255,8 @@ const computeRoomLightGroups = (
   return groups;
 };
 
-const isLightingOverlayVisible = (activePanel: string | null): boolean => {
-  // light toggles only show when lighting panel is active.
-  return activePanel === 'lighting';
-};
-
 export function HaRoomLightingOverlayBridge() {
-  const haClient = useService<IHomeAssistantClient>(TYPES.IHomeAssistantClient);
+  const lightService = useService<ILightService>(TYPES.ILightService);
 
   const hasLoggedMountRef = useRef(false);
   const hasLoggedDebugListenersRef = useRef(false);
@@ -283,7 +278,7 @@ export function HaRoomLightingOverlayBridge() {
   const hasInstalledDelegatedListenersRef = useRef(false);
 
   const floorplanModel = useDashboardStore((s) => s.floorplan?.model ?? null);
-  const activePanel = useDashboardStore((s) => s.activePanel);
+  const isOverlayVisible = useDashboardStore((s) => s.overlays.lighting);
 
   const entitiesById = useEntityStore((s) => s.entitiesById);
   const householdEntityIds = useEntityStore((s) => s.householdEntityIds);
@@ -478,7 +473,7 @@ export function HaRoomLightingOverlayBridge() {
     const debugEvents = import.meta.env.DEV && (logLevel === 'debug' || debugViaQuery);
     const debugReason = debugViaQuery ? 'query' : logLevel === 'debug' ? 'env' : 'off';
 
-    delegatedRef.current.enabled = true;
+    delegatedRef.current.enabled = isOverlayVisible;
 
     // Log mount once to avoid spamming when this effect re-runs frequently.
     if (!hasLoggedMountRef.current) {
@@ -645,17 +640,11 @@ export function HaRoomLightingOverlayBridge() {
       }
 
       try {
-        await haClient.connect();
-        await haClient.callService({
-          domain: 'light',
-          service,
-          service_data: {
-            entity_id: entityIds,
-          },
-          target: {
-            entity_id: entityIds,
-          },
-        });
+        if (service === 'turn_on') {
+          await lightService.turnOn(entityIds);
+        } else {
+          await lightService.turnOff(entityIds);
+        }
       } catch (error: unknown) {
         // Rollback the optimistic UI/store update.
         toggle.classList.toggle('is-on', wasOn);
@@ -707,7 +696,7 @@ export function HaRoomLightingOverlayBridge() {
       entitiesById,
       householdEntityIds
     );
-    const visible = isLightingOverlayVisible(activePanel);
+    const visible = isOverlayVisible;
 
     if (debugEvents) {
       logger.debug(
@@ -869,7 +858,14 @@ export function HaRoomLightingOverlayBridge() {
         rafId = null;
       }
     };
-  }, [haClient, roomIndex, entitiesById, householdEntityIds, activePanel, optimisticSetState]);
+  }, [
+    lightService,
+    roomIndex,
+    entitiesById,
+    householdEntityIds,
+    isOverlayVisible,
+    optimisticSetState,
+  ]);
 
   return null;
 }

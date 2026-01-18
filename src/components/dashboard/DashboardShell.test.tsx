@@ -28,6 +28,10 @@ vi.mock('./HaLightHotwireBridge', () => ({
   HaLightHotwireBridge: () => null,
 }));
 
+vi.mock('./ConnectivityController', () => ({
+  ConnectivityController: () => null,
+}));
+
 vi.mock('./HaAreaClimateOverlayBridge', () => ({
   HaAreaClimateOverlayBridge: () => null,
 }));

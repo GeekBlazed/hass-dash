@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, vi } from 'vitest';
 
+// Vitest DOM environments (jsdom/happy-dom) don't reliably provide IndexedDB.
+// We use fake-indexeddb so persisted state + offline queues can be tested.
+if (typeof indexedDB === 'undefined') {
+  await import('fake-indexeddb/auto');
+}
+
 // Keep test output readable by default. Must run before modules under test
 // create their (often module-scoped) loggers.
 vi.stubEnv('VITE_LOG_LEVEL', 'silent');
@@ -91,7 +97,7 @@ const ensureStorage = (key: 'localStorage' | 'sessionStorage'): void => {
   });
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   // Reset env stubs between tests, but keep logs quiet by default.
   vi.unstubAllEnvs();
   vi.stubEnv('VITE_LOG_LEVEL', 'silent');
@@ -103,6 +109,10 @@ beforeEach(() => {
 
   window.localStorage.clear();
   window.sessionStorage.clear();
+
+  const { idbKvClear, idbQueueClear } = await import('../utils/indexedDb');
+  await idbKvClear();
+  await idbQueueClear();
 });
 
 // Cleanup after each test

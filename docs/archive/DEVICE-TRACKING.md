@@ -146,24 +146,6 @@ Minimum confidence threshold (strict >):
   - default: `69`
   - behavior: accept only when `confidence > minConfidence`
 
-### Dev-only debug overlay (next to markers)
-
-Enable the debug overlay label:
-
-- `VITE_FEATURE_TRACKING_DEBUG_OVERLAY=true`
-
-Mode selector:
-
-- `VITE_TRACKING_DEBUG_OVERLAY_MODE=xyz` or `geo`
-  - file: `src/features/tracking/trackingDebugOverlayConfig.ts`
-  - reader: `getTrackingDebugOverlayMode(): 'xyz' | 'geo'`
-  - note: inline comments in `.env` are tolerated (everything after `#` or `;` is ignored)
-
-Production guard:
-
-- The overlay is intentionally disabled in production builds:
-  - `showDebugOverlay = debugOverlayFlagEnabled && !import.meta.env.PROD`
-
 ---
 
 ## Coordinate System & Rendering Details

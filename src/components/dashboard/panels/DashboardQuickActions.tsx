@@ -3,9 +3,29 @@ import { useDashboardStore } from '../../../stores/useDashboardStore';
 export function DashboardQuickActions() {
   const activePanel = useDashboardStore((state) => state.activePanel);
   const setActivePanel = useDashboardStore((state) => state.setActivePanel);
+  const setOverlayEnabled = useDashboardStore((state) => state.setOverlayEnabled);
 
   const togglePanel = (panel: Exclude<typeof activePanel, null>) => {
-    setActivePanel(activePanel === panel ? null : panel);
+    const isClosing = activePanel === panel;
+    const nextPanel = isClosing ? null : panel;
+    setActivePanel(nextPanel);
+
+    // Prototype parity: quick actions drive which overlay is visible.
+    // Lighting and climate are mutually exclusive on the map.
+    if (panel === 'lighting') {
+      if (isClosing) {
+        setOverlayEnabled('lighting', false);
+        setOverlayEnabled('climate', true);
+      } else {
+        setOverlayEnabled('lighting', true);
+        setOverlayEnabled('climate', false);
+      }
+    }
+
+    if (panel === 'climate') {
+      setOverlayEnabled('lighting', false);
+      setOverlayEnabled('climate', true);
+    }
   };
 
   return (

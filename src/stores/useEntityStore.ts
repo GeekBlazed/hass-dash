@@ -1,8 +1,9 @@
 import { produce } from 'immer';
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { createJSONStorage, devtools, persist } from 'zustand/middleware';
 
 import type { HaEntityState } from '../types/home-assistant';
+import { createIndexedDbStateStorage } from '../utils/indexedDbZustandStorage';
 
 const MAX_PERSISTED_ENTITIES = 250;
 
@@ -113,6 +114,7 @@ export const useEntityStore = create<EntityStateStore>()(
       {
         name: 'hass-dash:entities',
         version: 1,
+        storage: createJSONStorage(() => createIndexedDbStateStorage()),
         partialize: (state) => ({
           entitiesById: limitPersistedEntities(state.entitiesById),
           lastUpdatedAt: state.lastUpdatedAt,

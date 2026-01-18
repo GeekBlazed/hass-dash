@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 
 import { TYPES } from '../../../core/types';
 import { useService } from '../../../hooks/useService';
-import type { IHomeAssistantClient } from '../../../interfaces/IHomeAssistantClient';
+import type { ILightService } from '../../../interfaces/ILightService';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityState } from '../../../types/home-assistant';
 
@@ -14,7 +14,7 @@ const getDisplayName = (entity: HaEntityState): string => {
 };
 
 export function LightingPanel({ isHidden = true }: { isHidden?: boolean }) {
-  const haClient = useService<IHomeAssistantClient>(TYPES.IHomeAssistantClient);
+  const lightService = useService<ILightService>(TYPES.ILightService);
   const entitiesById = useEntityStore((s) => s.entitiesById);
   const householdEntityIds = useEntityStore((s) => s.householdEntityIds);
   const optimisticSetState = useEntityStore((s) => s.optimisticSetState);
@@ -24,13 +24,7 @@ export function LightingPanel({ isHidden = true }: { isHidden?: boolean }) {
       const previousState = entitiesById[entityId]?.state;
       optimisticSetState(entityId, 'off');
       try {
-        await haClient.connect();
-        await haClient.callService({
-          domain: 'light',
-          service: 'turn_off',
-          service_data: { entity_id: entityId },
-          target: { entity_id: entityId },
-        });
+        await lightService.turnOff(entityId);
       } catch {
         // Best-effort: avoid impacting the rest of the UI.
         if (typeof previousState === 'string') {

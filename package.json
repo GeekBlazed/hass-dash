@@ -22,7 +22,8 @@
     "test:ui": "node scripts/vitest-run.mjs --ui",
     "test:coverage": "node scripts/vitest-coverage.mjs",
     "test:coverage:all": "node scripts/vitest-coverage.mjs --include-slow",
-    "test:run": "node scripts/vitest-run.mjs run"
+    "test:run": "node scripts/vitest-run.mjs run",
+    "pwa:icons": "node scripts/generate-pwa-icons.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -37,6 +38,7 @@
     "react-dom": "^19.2.0",
     "react-konva": "^19.2.1",
     "reflect-metadata": "^0.2.2",
+    "workbox-window": "^7.4.0",
     "yaml": "^2.8.2",
     "zustand": "^5.0.3"
   },
@@ -57,16 +59,19 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "fake-indexeddb": "^6.0.1",
     "globals": "^16.5.0",
     "happy-dom": "^20.0.11",
     "jsdom": "^27.4.0",
     "postcss": "^8.5.6",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
+    "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.17"
   }
 }

@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
 import process from 'node:process';
 
 function ensureNodeOptionsHasHeapLimit(nodeOptions, heapMb) {
@@ -17,6 +19,15 @@ const heapMb = Number.isFinite(Number(heapMbRaw)) ? Number(heapMbRaw) : 16384;
 const includeSlow = process.argv.includes('--include-slow');
 
 process.env.NODE_OPTIONS = ensureNodeOptionsHasHeapLimit(process.env.NODE_OPTIONS, heapMb);
+
+// Vitest's v8 coverage provider writes per-worker temp files under `coverage/.tmp/`.
+// On Windows we occasionally see ENOENT when the directory doesn't exist yet.
+// Creating it up-front avoids flaky coverage runs.
+try {
+  mkdirSync(path.join(process.cwd(), 'coverage', '.tmp'), { recursive: true });
+} catch {
+  // Best-effort only; Vitest may still be able to proceed.
+}
 
 // Let vitest.config.ts detect a coverage run (so it can adjust worker memory limits).
 process.env.VITEST_COVERAGE_RUN = 'true';

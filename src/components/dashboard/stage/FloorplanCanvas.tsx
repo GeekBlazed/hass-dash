@@ -3,7 +3,7 @@ import { Suspense, lazy, useMemo } from 'react';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { FloorplanEmptyOverlay } from './FloorplanEmptyOverlay';
 import { FloorplanSvg } from './FloorplanSvg';
-import { TrackedDeviceMarkersBridge } from './TrackedDeviceMarkersBridge';
+import { OverlayManager } from './OverlayManager';
 
 const KonvaFloorplanCanvas = lazy(() => import('./KonvaFloorplanCanvas'));
 
@@ -31,7 +31,7 @@ export function FloorplanCanvas({ onRetry }: { onRetry: () => void }) {
       ) : (
         <>
           <FloorplanSvg />
-          <TrackedDeviceMarkersBridge />
+          <OverlayManager renderer="svg" />
         </>
       )}
     </>

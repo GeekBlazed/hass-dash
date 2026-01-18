@@ -4,13 +4,12 @@ import { TYPES } from '../../core/types';
 import { useService } from '../../hooks/useService';
 import type { IFloorplanDataSource } from '../../interfaces/IFloorplanDataSource';
 import { useDashboardStore } from '../../stores/useDashboardStore';
+import { ConnectivityController } from './ConnectivityController';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardStage } from './DashboardStage';
 import { DeviceLocationTrackingController } from './DeviceLocationTrackingController';
-import { HaAreaClimateOverlayBridge } from './HaAreaClimateOverlayBridge';
 import { HaLightHotwireBridge } from './HaLightHotwireBridge';
 import { HomeAssistantEntityStoreController } from './HomeAssistantEntityStoreController';
-import { HaRoomLightingOverlayBridge } from './stage/HaRoomLightingOverlayBridge';
 
 export function DashboardShell() {
   const [reloadNonce, setReloadNonce] = useState(0);
@@ -59,8 +58,7 @@ export function DashboardShell() {
   return (
     <div className="viewport">
       <HaLightHotwireBridge />
-      <HaAreaClimateOverlayBridge />
-      <HaRoomLightingOverlayBridge />
+      <ConnectivityController />
       <HomeAssistantEntityStoreController />
       <DeviceLocationTrackingController />
       <div className="frame" role="application" aria-label="Floorplan dashboard">

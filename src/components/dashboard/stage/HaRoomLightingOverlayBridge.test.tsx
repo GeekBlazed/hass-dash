@@ -3,7 +3,7 @@ import { userEvent } from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { container } from '../../../core/di-container';
-import type { IHomeAssistantClient } from '../../../interfaces/IHomeAssistantClient';
+import type { ILightService } from '../../../interfaces/ILightService';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityState } from '../../../types/home-assistant';
@@ -20,6 +20,41 @@ const makeLight = (entityId: string, state: 'on' | 'off', friendlyName?: string)
     last_changed: '2026-01-01T00:00:00Z',
     last_updated: '2026-01-01T00:00:00Z',
     context: { id: 'c', parent_id: null, user_id: null },
+  };
+};
+
+const makeMockLightService = (
+  connect: () => Promise<void>,
+  callService: (params: {
+    domain: string;
+    service: string;
+    service_data: { entity_id: unknown };
+    target: { entity_id: unknown };
+  }) => Promise<unknown>
+): Partial<ILightService> => {
+  const normalize = (entityIds: unknown): unknown => {
+    return Array.isArray(entityIds) ? entityIds : [entityIds];
+  };
+
+  return {
+    turnOn: async (entityIds) => {
+      await connect();
+      await callService({
+        domain: 'light',
+        service: 'turn_on',
+        service_data: { entity_id: normalize(entityIds) },
+        target: { entity_id: normalize(entityIds) },
+      });
+    },
+    turnOff: async (entityIds) => {
+      await connect();
+      await callService({
+        domain: 'light',
+        service: 'turn_off',
+        service_data: { entity_id: normalize(entityIds) },
+        target: { entity_id: normalize(entityIds) },
+      });
+    },
   };
 };
 
@@ -58,7 +93,13 @@ describe('HaRoomLightingOverlayBridge', () => {
       ],
     });
 
-    useDashboardStore.getState().setActivePanel('lighting');
+    useDashboardStore.setState({
+      overlays: {
+        tracking: true,
+        climate: true,
+        lighting: true,
+      },
+    });
   });
 
   it('removes non-managed toggles from the lights layer on mount', () => {
@@ -78,13 +119,13 @@ describe('HaRoomLightingOverlayBridge', () => {
     useEntityStore.getState().setHouseholdEntityIds(new Set(['light.kitchen_ceiling']));
     useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'off'));
 
-    const mockClient: Partial<IHomeAssistantClient> = {
-      connect: vi.fn().mockResolvedValue(undefined),
-      callService: vi.fn().mockResolvedValue(undefined),
+    const mockClient: Partial<ILightService> = {
+      turnOn: vi.fn().mockResolvedValue(undefined),
+      turnOff: vi.fn().mockResolvedValue(undefined),
     };
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<HaRoomLightingOverlayBridge />);
 
@@ -112,10 +153,10 @@ describe('HaRoomLightingOverlayBridge', () => {
 
     const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
 
@@ -169,10 +210,10 @@ describe('HaRoomLightingOverlayBridge', () => {
     const connect = vi.fn().mockResolvedValue(undefined);
     // Reject with a non-Error to exercise the `error instanceof Error ? ... : String(error)` branch.
     const callService = vi.fn().mockRejectedValue('boom');
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<HaRoomLightingOverlayBridge />);
 
@@ -337,10 +378,10 @@ describe('HaRoomLightingOverlayBridge', () => {
     const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<HaRoomLightingOverlayBridge />);
 
@@ -385,14 +426,12 @@ describe('HaRoomLightingOverlayBridge', () => {
 
     useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'off'));
 
+    const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
-    const mockClient: Partial<IHomeAssistantClient> = {
-      connect: vi.fn().mockResolvedValue(undefined),
-      callService,
-    };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<HaRoomLightingOverlayBridge />);
 
@@ -430,14 +469,12 @@ describe('HaRoomLightingOverlayBridge', () => {
 
     useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'off'));
 
+    const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
-    const mockClient: Partial<IHomeAssistantClient> = {
-      connect: vi.fn().mockResolvedValue(undefined),
-      callService,
-    };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     const nowSpy = vi.spyOn(Date, 'now');
     let now = 0;
@@ -486,10 +523,10 @@ describe('HaRoomLightingOverlayBridge', () => {
     const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<HaRoomLightingOverlayBridge />);
 
@@ -532,10 +569,10 @@ describe('HaRoomLightingOverlayBridge', () => {
     const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<HaRoomLightingOverlayBridge />);
 
@@ -1068,10 +1105,10 @@ describe('HaRoomLightingOverlayBridge', () => {
     const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<HaRoomLightingOverlayBridge />);
 
@@ -1106,10 +1143,10 @@ describe('HaRoomLightingOverlayBridge', () => {
     const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<HaRoomLightingOverlayBridge />);
 
@@ -1141,14 +1178,12 @@ describe('HaRoomLightingOverlayBridge', () => {
 
     useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'off'));
 
+    const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
-    const mockClient: Partial<IHomeAssistantClient> = {
-      connect: vi.fn().mockResolvedValue(undefined),
-      callService,
-    };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     const nowSpy = vi.spyOn(Date, 'now');
     nowSpy.mockReturnValue(2000);
@@ -1190,10 +1225,10 @@ describe('HaRoomLightingOverlayBridge', () => {
 
     const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     const nowSpy = vi.spyOn(Date, 'now');
     nowSpy.mockReturnValue(1000);
@@ -1285,8 +1320,14 @@ describe('HaRoomLightingOverlayBridge', () => {
     }
   });
 
-  it('hides room light toggles when lighting panel is not active', () => {
-    useDashboardStore.getState().setActivePanel('climate');
+  it('hides room light toggles when the lighting overlay is disabled', () => {
+    useDashboardStore.setState({
+      overlays: {
+        tracking: true,
+        climate: true,
+        lighting: false,
+      },
+    });
 
     document.body.innerHTML = `
       <svg id="floorplan-svg" viewBox="0 0 10 10">
@@ -1332,10 +1373,10 @@ describe('HaRoomLightingOverlayBridge', () => {
     });
     const callService = vi.fn().mockReturnValue(callServicePromise);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<HaRoomLightingOverlayBridge />);
 
@@ -1402,10 +1443,10 @@ describe('HaRoomLightingOverlayBridge', () => {
     const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<HaRoomLightingOverlayBridge />);
 
@@ -1452,10 +1493,10 @@ describe('HaRoomLightingOverlayBridge', () => {
     const connect = vi.fn().mockResolvedValue(undefined);
     const callService = vi.fn().mockResolvedValue(undefined);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<HaRoomLightingOverlayBridge />);
 

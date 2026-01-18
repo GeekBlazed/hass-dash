@@ -40,6 +40,18 @@ Location tracking is always-on when Home Assistant connectivity is configured an
   - Default: `69`
   - Rule: a location update is accepted only when `confidence > minConfidence` (strict `>`).
 
+### Confidence label (optional)
+
+This controls a small **under-marker label** that can show the latest confidence value.
+
+- `VITE_TRACKING_SHOW_CONFIDENCE_WHEN_LESS_THAN`
+  - Default: **unset** (confidence labels are disabled)
+  - Behavior:
+    - If this env var is **not set**, the confidence label is never shown.
+    - If this env var **is set** to a number $T$, the label shows only when `confidence < T`.
+    - The label is suppressed when the marker is stale (staleness text takes precedence).
+  - Display format: `71%` (rounded to the nearest whole number)
+
 ### Staleness behavior
 
 These settings control how long markers remain visible without new updates:

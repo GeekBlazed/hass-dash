@@ -69,4 +69,122 @@ describe('WeatherSummary', () => {
     expect(await screen.findByText('72°F')).toBeInTheDocument();
     expect(await screen.findByText(/Humidity:\s*55%/i)).toBeInTheDocument();
   });
+
+  it('falls back to matching label/friendly_name when label registry is empty', async () => {
+    getEntityIdsByLabelNameMock.mockResolvedValue(new Set());
+
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.outdoor_temp', '21.4', {
+        device_class: 'temperature',
+        friendly_name: 'Weather',
+      })
+    );
+
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.outdoor_humidity', '55.0', {
+        device_class: 'humidity',
+        // Prefer `label` when present.
+        label: '  Weather  ',
+      })
+    );
+
+    render(<WeatherSummary />);
+
+    expect(await screen.findByText('21°F')).toBeInTheDocument();
+    expect(await screen.findByText(/Humidity:\s*55%/i)).toBeInTheDocument();
+  });
+
+  it('shows placeholders for invalid humidity values (out of 0..100 range)', async () => {
+    getEntityIdsByLabelNameMock.mockResolvedValue(new Set(['sensor.weather_temperature']));
+
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.weather_temperature', '72.4', {
+        device_class: 'temperature',
+        unit_of_measurement: '°F',
+      })
+    );
+
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.weather_humidity', '101', {
+        device_class: 'humidity',
+        label: 'Weather',
+      })
+    );
+
+    render(<WeatherSummary />);
+
+    expect(await screen.findByText('72°F')).toBeInTheDocument();
+    expect(await screen.findByText(/Humidity:\s*--%/i)).toBeInTheDocument();
+  });
+
+  it('defaults to °F when unit is missing/blank and state is non-numeric', () => {
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.bad_temp', 'not-a-number', {
+        device_class: 'temperature',
+        label: 'Weather',
+        unit_of_measurement: '   ',
+      })
+    );
+
+    render(<WeatherSummary />);
+    expect(screen.getByText('--°F')).toBeInTheDocument();
+  });
+
+  it('skips missing/invalid labeled entity ids until it finds a valid match', async () => {
+    getEntityIdsByLabelNameMock.mockResolvedValue(
+      new Set([
+        'sensor.missing',
+        'sensor.wrong_class',
+        'sensor.invalid_temp',
+        'sensor.weather_temperature',
+      ])
+    );
+
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.wrong_class', '72', {
+        device_class: 'humidity',
+        unit_of_measurement: '%',
+      })
+    );
+
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.invalid_temp', 'not-a-number', {
+        device_class: 'temperature',
+        unit_of_measurement: '°F',
+      })
+    );
+
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.weather_temperature', '72.4', {
+        device_class: 'temperature',
+        unit_of_measurement: '°F',
+      })
+    );
+
+    render(<WeatherSummary />);
+
+    expect(await screen.findByText('72°F')).toBeInTheDocument();
+  });
+
+  it('retries label resolution after a transient failure once entity store updates', async () => {
+    getEntityIdsByLabelNameMock
+      .mockRejectedValueOnce(new Error('temporary'))
+      .mockResolvedValueOnce(new Set(['sensor.weather_temperature']));
+
+    render(<WeatherSummary />);
+
+    // First attempt (failure)
+    expect(getEntityIdsByLabelNameMock).toHaveBeenCalledTimes(1);
+
+    // Trigger a store update (lastUpdatedAt changes), causing the effect to retry.
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.weather_temperature', '72.4', {
+        device_class: 'temperature',
+        unit_of_measurement: '°F',
+      })
+    );
+
+    expect(await screen.findByText('72°F')).toBeInTheDocument();
+    expect(getEntityIdsByLabelNameMock).toHaveBeenCalledTimes(2);
+  });
 });

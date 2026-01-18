@@ -6,10 +6,12 @@ import {
 } from '../../../features/tracking/trackingDebugOverlayConfig';
 import { getTrackingStaleTimeoutMs } from '../../../features/tracking/trackingStaleTimeoutConfig';
 import { getTrackingStaleWarningMs } from '../../../features/tracking/trackingStaleWarningConfig';
+import { useDashboardStore } from '../../../stores/useDashboardStore';
 import type { DeviceLocation } from '../../../stores/useDeviceLocationStore';
 import { useDeviceLocationStore } from '../../../stores/useDeviceLocationStore';
 import { useDeviceTrackerMetadataStore } from '../../../stores/useDeviceTrackerMetadataStore';
 import { computeInitials } from '../../../utils/deviceLocationTracking';
+import { computeMarkerStatusText } from './computeMarkerStatusText';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -25,6 +27,7 @@ const TRACKING_KIND_ATTR = 'data-hass-dash-tracking-kind';
 const ORIG_TRANSFORM_ATTR = 'data-hass-dash-orig-transform';
 const DEBUG_LABEL_ATTR = 'data-hass-dash-tracking-debug';
 const STALE_LABEL_ATTR = 'data-hass-dash-tracking-stale';
+const LABEL_FONT_SIZE_SCALE = 1.35;
 
 const createSvgElement = <T extends keyof SVGElementTagNameMap>(
   tag: T
@@ -96,9 +99,20 @@ const applyMarkerSizing = (marker: SVGGElement, unitsPerPx: number): void => {
 
   const label = marker.querySelector<SVGTextElement>('text.device-label');
   if (label) {
-    label.setAttribute('font-size', String(deviceLabelFontSizeInUserUnits * 1.35));
+    const labelFontSize = deviceLabelFontSizeInUserUnits * LABEL_FONT_SIZE_SCALE;
+    label.setAttribute('font-size', String(labelFontSize));
     label.setAttribute('x', '0');
     label.setAttribute('y', String(-devicePinHeightInUserUnits - deviceLabelGapInUserUnits / 4));
+
+    // Status label (stale minutes OR low confidence) should sit just beneath the pin,
+    // and be scaled relative to the main label for consistent readability.
+    const status = marker.querySelector<SVGTextElement>(`text[${STALE_LABEL_ATTR}="true"]`);
+    if (status) {
+      status.setAttribute('font-size', String(labelFontSize * 0.8));
+      status.setAttribute('x', '0');
+      // Move up ~one text line for tighter grouping.
+      status.setAttribute('y', String(-9 * unitsPerPx));
+    }
   }
 
   // Avatar/initials overlay within the pin head.
@@ -348,9 +362,9 @@ const upsertDebugLabel = (
   });
 };
 
-const upsertStaleLabel = (marker: SVGGElement, ageMinutes: number | null): void => {
+const upsertMarkerStatusLabel = (marker: SVGGElement, text: string | null): void => {
   const existing = marker.querySelector<SVGTextElement>(`text[${STALE_LABEL_ATTR}="true"]`);
-  if (!ageMinutes || ageMinutes <= 0) {
+  if (!text) {
     existing?.remove();
     return;
   }
@@ -360,18 +374,19 @@ const upsertStaleLabel = (marker: SVGGElement, ageMinutes: number | null): void 
     el.setAttribute(STALE_LABEL_ATTR, 'true');
     el.setAttribute('class', 'device-stale-label');
     el.setAttribute('x', '0');
-    el.setAttribute('y', '1.1');
+    // The marker's origin is the pin tip; keep this label just beneath it.
+    // (Will be overridden by applyMarkerSizing when unitsPerPx is available.)
+    el.setAttribute('y', '0.25');
     el.setAttribute('text-anchor', 'middle');
     el.setAttribute('dominant-baseline', 'hanging');
-    el.setAttribute('font-size', '0.20');
-    el.setAttribute('fill', 'currentColor');
+    // Default size for environments without unitsPerPx (e.g., some tests).
+    el.setAttribute('font-size', '0.32');
     el.setAttribute('pointer-events', 'none');
     marker.appendChild(el);
   }
 
-  const desired = `> ${ageMinutes} minutes`;
-  if (el.textContent !== desired) {
-    el.textContent = desired;
+  if (el.textContent !== text) {
+    el.textContent = text;
   }
 };
 
@@ -401,7 +416,7 @@ const syncMarkers = (
   if (!isEnabled) {
     for (const marker of existingTrackingMarkers.values()) {
       upsertDebugLabel(marker, null, debugMode);
-      upsertStaleLabel(marker, null);
+      upsertMarkerStatusLabel(marker, null);
       marker.classList.remove('device-marker--stale');
 
       const kind = marker.getAttribute(TRACKING_KIND_ATTR);
@@ -428,7 +443,7 @@ const syncMarkers = (
   for (const [entityId, marker] of existingTrackingMarkers.entries()) {
     if (!desiredEntityIds.has(entityId)) {
       upsertDebugLabel(marker, null, debugMode);
-      upsertStaleLabel(marker, null);
+      upsertMarkerStatusLabel(marker, null);
       marker.classList.remove('device-marker--stale');
 
       const kind = marker.getAttribute(TRACKING_KIND_ATTR);
@@ -538,7 +553,10 @@ const syncMarkers = (
     } else {
       marker.classList.remove('device-marker--stale');
     }
-    upsertStaleLabel(marker, ageMinutes);
+
+    const statusText = computeMarkerStatusText(location, isStale, ageMinutes);
+
+    upsertMarkerStatusLabel(marker, statusText);
 
     marker.setAttribute('transform', `translate(${x} ${yRender})`);
 
@@ -596,6 +614,7 @@ const getNextStaleCheckDelayMs = (
 };
 
 export function TrackedDeviceMarkersBridge() {
+  const isOverlayVisible = useDashboardStore((s) => s.overlays.tracking);
   const locationsByEntityId = useDeviceLocationStore((s) => s.locationsByEntityId);
   const metadataByEntityId = useDeviceTrackerMetadataStore((s) => s.metadataByEntityId);
   const [staleTick, setStaleTick] = useState(0);
@@ -618,6 +637,22 @@ export function TrackedDeviceMarkersBridge() {
     if (!layer) return;
 
     const nowMs = Date.now();
+
+    if (!isOverlayVisible) {
+      // Ensure we don't leave stale DOM behind when the overlay is disabled.
+      syncMarkers(
+        layer,
+        false,
+        {},
+        metadataByEntityId,
+        showDebugOverlay,
+        debugMode,
+        nowMs,
+        staleWarningMs
+      );
+      return;
+    }
+
     const filteredLocationsByEntityId = filterNonStaleLocations(
       locationsByEntityId,
       nowMs,
@@ -674,6 +709,7 @@ export function TrackedDeviceMarkersBridge() {
       }
     };
   }, [
+    isOverlayVisible,
     locationsByEntityId,
     metadataByEntityId,
     showDebugOverlay,

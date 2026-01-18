@@ -5,6 +5,7 @@ import {
   DEFAULT_AREA_TEMP_ENTITY_CANDIDATES,
   getAreaClimateEntityMappingFromEnv,
 } from '../../features/climate/areaClimateEntityMapping';
+import { useDashboardStore } from '../../stores/useDashboardStore';
 import { useEntityStore } from '../../stores/useEntityStore';
 import { useHouseholdAreaEntityIndexStore } from '../../stores/useHouseholdAreaEntityIndexStore';
 import type { HaEntityId, HaEntityState } from '../../types/home-assistant';
@@ -16,6 +17,10 @@ type AreaClimateValue = {
 type SensorKind = 'temperature' | 'humidity';
 
 type HouseholdEntityIdLookup = Record<string, true>;
+
+const getClimateOverlayVisibleNow = (): boolean => {
+  return useDashboardStore.getState().overlays.climate;
+};
 
 const hasHouseholdLabel = (entity: HaEntityState | undefined): boolean => {
   if (!entity) return false;
@@ -248,12 +253,6 @@ const findFirstMatchingCandidate = (
   return undefined;
 };
 
-const getClimateOverlayVisibleNow = (): boolean => {
-  const panel = document.getElementById('climate-panel');
-  if (!panel) return false;
-  return !panel.classList.contains('is-hidden');
-};
-
 const isSvgTextElement = (node: Element | null): node is SVGTextElement => {
   if (!node) return false;
   // JSDOM doesn't reliably expose SVGTextElement as a global constructor, so
@@ -449,6 +448,7 @@ const computeAreaClimateText = (
 };
 
 export function HaAreaClimateOverlayBridge() {
+  const isOverlayVisible = useDashboardStore((s) => s.overlays.climate);
   const entitiesById = useEntityStore((s) => s.entitiesById);
   const householdEntityIds = useEntityStore((s) => s.householdEntityIds);
   const householdEntityIdsByAreaId = useHouseholdAreaEntityIndexStore(
@@ -465,7 +465,6 @@ export function HaAreaClimateOverlayBridge() {
 
   useEffect(() => {
     const apply = () => {
-      const isOverlayVisible = getClimateOverlayVisibleNow();
       const groups = getLabelGroups();
       for (const { roomId, group, label } of groups) {
         const roomLabel = label.textContent?.trim() ?? '';
@@ -519,6 +518,7 @@ export function HaAreaClimateOverlayBridge() {
     entitiesById,
     householdEntityIds,
     householdEntityIdsByAreaId,
+    isOverlayVisible,
     mapping,
   ]);
 

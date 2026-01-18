@@ -574,20 +574,23 @@ Feature flags were implemented early for CI/CD, then removed once the app reache
 
 ---
 
-#### Iteration 3.4: Multi-Floor Navigation
+#### Iteration 3.4: Multi-Floor Navigation (Won't Implement - out of MVP)
 
 **Goal:** Switch between floors  
-**Time:** 3-4 hours  
-**Deliverable:** Floor selector UI
+**Time:** N/A (removed from MVP)  
+**Deliverable:** N/A
+
+**Status:** 🚫 Won't implement for MVP. Multi-floor navigation is deferred until after the
+single-floor floorplan + overlays experience is stable.
 
 **Tasks:**
 
-- [ ] Create floor selector component
-- [ ] Load multiple floors from JSON
-- [ ] Switch active floor on selection
-- [ ] Preserve zoom/pan per floor
-- [ ] Add keyboard shortcuts (arrow keys, 1-9)
-- [ ] **Acceptance:** User can navigate between floors
+- Create floor selector component
+- Load multiple floors from JSON
+- Switch active floor on selection
+- Preserve zoom/pan per floor
+- Add keyboard shortcuts (arrow keys, 1-9)
+- **Acceptance:** User can navigate between floors
 
 **Feature Flags:** Removed
 
@@ -603,12 +606,20 @@ Feature flags were implemented early for CI/CD, then removed once the app reache
 
 **Tasks:**
 
-- [ ] Create `IOverlay` interface
-- [ ] Create OverlayManager component
-- [ ] Add overlay toggle buttons
-- [ ] Store active overlays in state
-- [ ] Create base overlay component
-- [ ] **Acceptance:** Overlays can be toggled on/off
+- ✅ Create `IOverlay` interface
+- ✅ Create `OverlayManager` component
+- ✅ Add overlay toggle buttons
+- ✅ Store active overlays in state
+- ✅ Create base overlay definition registry
+- ✅ **Acceptance:** Overlays can be toggled on/off
+
+**Implementation Notes (Current Code):**
+
+- Interface: `src/interfaces/IOverlay.ts`
+- Definitions/registry: `src/components/dashboard/stage/overlayDefinitions.ts`
+- Overlay host: `src/components/dashboard/stage/OverlayManager.tsx`
+- Toggle UI: `src/components/dashboard/stage/MapControls.tsx`
+- State: `src/stores/useDashboardStore.ts`
 
 **Feature Flags:**
 
@@ -645,12 +656,13 @@ Feature flags were implemented early for CI/CD, then removed once the app reache
 
 **Tasks:**
 
-- [ ] Create `ILightService` interface
-- [ ] Implement light toggle via HA API
-- [ ] Add click handler to light icons
-- [ ] Show loading state during API call
-- [ ] Add error handling and toast notifications
-- [ ] **Acceptance:** Clicking light toggles it in HA
+- ✅ Create `ILightService` interface
+- ✅ Implement light toggle via HA API
+- ✅ Add click handler to light icons
+- ✅ Add error handling (optimistic update + rollback)
+- ✅ **Acceptance:** Clicking light toggles it in HA
+- [ ] Show loading state during API call (deferred)
+- [ ] Add toast notifications (explicitly deferred; implement as separate feature)
 
 **Feature Flags:**
 
@@ -689,12 +701,12 @@ Feature flags were implemented early for CI/CD, then removed once the app reache
 
 **Tasks:**
 
-- [ ] Configure Vite PWA plugin
-- [ ] Create web manifest
-- [ ] Add app icons (all sizes)
-- [ ] Configure service worker
-- [ ] Add install prompt
-- [ ] **Acceptance:** App can be installed on mobile/desktop
+- ✅ Configure Vite PWA plugin
+- ✅ Create web manifest
+- ✅ Add app icons (all sizes)
+- ✅ Configure service worker
+- ✅ Add install prompt
+- ✅ **Acceptance:** App can be installed on mobile/desktop
 
 **Feature Flags:** None (core feature)
 
@@ -708,12 +720,12 @@ Feature flags were implemented early for CI/CD, then removed once the app reache
 
 **Tasks:**
 
-- [ ] Cache entities in IndexedDB
-- [ ] Show offline indicator
-- [ ] Display LKG values when offline
-- [ ] Queue commands for later
-- [ ] Sync when back online
-- [ ] **Acceptance:** App usable offline
+- ✅ Cache entities in IndexedDB
+- ✅ Show offline indicator
+- ✅ Display LKG values when offline
+- ✅ Queue commands for later
+- ✅ Sync when back online
+- ✅ **Acceptance:** App usable offline
 
 **Feature Flags:** None (core feature)
 
