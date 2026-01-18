@@ -58,6 +58,11 @@ const createEntity = (params: {
     },
     last_changed: '2026-01-01T00:00:00.000Z',
     last_updated: '2026-01-01T00:00:00.000Z',
+    context: {
+      id: '00000000000000000000000000000000',
+      parent_id: null,
+      user_id: null,
+    },
   };
 };
 
