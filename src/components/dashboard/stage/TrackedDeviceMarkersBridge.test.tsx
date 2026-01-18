@@ -1,6 +1,7 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { useDeviceLocationStore } from '../../../stores/useDeviceLocationStore';
 import { useDeviceTrackerMetadataStore } from '../../../stores/useDeviceTrackerMetadataStore';
 import { FloorplanSvg } from './FloorplanSvg';
@@ -12,6 +13,17 @@ describe('TrackedDeviceMarkersBridge', () => {
     vi.stubEnv('VITE_TRACKING_DEBUG_OVERLAY_MODE', 'xyz');
     vi.stubEnv('VITE_TRACKING_STALE_WARNING_MINUTES', '10');
     vi.stubEnv('VITE_TRACKING_STALE_TIMEOUT_MINUTES', '30');
+    vi.stubEnv('VITE_TRACKING_SHOW_CONFIDENCE_WHEN_LESS_THAN', '');
+
+    useDashboardStore.persist.clearStorage();
+    useDashboardStore.setState({
+      overlays: {
+        tracking: true,
+        climate: false,
+        lighting: false,
+      },
+    });
+
     useDeviceLocationStore.persist.clearStorage();
     useDeviceLocationStore.setState({ locationsByEntityId: {} });
     useDeviceTrackerMetadataStore.getState().clear();
@@ -125,6 +137,157 @@ describe('TrackedDeviceMarkersBridge', () => {
       // FloorplanSvg viewBox is 0 0 10 10 so yRender = 10 - y
       expect(marker?.getAttribute('transform')).toBe('translate(1 8)');
     });
+  });
+
+  it('renders a confidence label beneath the marker when confidence is < 90% and not stale', async () => {
+    vi.stubEnv('VITE_TRACKING_SHOW_CONFIDENCE_WHEN_LESS_THAN', '90');
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        confidence: 89,
+        lastSeen: undefined,
+        receivedAt: Date.now(),
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+
+      const label = marker?.querySelector('text[data-hass-dash-tracking-stale="true"]');
+      expect(label).toBeTruthy();
+      expect(label?.textContent).toBe('89%');
+    });
+  });
+
+  it('does not show a confidence label by default when the threshold env var is not set', async () => {
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceTrackerMetadataStore.getState().setAll({
+        'device_tracker.phone_jeremy': {
+          deviceId: 'abc123',
+          alias: 'phone:jeremy',
+          name: 'Jeremy',
+        },
+      });
+    });
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        confidence: 10,
+        lastSeen: undefined,
+        receivedAt: Date.now(),
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+
+      const label = marker?.querySelector('text[data-hass-dash-tracking-stale="true"]');
+      expect(label).toBeFalsy();
+    });
+  });
+
+  it('does not render a confidence label when confidence is >= 90%', async () => {
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+        position: { x: 1, y: 2 },
+        confidence: 90,
+        lastSeen: undefined,
+        receivedAt: Date.now(),
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const marker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(marker).toBeTruthy();
+
+      const label = marker?.querySelector('text[data-hass-dash-tracking-stale="true"]');
+      expect(label).toBeFalsy();
+    });
+  });
+
+  it('does not show the confidence label when the marker is stale', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubEnv('VITE_TRACKING_STALE_WARNING_MINUTES', '1');
+      vi.stubEnv('VITE_TRACKING_STALE_TIMEOUT_MINUTES', '2');
+
+      render(
+        <>
+          <FloorplanSvg />
+          <TrackedDeviceMarkersBridge />
+        </>
+      );
+
+      // Flush initial effects.
+      await act(async () => {});
+
+      act(() => {
+        useDeviceLocationStore.getState().upsert('device_tracker.phone_jeremy', {
+          position: { x: 1, y: 2 },
+          confidence: 25,
+          lastSeen: undefined,
+          receivedAt: Date.now(),
+        });
+      });
+
+      // Flush marker sync after store update.
+      await act(async () => {});
+
+      // Advance just past 1 minute so the marker is considered stale.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(61_000);
+      });
+
+      const layer = document.getElementById('devices-layer');
+
+      const markerStale = layer?.querySelector<SVGGElement>(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.phone_jeremy"]'
+      );
+      expect(markerStale).toBeTruthy();
+      expect(markerStale?.classList.contains('device-marker--stale')).toBe(true);
+
+      const status = markerStale?.querySelector('text[data-hass-dash-tracking-stale="true"]');
+      expect(status).toBeTruthy();
+      expect(status?.textContent).toBe('> 1 minutes');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('renders an avatar image when metadata provides avatarUrl', async () => {

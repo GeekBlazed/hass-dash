@@ -1,18 +1,9 @@
-import type { ComponentType } from 'react';
-
-import type { DashboardOverlay } from '../../../stores/useDashboardStore';
+import type { IOverlay } from '../../../interfaces/IOverlay';
 import { HaAreaClimateOverlayBridge } from '../HaAreaClimateOverlayBridge';
 import { HaRoomLightingOverlayBridge } from './HaRoomLightingOverlayBridge';
 import { TrackedDeviceMarkersBridge } from './TrackedDeviceMarkersBridge';
 
-export type OverlayDefinition = {
-  id: DashboardOverlay;
-  label: string;
-  renderer: 'svg';
-  Component: ComponentType;
-};
-
-export const OVERLAYS: ReadonlyArray<OverlayDefinition> = [
+export const OVERLAYS: ReadonlyArray<IOverlay> = [
   {
     id: 'tracking',
     label: 'Tracking',
@@ -33,6 +24,6 @@ export const OVERLAYS: ReadonlyArray<OverlayDefinition> = [
   },
 ];
 
-export function getOverlayDefinitions(): ReadonlyArray<Pick<OverlayDefinition, 'id' | 'label'>> {
+export function getOverlayDefinitions(): ReadonlyArray<Pick<IOverlay, 'id' | 'label'>> {
   return OVERLAYS.map(({ id, label }) => ({ id, label }));
 }

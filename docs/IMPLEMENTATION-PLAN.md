@@ -606,12 +606,20 @@ single-floor floorplan + overlays experience is stable.
 
 **Tasks:**
 
-- [ ] Create `IOverlay` interface
-- [ ] Create OverlayManager component
-- [ ] Add overlay toggle buttons
-- [ ] Store active overlays in state
-- [ ] Create base overlay component
-- [ ] **Acceptance:** Overlays can be toggled on/off
+- ✅ Create `IOverlay` interface
+- ✅ Create `OverlayManager` component
+- ✅ Add overlay toggle buttons
+- ✅ Store active overlays in state
+- ✅ Create base overlay definition registry
+- ✅ **Acceptance:** Overlays can be toggled on/off
+
+**Implementation Notes (Current Code):**
+
+- Interface: `src/interfaces/IOverlay.ts`
+- Definitions/registry: `src/components/dashboard/stage/overlayDefinitions.ts`
+- Overlay host: `src/components/dashboard/stage/OverlayManager.tsx`
+- Toggle UI: `src/components/dashboard/stage/MapControls.tsx`
+- State: `src/stores/useDashboardStore.ts`
 
 **Feature Flags:**
 
