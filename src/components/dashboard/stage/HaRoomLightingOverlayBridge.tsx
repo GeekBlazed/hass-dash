@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { TYPES } from '../../../core/types';
 import type { FloorplanModel } from '../../../features/model/floorplan';
 import { useService } from '../../../hooks/useService';
-import type { IHomeAssistantClient } from '../../../interfaces/IHomeAssistantClient';
+import type { ILightService } from '../../../interfaces/ILightService';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityId, HaEntityState } from '../../../types/home-assistant';
@@ -256,7 +256,7 @@ const computeRoomLightGroups = (
 };
 
 export function HaRoomLightingOverlayBridge() {
-  const haClient = useService<IHomeAssistantClient>(TYPES.IHomeAssistantClient);
+  const lightService = useService<ILightService>(TYPES.ILightService);
 
   const hasLoggedMountRef = useRef(false);
   const hasLoggedDebugListenersRef = useRef(false);
@@ -640,17 +640,11 @@ export function HaRoomLightingOverlayBridge() {
       }
 
       try {
-        await haClient.connect();
-        await haClient.callService({
-          domain: 'light',
-          service,
-          service_data: {
-            entity_id: entityIds,
-          },
-          target: {
-            entity_id: entityIds,
-          },
-        });
+        if (service === 'turn_on') {
+          await lightService.turnOn(entityIds);
+        } else {
+          await lightService.turnOff(entityIds);
+        }
       } catch (error: unknown) {
         // Rollback the optimistic UI/store update.
         toggle.classList.toggle('is-on', wasOn);
@@ -864,7 +858,14 @@ export function HaRoomLightingOverlayBridge() {
         rafId = null;
       }
     };
-  }, [haClient, roomIndex, entitiesById, householdEntityIds, isOverlayVisible, optimisticSetState]);
+  }, [
+    lightService,
+    roomIndex,
+    entitiesById,
+    householdEntityIds,
+    isOverlayVisible,
+    optimisticSetState,
+  ]);
 
   return null;
 }

@@ -15,6 +15,8 @@ export const TYPES = {
   IFeatureFlagService: Symbol.for('IFeatureFlagService'),
   IHomeAssistantClient: Symbol.for('IHomeAssistantClient'),
 
+  ILightService: Symbol.for('ILightService'),
+
   IHttpClient: Symbol.for('IHttpClient'),
   IWebSocketService: Symbol.for('IWebSocketService'),
   IEntityService: Symbol.for('IEntityService'),

@@ -3,7 +3,7 @@ import { userEvent } from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { container } from '../../../core/di-container';
-import type { IHomeAssistantClient } from '../../../interfaces/IHomeAssistantClient';
+import type { ILightService } from '../../../interfaces/ILightService';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityState } from '../../../types/home-assistant';
 import { LightingPanel } from './LightingPanel';
@@ -113,14 +113,13 @@ describe('LightingPanel', () => {
   it('optimistically turns off a light immediately on click', async () => {
     useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'on', 'Kitchen'));
 
-    const connect = vi.fn().mockResolvedValue(undefined);
     const callServiceDeferred = createDeferred<void>();
-    const callService = vi.fn().mockReturnValue(callServiceDeferred.promise);
+    const turnOff = vi.fn().mockReturnValue(callServiceDeferred.promise);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = { turnOff };
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     const user = userEvent.setup();
 
@@ -135,13 +134,7 @@ describe('LightingPanel', () => {
     callServiceDeferred.resolve(undefined);
     await callServiceDeferred.promise;
 
-    expect(connect).toHaveBeenCalledTimes(1);
-    expect(callService).toHaveBeenCalledWith({
-      domain: 'light',
-      service: 'turn_off',
-      service_data: { entity_id: 'light.kitchen_ceiling' },
-      target: { entity_id: 'light.kitchen_ceiling' },
-    });
+    expect(turnOff).toHaveBeenCalledWith('light.kitchen_ceiling');
 
     getSpy.mockRestore();
   });
@@ -149,14 +142,13 @@ describe('LightingPanel', () => {
   it('turns off a light on Enter keydown', async () => {
     useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'on', 'Kitchen'));
 
-    const connect = vi.fn().mockResolvedValue(undefined);
     const callServiceDeferred = createDeferred<void>();
-    const callService = vi.fn().mockReturnValue(callServiceDeferred.promise);
+    const turnOff = vi.fn().mockReturnValue(callServiceDeferred.promise);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = { turnOff };
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<LightingPanel isHidden={false} />);
 
@@ -171,7 +163,7 @@ describe('LightingPanel', () => {
     callServiceDeferred.resolve(undefined);
     await callServiceDeferred.promise;
 
-    expect(callService).toHaveBeenCalledTimes(1);
+    expect(turnOff).toHaveBeenCalledTimes(1);
 
     getSpy.mockRestore();
   });
@@ -179,14 +171,13 @@ describe('LightingPanel', () => {
   it('turns off a light on Space keydown', async () => {
     useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'on', 'Kitchen'));
 
-    const connect = vi.fn().mockResolvedValue(undefined);
     const callServiceDeferred = createDeferred<void>();
-    const callService = vi.fn().mockReturnValue(callServiceDeferred.promise);
+    const turnOff = vi.fn().mockReturnValue(callServiceDeferred.promise);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = { turnOff };
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<LightingPanel isHidden={false} />);
 
@@ -201,7 +192,7 @@ describe('LightingPanel', () => {
     callServiceDeferred.resolve(undefined);
     await callServiceDeferred.promise;
 
-    expect(callService).toHaveBeenCalledTimes(1);
+    expect(turnOff).toHaveBeenCalledTimes(1);
 
     getSpy.mockRestore();
   });
@@ -209,12 +200,11 @@ describe('LightingPanel', () => {
   it('ignores unrelated keys on keydown', async () => {
     useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'on', 'Kitchen'));
 
-    const connect = vi.fn().mockResolvedValue(undefined);
-    const callService = vi.fn().mockResolvedValue(undefined);
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const turnOff = vi.fn().mockResolvedValue(undefined);
+    const mockClient: Partial<ILightService> = { turnOff };
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     render(<LightingPanel isHidden={false} />);
 
@@ -226,7 +216,7 @@ describe('LightingPanel', () => {
     });
 
     expect(useEntityStore.getState().entitiesById['light.kitchen_ceiling']?.state).toBe('on');
-    expect(callService).toHaveBeenCalledTimes(0);
+    expect(turnOff).toHaveBeenCalledTimes(0);
 
     getSpy.mockRestore();
   });
@@ -238,14 +228,13 @@ describe('LightingPanel', () => {
     (entity as unknown as { state: unknown }).state = { toString: () => 'on' };
     useEntityStore.getState().upsert(entity);
 
-    const connect = vi.fn().mockResolvedValue(undefined);
-    const callServiceDeferred = createDeferred<void>();
-    const callService = vi.fn().mockReturnValue(callServiceDeferred.promise);
+    const turnOffDeferred = createDeferred<void>();
+    const turnOff = vi.fn().mockReturnValue(turnOffDeferred.promise);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = { turnOff };
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     const user = userEvent.setup();
 
@@ -258,8 +247,8 @@ describe('LightingPanel', () => {
 
     // Reject the HA call. Because previousState was not a string, rollback should not occur.
     await act(async () => {
-      callServiceDeferred.reject(new Error('boom'));
-      await callServiceDeferred.promise.catch(() => undefined);
+      turnOffDeferred.reject(new Error('boom'));
+      await turnOffDeferred.promise.catch(() => undefined);
       await Promise.resolve();
     });
 
@@ -271,14 +260,13 @@ describe('LightingPanel', () => {
   it('rolls back optimistic update if turn off fails', async () => {
     useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'on', 'Kitchen'));
 
-    const connect = vi.fn().mockResolvedValue(undefined);
-    const callServiceDeferred = createDeferred<void>();
-    const callService = vi.fn().mockReturnValue(callServiceDeferred.promise);
+    const turnOffDeferred = createDeferred<void>();
+    const turnOff = vi.fn().mockReturnValue(turnOffDeferred.promise);
 
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<ILightService> = { turnOff };
     const getSpy = vi
       .spyOn(container, 'get')
-      .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
+      .mockReturnValue(mockClient as unknown as ILightService);
 
     const user = userEvent.setup();
 
@@ -291,8 +279,8 @@ describe('LightingPanel', () => {
 
     // Now reject the pending HA call and wait for rollback.
     await act(async () => {
-      callServiceDeferred.reject(new Error('boom'));
-      await callServiceDeferred.promise.catch(() => undefined);
+      turnOffDeferred.reject(new Error('boom'));
+      await turnOffDeferred.promise.catch(() => undefined);
       await Promise.resolve();
     });
 

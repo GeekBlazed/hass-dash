@@ -656,12 +656,13 @@ single-floor floorplan + overlays experience is stable.
 
 **Tasks:**
 
-- [ ] Create `ILightService` interface
-- [ ] Implement light toggle via HA API
-- [ ] Add click handler to light icons
-- [ ] Show loading state during API call
-- [ ] Add error handling and toast notifications
-- [ ] **Acceptance:** Clicking light toggles it in HA
+- ✅ Create `ILightService` interface
+- ✅ Implement light toggle via HA API
+- ✅ Add click handler to light icons
+- ✅ Add error handling (optimistic update + rollback)
+- ✅ **Acceptance:** Clicking light toggles it in HA
+- [ ] Show loading state during API call (deferred)
+- [ ] Add toast notifications (explicitly deferred; implement as separate feature)
 
 **Feature Flags:**
 
