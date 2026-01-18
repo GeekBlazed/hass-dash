@@ -4,6 +4,7 @@ import { TYPES } from '../../core/types';
 import { useService } from '../../hooks/useService';
 import type { IFloorplanDataSource } from '../../interfaces/IFloorplanDataSource';
 import { useDashboardStore } from '../../stores/useDashboardStore';
+import { ConnectivityController } from './ConnectivityController';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardStage } from './DashboardStage';
 import { DeviceLocationTrackingController } from './DeviceLocationTrackingController';
@@ -57,6 +58,7 @@ export function DashboardShell() {
   return (
     <div className="viewport">
       <HaLightHotwireBridge />
+      <ConnectivityController />
       <HomeAssistantEntityStoreController />
       <DeviceLocationTrackingController />
       <div className="frame" role="application" aria-label="Floorplan dashboard">

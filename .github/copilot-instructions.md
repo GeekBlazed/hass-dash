@@ -908,6 +908,13 @@ Every commit should pass:
 - `pnpm test` - Unit tests
 - `pnpm format` - Prettier formatting
 
+### Validation Checklist (When Updating Code)
+
+When you change code in this repo, validation must include a production build.
+
+- Always run `pnpm build` as one of the validation steps.
+- Prefer running the most targeted tests first, then a broader suite if needed.
+
 ### Pull Request Requirements
 
 - All CI checks passing

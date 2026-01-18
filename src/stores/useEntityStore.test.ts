@@ -11,8 +11,8 @@ const createInitialEntityState = () => ({
 describe('useEntityStore', () => {
   let nowSpy: ReturnType<typeof vi.spyOn> | null = null;
 
-  beforeEach(() => {
-    useEntityStore.persist.clearStorage();
+  beforeEach(async () => {
+    await Promise.resolve(useEntityStore.persist.clearStorage());
     useEntityStore.setState(createInitialEntityState());
   });
 

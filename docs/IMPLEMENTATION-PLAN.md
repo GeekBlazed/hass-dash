@@ -720,12 +720,12 @@ single-floor floorplan + overlays experience is stable.
 
 **Tasks:**
 
-- [ ] Cache entities in IndexedDB
-- [ ] Show offline indicator
-- [ ] Display LKG values when offline
-- [ ] Queue commands for later
-- [ ] Sync when back online
-- [ ] **Acceptance:** App usable offline
+- ✅ Cache entities in IndexedDB
+- ✅ Show offline indicator
+- ✅ Display LKG values when offline
+- ✅ Queue commands for later
+- ✅ Sync when back online
+- ✅ **Acceptance:** App usable offline
 
 **Feature Flags:** None (core feature)
 

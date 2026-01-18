@@ -8,6 +8,7 @@ import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
 import type { IFloorplanDataSource } from '../interfaces/IFloorplanDataSource';
 import type { IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
 import type { IHomeAssistantConnectionConfig } from '../interfaces/IHomeAssistantConnectionConfig';
+import type { IHomeAssistantServiceCallQueue } from '../interfaces/IHomeAssistantServiceCallQueue';
 import type { IHouseholdAreaEntityIndexService } from '../interfaces/IHouseholdAreaEntityIndexService';
 import type { IHouseholdEntityLabelService } from '../interfaces/IHouseholdEntityLabelService';
 import type { IHttpClient } from '../interfaces/IHttpClient';
@@ -23,9 +24,11 @@ import { HomeAssistantHouseholdAreaEntityIndexService } from '../services/HomeAs
 import { HomeAssistantHouseholdEntityLabelService } from '../services/HomeAssistantHouseholdEntityLabelService';
 import { HomeAssistantHttpClient } from '../services/HomeAssistantHttpClient';
 import { HomeAssistantLightService } from '../services/HomeAssistantLightService';
+import { HomeAssistantServiceCallQueue } from '../services/HomeAssistantServiceCallQueue';
 import { HomeAssistantWebSocketClient } from '../services/HomeAssistantWebSocketClient';
 import { HomeAssistantWebSocketService } from '../services/HomeAssistantWebSocketService';
 import { PublicFloorplanYamlDataSource } from '../services/PublicFloorplanYamlDataSource';
+import { QueuedHomeAssistantClient } from '../services/QueuedHomeAssistantClient';
 import { TYPES } from './types';
 
 /**
@@ -56,8 +59,18 @@ container
   .inSingletonScope();
 
 container
-  .bind<IHomeAssistantClient>(TYPES.IHomeAssistantClient)
+  .bind<IHomeAssistantClient>(TYPES.IHomeAssistantClientRaw)
   .to(HomeAssistantWebSocketClient)
+  .inSingletonScope();
+
+container
+  .bind<IHomeAssistantServiceCallQueue>(TYPES.IHomeAssistantServiceCallQueue)
+  .to(HomeAssistantServiceCallQueue)
+  .inSingletonScope();
+
+container
+  .bind<IHomeAssistantClient>(TYPES.IHomeAssistantClient)
+  .to(QueuedHomeAssistantClient)
   .inSingletonScope();
 
 container.bind<ILightService>(TYPES.ILightService).to(HomeAssistantLightService).inSingletonScope();

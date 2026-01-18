@@ -37,7 +37,6 @@ describe('DebugPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    window.localStorage.removeItem('hass-dash:entities');
     useEntityStore.getState().clear();
 
     vi.mocked(container.get).mockImplementation((token) => {
