@@ -1,40 +1,31 @@
-import { ComponentShowcase } from './components/ComponentShowcase';
+import { useEffect } from 'react';
 import { Dashboard } from './components/dashboard';
 import { DebugPanel } from './components/DebugPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { useFeatureFlag } from './hooks/useFeatureFlag';
+import { useDevToolsStore } from './stores/useDevToolsStore';
 
 function App() {
-  // Check feature flags
-  const envDebugPanelRaw = import.meta.env.VITE_FEATURE_DEBUG_PANEL;
-  const envDebugPanelEnabled =
-    typeof envDebugPanelRaw === 'string'
-      ? envDebugPanelRaw.trim().toLowerCase() === 'true'
-      : envDebugPanelRaw === true;
+  const isDevelopment = import.meta.env.DEV;
+  const showDebugPanel = useDevToolsStore((s) => s.debugPanelOpen);
+  const syncFromUrl = useDevToolsStore((s) => s.syncFromUrl);
 
-  const { isEnabled: debugPanelFlagEnabled } = useFeatureFlag('DEBUG_PANEL');
-  const { isEnabled: showComponentShowcase } = useFeatureFlag('COMPONENT_SHOWCASE');
+  // Preserve the existing dev-time ?debug entrypoint.
+  // In production builds, ignore it entirely.
+  useEffect(() => {
+    if (!isDevelopment) return;
+    syncFromUrl();
+  }, [isDevelopment, syncFromUrl]);
 
-  // NOTE: Feature flag overrides live in sessionStorage. If DEBUG_PANEL was
-  // toggled off previously, you'd be locked out of re-enabling it.
-  // So we show the panel if either the env flag is enabled OR the flag service
-  // reports it enabled.
-  const showDebugPanel = envDebugPanelEnabled || debugPanelFlagEnabled;
-
-  const content = showComponentShowcase ? (
-    <ComponentShowcase />
-  ) : (
-    <>
+  return (
+    <ErrorBoundary>
       <Dashboard />
-      {showDebugPanel && (
+      {isDevelopment && showDebugPanel && (
         <div className="fixed z-50" style={{ right: '8px', top: '8px' }}>
           <DebugPanel />
         </div>
       )}
-    </>
+    </ErrorBoundary>
   );
-
-  return <ErrorBoundary>{content}</ErrorBoundary>;
 }
 
 export default App;

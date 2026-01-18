@@ -2,6 +2,7 @@ import { Container } from 'inversify';
 import 'reflect-metadata';
 import type { IConfigService } from '../interfaces/IConfigService';
 import type { IDeviceTrackerMetadataService } from '../interfaces/IDeviceTrackerMetadataService';
+import type { IEntityLabelService } from '../interfaces/IEntityLabelService';
 import type { IEntityService } from '../interfaces/IEntityService';
 import type { IFeatureFlagService } from '../interfaces/IFeatureFlagService';
 import type { IFloorplanDataSource } from '../interfaces/IFloorplanDataSource';
@@ -15,6 +16,7 @@ import { ConfigService } from '../services/ConfigService';
 import { FeatureFlagService } from '../services/FeatureFlagService';
 import { HomeAssistantConnectionConfigService } from '../services/HomeAssistantConnectionConfigService';
 import { HomeAssistantDeviceTrackerMetadataService } from '../services/HomeAssistantDeviceTrackerMetadataService';
+import { HomeAssistantEntityLabelService } from '../services/HomeAssistantEntityLabelService';
 import { HomeAssistantEntityService } from '../services/HomeAssistantEntityService';
 import { HomeAssistantHouseholdAreaEntityIndexService } from '../services/HomeAssistantHouseholdAreaEntityIndexService';
 import { HomeAssistantHouseholdEntityLabelService } from '../services/HomeAssistantHouseholdEntityLabelService';
@@ -45,6 +47,7 @@ const container = new Container();
 // Bind services to their interfaces
 // All bindings use singleton scope to ensure single instances throughout the app
 container.bind<IConfigService>(TYPES.IConfigService).to(ConfigService).inSingletonScope();
+
 container
   .bind<IFeatureFlagService>(TYPES.IFeatureFlagService)
   .to(FeatureFlagService)
@@ -70,6 +73,11 @@ container.bind<IHttpClient>(TYPES.IHttpClient).to(HomeAssistantHttpClient).inSin
 container
   .bind<IEntityService>(TYPES.IEntityService)
   .to(HomeAssistantEntityService)
+  .inSingletonScope();
+
+container
+  .bind<IEntityLabelService>(TYPES.IEntityLabelService)
+  .to(HomeAssistantEntityLabelService)
   .inSingletonScope();
 
 container

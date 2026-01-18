@@ -13,6 +13,8 @@ import type {
   HaEntityState,
   HaEvent,
   HaRestServicesDomain,
+  HaSubscribeTriggerConfig,
+  HaTriggerEvent,
   HaWsEventMessage,
   HaWsResultMessage,
 } from '../types/home-assistant';
@@ -23,12 +25,19 @@ type PendingRequest = {
   reject: (reason: unknown) => void;
 };
 
-type SubscriptionHandler = (event: HaEvent<unknown>) => void;
+type SubscriptionHandler = (event: unknown) => void;
 
-type SubscriptionRecord = {
-  eventType: string | null;
-  handler: SubscriptionHandler;
-};
+type SubscriptionRecord =
+  | {
+      kind: 'events';
+      eventType: string | null;
+      handler: SubscriptionHandler;
+    }
+  | {
+      kind: 'trigger';
+      trigger: HaSubscribeTriggerConfig;
+      handler: SubscriptionHandler;
+    };
 
 @injectable()
 export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
@@ -159,9 +168,50 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     void result;
 
     this.subscriptions.set(subscriptionId, {
+      kind: 'events',
       eventType,
       handler: (event) => {
         handler(event as HaEvent<TData>);
+      },
+    });
+
+    return {
+      unsubscribe: async () => {
+        this.subscriptions.delete(subscriptionId);
+        try {
+          await this.sendCommand({
+            type: 'unsubscribe_events',
+            subscription: subscriptionId,
+          });
+        } catch {
+          // If unsubscribe fails, we still consider it unsubscribed locally.
+        }
+      },
+    };
+  }
+
+  async subscribeToTrigger(
+    trigger: HaSubscribeTriggerConfig,
+    handler: (event: HaTriggerEvent) => void
+  ): Promise<IHaSubscription> {
+    const subscriptionId = this.allocateId();
+
+    const command: Record<string, unknown> = {
+      id: subscriptionId,
+      type: 'subscribe_trigger',
+      trigger,
+    };
+
+    const result = await this.sendRawCommand(subscriptionId, command);
+
+    // subscribe_trigger returns null in `result` on success.
+    void result;
+
+    this.subscriptions.set(subscriptionId, {
+      kind: 'trigger',
+      trigger,
+      handler: (event) => {
+        handler(event as HaTriggerEvent);
       },
     });
 
@@ -299,7 +349,7 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     if (this.isWsEvent(parsed)) {
       const subscription = this.subscriptions.get(parsed.id);
       if (subscription) {
-        subscription.handler(parsed.event as HaEvent<unknown>);
+        subscription.handler(parsed.event);
       }
     }
   }
@@ -320,14 +370,24 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     if (!this.connected) return;
 
     const attempts = Array.from(this.subscriptions.entries(), ([subscriptionId, record]) => {
+      if (record.kind === 'events') {
+        const command: Record<string, unknown> = {
+          id: subscriptionId,
+          type: 'subscribe_events',
+        };
+
+        if (record.eventType) {
+          command.event_type = record.eventType;
+        }
+
+        return this.sendRawCommand(subscriptionId, command);
+      }
+
       const command: Record<string, unknown> = {
         id: subscriptionId,
-        type: 'subscribe_events',
+        type: 'subscribe_trigger',
+        trigger: record.trigger,
       };
-
-      if (record.eventType) {
-        command.event_type = record.eventType;
-      }
 
       return this.sendRawCommand(subscriptionId, command);
     });

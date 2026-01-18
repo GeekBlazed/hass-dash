@@ -38,6 +38,7 @@ interface EntityStateStore {
 
   setAll: (states: HaEntityState[]) => void;
   upsert: (state: HaEntityState) => void;
+  upsertMany: (states: ReadonlyArray<HaEntityState>) => void;
   optimisticSetState: (entityId: string, nextState: string) => void;
   setHouseholdEntityIds: (entityIds: Iterable<string>) => void;
   clear: () => void;
@@ -62,6 +63,19 @@ export const useEntityStore = create<EntityStateStore>()(
           set((state) =>
             produce(state, (draft) => {
               draft.entitiesById[entityState.entity_id] = entityState;
+              draft.lastUpdatedAt = Date.now();
+            })
+          );
+        },
+
+        upsertMany: (entityStates) => {
+          if (entityStates.length === 0) return;
+
+          set((state) =>
+            produce(state, (draft) => {
+              for (const entityState of entityStates) {
+                draft.entitiesById[entityState.entity_id] = entityState;
+              }
               draft.lastUpdatedAt = Date.now();
             })
           );

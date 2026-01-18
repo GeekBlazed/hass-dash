@@ -38,7 +38,6 @@ describe('DI Container', () => {
     const configService = container.get<IConfigService>(TYPES.IConfigService);
 
     expect(typeof configService.getAppVersion).toBe('function');
-    expect(typeof configService.isFeatureEnabled).toBe('function');
     expect(typeof configService.getConfig).toBe('function');
   });
 
@@ -53,9 +52,6 @@ describe('DI Container', () => {
     const version = configService.getAppVersion();
     expect(version).toBeDefined();
     expect(typeof version).toBe('string');
-
-    const isEnabled = configService.isFeatureEnabled('FLOOR_PLAN');
-    expect(typeof isEnabled).toBe('boolean');
 
     const config = configService.getConfig('APP_VERSION');
     expect(config).toBeDefined();

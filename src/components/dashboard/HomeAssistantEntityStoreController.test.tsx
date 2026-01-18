@@ -2,15 +2,8 @@ import { render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TYPES } from '../../core/types';
-import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { useService } from '../../hooks/useService';
 import { HomeAssistantEntityStoreController } from './HomeAssistantEntityStoreController';
-
-vi.mock('../../hooks/useFeatureFlag', () => {
-  return {
-    useFeatureFlag: vi.fn(),
-  };
-});
 
 vi.mock('../../hooks/useService', () => {
   return {
@@ -32,6 +25,12 @@ vi.mock('../../utils/logger', () => {
 const { upsertMock } = vi.hoisted(() => {
   return {
     upsertMock: vi.fn(),
+  };
+});
+
+const { upsertManyMock } = vi.hoisted(() => {
+  return {
+    upsertManyMock: vi.fn(),
   };
 });
 
@@ -58,6 +57,7 @@ vi.mock('../../stores/useEntityStore', () => {
       selector({
         setAll: setAllMock,
         upsert: upsertMock,
+        upsertMany: upsertManyMock,
         setHouseholdEntityIds: setHouseholdEntityIdsMock,
       }),
   };
@@ -72,7 +72,6 @@ vi.mock('../../stores/useHouseholdAreaEntityIndexStore', () => {
   };
 });
 
-const useFeatureFlagMock = vi.mocked(useFeatureFlag);
 const useServiceMock = vi.mocked(useService);
 
 describe('HomeAssistantEntityStoreController', () => {
@@ -80,9 +79,9 @@ describe('HomeAssistantEntityStoreController', () => {
     warnMock.mockReset();
     setAllMock.mockReset();
     upsertMock.mockReset();
+    upsertManyMock.mockReset();
     setHouseholdEntityIdsMock.mockReset();
     setHouseholdAreaIndexMock.mockReset();
-    useFeatureFlagMock.mockReset();
     useServiceMock.mockReset();
   });
 
@@ -90,25 +89,7 @@ describe('HomeAssistantEntityStoreController', () => {
     vi.useRealTimers();
   });
 
-  it('does nothing when HA_CONNECTION flag is disabled', () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: false } as never);
-
-    const fetchStates = vi.fn();
-    const subscribeToStateChanges = vi.fn();
-    useServiceMock.mockReturnValue({ fetchStates, subscribeToStateChanges } as never);
-
-    render(<HomeAssistantEntityStoreController />);
-
-    expect(fetchStates).not.toHaveBeenCalled();
-    expect(subscribeToStateChanges).not.toHaveBeenCalled();
-    expect(upsertMock).not.toHaveBeenCalled();
-    expect(setHouseholdEntityIdsMock).not.toHaveBeenCalled();
-    expect(setHouseholdAreaIndexMock).not.toHaveBeenCalled();
-  });
-
   it('upserts only whitelisted entityIds from initial fetch', async () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true } as never);
-
     const fetchStates = vi.fn().mockResolvedValue([
       { entity_id: 'sensor.keep_me', state: '1', attributes: {} },
       { entity_id: 'sensor.ignore_me', state: '2', attributes: {} },
@@ -118,12 +99,16 @@ describe('HomeAssistantEntityStoreController', () => {
       unsubscribe: vi.fn().mockResolvedValue(undefined),
     });
 
+    const subscribeToStateChangesFiltered = vi.fn().mockResolvedValue({
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
+    });
+
     useServiceMock.mockImplementation((identifier: symbol) => {
       if (identifier === TYPES.IEntityService) {
-        return { fetchStates, subscribeToStateChanges } as never;
+        return { fetchStates, subscribeToStateChanges, subscribeToStateChangesFiltered } as never;
       }
-      if (identifier === TYPES.IHouseholdEntityLabelService) {
-        return { getHouseholdEntityIds: vi.fn().mockResolvedValue(new Set()) } as never;
+      if (identifier === TYPES.IEntityLabelService) {
+        return { getEntityIdsByLabelName: vi.fn().mockResolvedValue(new Set()) } as never;
       }
       if (identifier === TYPES.IHouseholdAreaEntityIndexService) {
         return {
@@ -140,18 +125,18 @@ describe('HomeAssistantEntityStoreController', () => {
 
     await waitFor(() => {
       expect(fetchStates).toHaveBeenCalledTimes(1);
-      expect(subscribeToStateChanges).toHaveBeenCalledTimes(1);
+      expect(subscribeToStateChangesFiltered).toHaveBeenCalledTimes(1);
     });
 
-    expect(upsertMock).toHaveBeenCalledTimes(1);
+    expect(upsertManyMock).toHaveBeenCalledTimes(1);
     expect(setAllMock).not.toHaveBeenCalled();
-    expect(upsertMock).toHaveBeenCalledWith(
-      expect.objectContaining({ entity_id: 'sensor.keep_me' })
-    );
+    expect(upsertManyMock).toHaveBeenCalledWith([
+      expect.objectContaining({ entity_id: 'sensor.keep_me' }),
+    ]);
   });
 
-  it('captures all entities by default (required for room overlays)', async () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true } as never);
+  it('captures all entities when dev override ?allEntities is present', async () => {
+    window.history.pushState({}, '', '/?allEntities=1');
 
     const fetchStates = vi.fn().mockResolvedValue([
       { entity_id: 'sensor.room1_temperature', state: '70', attributes: {} },
@@ -174,9 +159,12 @@ describe('HomeAssistantEntityStoreController', () => {
       if (identifier === TYPES.IEntityService) {
         return { fetchStates, subscribeToStateChanges } as never;
       }
-      if (identifier === TYPES.IHouseholdEntityLabelService) {
+      if (identifier === TYPES.IEntityLabelService) {
         return {
-          getHouseholdEntityIds: vi.fn().mockResolvedValue(new Set(['sensor.room1_temperature'])),
+          getEntityIdsByLabelName: vi.fn().mockImplementation(async (labelName: string) => {
+            if (labelName === 'hass-dash') return new Set(['sensor.room1_temperature']);
+            return new Set();
+          }),
         } as never;
       }
       if (identifier === TYPES.IHouseholdAreaEntityIndexService) {
@@ -209,9 +197,12 @@ describe('HomeAssistantEntityStoreController', () => {
     );
 
     stateHandler?.({ entity_id: 'sensor.room2_temperature', state: '72', attributes: {} });
-    expect(upsertMock).toHaveBeenCalledWith(
-      expect.objectContaining({ entity_id: 'sensor.room2_temperature' })
-    );
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    expect(upsertManyMock).toHaveBeenCalledWith([
+      expect.objectContaining({ entity_id: 'sensor.room2_temperature' }),
+    ]);
 
     unmount();
     await waitFor(() => {
@@ -219,9 +210,94 @@ describe('HomeAssistantEntityStoreController', () => {
     });
   });
 
-  it('logs a warning when initial fetch fails with Error', async () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true } as never);
+  it('reduces subscriptions by default (hass-dash label only)', async () => {
+    window.history.pushState({}, '', '/');
 
+    const fetchStates = vi.fn().mockResolvedValue([
+      { entity_id: 'sensor.house_temp', state: '70', attributes: {} },
+      { entity_id: 'sensor.radar_spam', state: '999', attributes: {} },
+      { entity_id: 'device_tracker.phone_1', state: 'home', attributes: {} },
+      { entity_id: 'person.alice', state: 'home', attributes: {} },
+      { entity_id: 'light.kitchen', state: 'on', attributes: {} },
+    ]);
+
+    const subscribeToStateChanges = vi.fn().mockResolvedValue({
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const subscribeToStateChangesFiltered = vi.fn().mockResolvedValue({
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const getEntityIdsByLabelName = vi.fn().mockImplementation(async (labelName: string) => {
+      if (labelName === 'hass-dash') {
+        return new Set([
+          'sensor.house_temp',
+          'light.kitchen',
+          'device_tracker.phone_1',
+          'person.alice',
+        ]);
+      }
+      return new Set();
+    });
+
+    useServiceMock.mockImplementation((identifier: symbol) => {
+      if (identifier === TYPES.IEntityService) {
+        return {
+          fetchStates,
+          subscribeToStateChanges,
+          subscribeToStateChangesFiltered,
+        } as never;
+      }
+      if (identifier === TYPES.IEntityLabelService) {
+        return { getEntityIdsByLabelName } as never;
+      }
+      if (identifier === TYPES.IHouseholdAreaEntityIndexService) {
+        return {
+          refresh: vi.fn().mockResolvedValue(undefined),
+          getAllAreas: vi.fn().mockResolvedValue([]),
+          getHouseholdDeviceIdsByAreaId: vi.fn().mockResolvedValue(new Set()),
+          getHouseholdEntityIdsByAreaId: vi.fn().mockResolvedValue(new Set()),
+        } as never;
+      }
+      throw new Error('Unexpected service identifier');
+    });
+
+    render(<HomeAssistantEntityStoreController />);
+
+    await waitFor(() => {
+      expect(fetchStates).toHaveBeenCalledTimes(1);
+      expect(subscribeToStateChangesFiltered).toHaveBeenCalledTimes(1);
+    });
+
+    expect(setAllMock).not.toHaveBeenCalled();
+    expect(upsertManyMock).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ entity_id: 'sensor.house_temp' }),
+        expect.objectContaining({ entity_id: 'light.kitchen' }),
+        expect.objectContaining({ entity_id: 'device_tracker.phone_1' }),
+        expect.objectContaining({ entity_id: 'person.alice' }),
+      ])
+    );
+
+    // Ensure noisy sensors are not captured by default.
+    expect(upsertManyMock).not.toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ entity_id: 'sensor.radar_spam' })])
+    );
+
+    const [passedEntityIds] = subscribeToStateChangesFiltered.mock.calls[0] ?? [];
+    expect(passedEntityIds).toEqual(
+      expect.arrayContaining([
+        'sensor.house_temp',
+        'light.kitchen',
+        'device_tracker.phone_1',
+        'person.alice',
+      ])
+    );
+    expect(passedEntityIds).not.toEqual(expect.arrayContaining(['sensor.radar_spam']));
+  });
+
+  it('logs a warning when initial fetch fails with Error', async () => {
     const fetchStates = vi.fn().mockRejectedValue(new Error('boom'));
     const subscribeToStateChanges = vi.fn().mockResolvedValue({
       unsubscribe: vi.fn().mockResolvedValue(undefined),
@@ -231,8 +307,8 @@ describe('HomeAssistantEntityStoreController', () => {
       if (identifier === TYPES.IEntityService) {
         return { fetchStates, subscribeToStateChanges } as never;
       }
-      if (identifier === TYPES.IHouseholdEntityLabelService) {
-        return { getHouseholdEntityIds: vi.fn().mockResolvedValue(new Set()) } as never;
+      if (identifier === TYPES.IEntityLabelService) {
+        return { getEntityIdsByLabelName: vi.fn().mockResolvedValue(new Set()) } as never;
       }
       if (identifier === TYPES.IHouseholdAreaEntityIndexService) {
         return {
@@ -254,8 +330,6 @@ describe('HomeAssistantEntityStoreController', () => {
   });
 
   it('logs a warning when subscribe fails with a non-Error reason', async () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true } as never);
-
     const fetchStates = vi.fn().mockResolvedValue([]);
     const subscribeToStateChanges = vi.fn().mockRejectedValue('nope');
 
@@ -263,8 +337,8 @@ describe('HomeAssistantEntityStoreController', () => {
       if (identifier === TYPES.IEntityService) {
         return { fetchStates, subscribeToStateChanges } as never;
       }
-      if (identifier === TYPES.IHouseholdEntityLabelService) {
-        return { getHouseholdEntityIds: vi.fn().mockResolvedValue(new Set()) } as never;
+      if (identifier === TYPES.IEntityLabelService) {
+        return { getEntityIdsByLabelName: vi.fn().mockResolvedValue(new Set()) } as never;
       }
       if (identifier === TYPES.IHouseholdAreaEntityIndexService) {
         return {
@@ -285,8 +359,6 @@ describe('HomeAssistantEntityStoreController', () => {
   });
 
   it('filters state_changed updates and unsubscribes on unmount', async () => {
-    useFeatureFlagMock.mockReturnValue({ isEnabled: true } as never);
-
     const fetchStates = vi.fn().mockResolvedValue([]);
 
     type StateChangedHandler = (next: {
@@ -309,8 +381,8 @@ describe('HomeAssistantEntityStoreController', () => {
       if (identifier === TYPES.IEntityService) {
         return { fetchStates, subscribeToStateChanges } as never;
       }
-      if (identifier === TYPES.IHouseholdEntityLabelService) {
-        return { getHouseholdEntityIds: vi.fn().mockResolvedValue(new Set()) } as never;
+      if (identifier === TYPES.IEntityLabelService) {
+        return { getEntityIdsByLabelName: vi.fn().mockResolvedValue(new Set()) } as never;
       }
       if (identifier === TYPES.IHouseholdAreaEntityIndexService) {
         return {
@@ -334,10 +406,12 @@ describe('HomeAssistantEntityStoreController', () => {
     handler?.({ entity_id: 'sensor.ignore_me', state: '1', attributes: {} });
     handler?.({ entity_id: 'sensor.keep_me', state: '2', attributes: {} });
 
-    expect(upsertMock).toHaveBeenCalledTimes(1);
-    expect(upsertMock).toHaveBeenCalledWith(
-      expect.objectContaining({ entity_id: 'sensor.keep_me' })
-    );
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    expect(upsertManyMock).toHaveBeenCalledTimes(1);
+    expect(upsertManyMock).toHaveBeenCalledWith([
+      expect.objectContaining({ entity_id: 'sensor.keep_me' }),
+    ]);
 
     unmount();
 

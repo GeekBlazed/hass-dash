@@ -6,7 +6,6 @@ import {
 } from '../../../features/tracking/trackingDebugOverlayConfig';
 import { getTrackingStaleTimeoutMs } from '../../../features/tracking/trackingStaleTimeoutConfig';
 import { getTrackingStaleWarningMs } from '../../../features/tracking/trackingStaleWarningConfig';
-import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import type { DeviceLocation } from '../../../stores/useDeviceLocationStore';
 import { useDeviceLocationStore } from '../../../stores/useDeviceLocationStore';
 import { useDeviceTrackerMetadataStore } from '../../../stores/useDeviceTrackerMetadataStore';
@@ -597,14 +596,19 @@ const getNextStaleCheckDelayMs = (
 };
 
 export function TrackedDeviceMarkersBridge() {
-  const { isEnabled } = useFeatureFlag('DEVICE_TRACKING');
-  const { isEnabled: debugOverlayFlagEnabled } = useFeatureFlag('TRACKING_DEBUG_OVERLAY');
   const locationsByEntityId = useDeviceLocationStore((s) => s.locationsByEntityId);
   const metadataByEntityId = useDeviceTrackerMetadataStore((s) => s.metadataByEntityId);
   const [staleTick, setStaleTick] = useState(0);
 
-  // Dev-only: never show this overlay in production builds.
-  const showDebugOverlay = debugOverlayFlagEnabled && !import.meta.env.PROD;
+  const showDebugOverlay =
+    import.meta.env.DEV &&
+    (() => {
+      try {
+        return new URLSearchParams(window.location.search).has('debugOverlay');
+      } catch {
+        return false;
+      }
+    })();
   const debugMode = getTrackingDebugOverlayMode();
   const staleWarningMs = getTrackingStaleWarningMs();
   const staleTimeoutMs = getTrackingStaleTimeoutMs();
@@ -623,7 +627,7 @@ export function TrackedDeviceMarkersBridge() {
     // Initial sync
     syncMarkers(
       layer,
-      isEnabled,
+      true,
       filteredLocationsByEntityId,
       metadataByEntityId,
       showDebugOverlay,
@@ -637,7 +641,7 @@ export function TrackedDeviceMarkersBridge() {
     const observer = new MutationObserver(() => {
       syncMarkers(
         layer,
-        isEnabled,
+        true,
         filteredLocationsByEntityId,
         metadataByEntityId,
         showDebugOverlay,
@@ -649,15 +653,12 @@ export function TrackedDeviceMarkersBridge() {
 
     observer.observe(layer, { childList: true });
 
-    const nextDelayMs =
-      isEnabled === true
-        ? getNextStaleCheckDelayMs(
-            filteredLocationsByEntityId,
-            nowMs,
-            staleWarningMs,
-            staleTimeoutMs
-          )
-        : null;
+    const nextDelayMs = getNextStaleCheckDelayMs(
+      filteredLocationsByEntityId,
+      nowMs,
+      staleWarningMs,
+      staleTimeoutMs
+    );
 
     const timerId =
       nextDelayMs === null
@@ -673,7 +674,6 @@ export function TrackedDeviceMarkersBridge() {
       }
     };
   }, [
-    isEnabled,
     locationsByEntityId,
     metadataByEntityId,
     showDebugOverlay,

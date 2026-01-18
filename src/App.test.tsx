@@ -13,12 +13,13 @@ async function renderAndSettle(ui: ReactElement): Promise<void> {
 
 describe('App', () => {
   beforeEach(() => {
-    // Keep App tests deterministic regardless of local .env settings.
-    vi.stubEnv('VITE_FEATURE_COMPONENT_SHOWCASE', 'false');
-    vi.stubEnv('VITE_FEATURE_DEBUG_PANEL', 'false');
+    window.history.replaceState({}, '', '/');
+    window.sessionStorage.removeItem('hass-dash:devtools');
   });
 
   afterEach(() => {
+    window.history.replaceState({}, '', '/');
+    window.sessionStorage.removeItem('hass-dash:devtools');
     vi.unstubAllEnvs();
   });
 
@@ -67,23 +68,14 @@ describe('App', () => {
     });
   });
 
-  it('renders the component showcase when enabled', async () => {
-    vi.stubEnv('VITE_FEATURE_COMPONENT_SHOWCASE', 'true');
-
+  it('does not render the debug panel by default', async () => {
     await renderAndSettle(<App />);
-
-    expect(screen.getByRole('heading', { name: /component showcase/i })).toBeInTheDocument();
-    expect(
-      screen.queryByRole('application', { name: /floorplan dashboard/i })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /dev tools/i })).not.toBeInTheDocument();
   });
 
-  it('renders the debug panel when debug flag is enabled as a boolean env value', async () => {
-    // Exercise the boolean env branch in App.tsx (not just the string-based path).
-    vi.stubEnv('VITE_FEATURE_DEBUG_PANEL', true as unknown as string);
-
+  it('renders the debug panel when ?debug is present', async () => {
+    window.history.replaceState({}, '', '/?debug');
     await renderAndSettle(<App />);
-
-    expect(screen.getByRole('heading', { name: /feature flags/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /dev tools/i })).toBeInTheDocument();
   });
 });

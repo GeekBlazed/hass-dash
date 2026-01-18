@@ -1,18 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { container } from '../core/di-container';
 import { TYPES } from '../core/types';
-import { useFeatureFlags } from '../hooks/useFeatureFlag';
 import type { IEntityService } from '../interfaces/IEntityService';
 import type { IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
+import type { IWebSocketService } from '../interfaces/IWebSocketService';
 import { useEntityStore } from '../stores/useEntityStore';
 import type { HaStateChangedEventData } from '../types/home-assistant';
-import { pageReloader } from '../utils/pageReloader';
 
 export function DebugPanel() {
-  const { flags, service } = useFeatureFlags();
-
   const homeAssistantClient = useMemo(
     () => container.get<IHomeAssistantClient>(TYPES.IHomeAssistantClient),
+    []
+  );
+
+  const webSocketService = useMemo(
+    () => container.get<IWebSocketService>(TYPES.IWebSocketService),
     []
   );
 
@@ -38,20 +40,84 @@ export function DebugPanel() {
 
   const testLightEntityId = 'light.norad_corner_torch';
 
-  const handleToggle = (flag: string, currentState: boolean) => {
-    if (currentState) {
-      service.disable(flag);
-    } else {
-      service.enable(flag);
-    }
-    // Force re-render by causing a state update
-    pageReloader.reload();
-  };
-
   const isDevelopment = import.meta.env.DEV;
 
-  const showHaSmokeTest = Boolean(flags.HA_CONNECTION) && isDevelopment;
-  const showEntityDebug = Boolean(flags.ENTITY_DEBUG) && isDevelopment;
+  const showHaSmokeTest = isDevelopment;
+  const showEntityDebug = isDevelopment;
+
+  const [wsConnected, setWsConnected] = useState<boolean>(() => webSocketService.isConnected());
+  const [wsLastMessageAtMs, setWsLastMessageAtMs] = useState<number | null>(null);
+  const [wsLastMessageBytes, setWsLastMessageBytes] = useState<number | null>(null);
+  const [wsMessagesLast10s, setWsMessagesLast10s] = useState<number | null>(null);
+  const [wsMessagesPerSec, setWsMessagesPerSec] = useState<number | null>(null);
+  const [wsNowMs, setWsNowMs] = useState<number>(0);
+  const wsLastMessageRef = useRef<{ atMs: number | null; bytes: number | null }>({
+    atMs: null,
+    bytes: null,
+  });
+
+  const wsMessageWindowRef = useRef<{ times: number[]; startIndex: number }>({
+    times: [],
+    startIndex: 0,
+  });
+
+  useEffect(() => {
+    if (!isDevelopment) return;
+
+    const statusSub = webSocketService.subscribeConnectionStatus((connected) => {
+      setWsConnected(connected);
+    });
+
+    // Important: do NOT set React state on every websocket message.
+    // The HA event stream can be very chatty and would cause excessive renders.
+    const dataSub = webSocketService.subscribe((data) => {
+      const nowMs = Date.now();
+      wsLastMessageRef.current = { atMs: nowMs, bytes: data.length };
+
+      const windowState = wsMessageWindowRef.current;
+      windowState.times.push(nowMs);
+
+      // Hard cap to avoid unbounded memory growth if HA floods messages.
+      const maxSamples = 20_000;
+      const currentCount = windowState.times.length - windowState.startIndex;
+      if (currentCount > maxSamples) {
+        windowState.startIndex = windowState.times.length - maxSamples;
+      }
+    });
+
+    const timerId = window.setInterval(() => {
+      const nowMs = Date.now();
+      setWsNowMs(nowMs);
+      const { atMs, bytes } = wsLastMessageRef.current;
+      setWsLastMessageAtMs(atMs);
+      setWsLastMessageBytes(bytes);
+
+      const windowState = wsMessageWindowRef.current;
+      const cutoffMs = nowMs - 10_000;
+      while (
+        windowState.startIndex < windowState.times.length &&
+        windowState.times[windowState.startIndex] < cutoffMs
+      ) {
+        windowState.startIndex += 1;
+      }
+
+      // Occasionally compact to keep the array from growing forever.
+      if (windowState.startIndex > 5_000) {
+        windowState.times.splice(0, windowState.startIndex);
+        windowState.startIndex = 0;
+      }
+
+      const countLast10s = windowState.times.length - windowState.startIndex;
+      setWsMessagesLast10s(countLast10s);
+      setWsMessagesPerSec(Number((countLast10s / 10).toFixed(1)));
+    }, 1000);
+
+    return () => {
+      statusSub.unsubscribe();
+      dataSub.unsubscribe();
+      window.clearInterval(timerId);
+    };
+  }, [isDevelopment, webSocketService]);
 
   const [entityDebugStatus, setEntityDebugStatus] = useState<
     | { state: 'idle' }
@@ -245,49 +311,16 @@ export function DebugPanel() {
       style={{ backgroundColor: 'blue' }}
     >
       <div className="mb-3 flex items-center gap-2">
-        <span className="text-2xl">🚩</span>
-        <h2 className="text-lg font-bold text-blue-900 dark:text-blue-100">Feature Flags</h2>
+        <span className="text-2xl">🛠️</span>
+        <h2 className="text-lg font-bold text-blue-900 dark:text-blue-100">Dev Tools</h2>
       </div>
 
       <div className="space-y-2">
-        {Object.entries(flags).length === 0 ? (
-          <p className="text-sm text-blue-700 dark:text-blue-300">No feature flags defined</p>
-        ) : (
-          Object.entries(flags).map(([name, enabled]) => (
-            <div
-              key={name}
-              className="flex items-center justify-between rounded bg-white p-2 dark:bg-gray-800"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{enabled ? '✅' : '❌'}</span>
-                <code className="font-mono text-sm text-gray-700 dark:text-gray-300">{name}</code>
-              </div>
-
-              {isDevelopment && (
-                <button
-                  onClick={() => handleToggle(name, enabled)}
-                  className="rounded bg-blue-500 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-                  aria-label={`Toggle ${name} flag`}
-                >
-                  Toggle
-                </button>
-              )}
-
-              {!isDevelopment && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {enabled ? 'Enabled' : 'Disabled'}
-                </span>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
-      {isDevelopment && (
-        <p className="mt-3 text-xs text-blue-600 dark:text-blue-400">
-          💡 Dev Mode: Toggle flags to test features. Changes persist in sessionStorage.
+        <p className="text-sm text-blue-700 dark:text-blue-300">
+          Toggle this panel with the <span className="font-semibold">cog</span> in the sidebar
+          header, or use <code>?debug</code> in dev.
         </p>
-      )}
+      </div>
 
       {showHaSmokeTest && (
         <div className="mt-4 rounded bg-white p-3 dark:bg-gray-800">
@@ -365,6 +398,51 @@ export function DebugPanel() {
                 Error: {haLightToggleStatus.message}
               </span>
             )}
+          </div>
+        </div>
+      )}
+
+      {isDevelopment && (
+        <div className="mt-4 rounded bg-white p-3 dark:bg-gray-800" aria-label="WebSocket health">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              WebSocket Health
+            </h3>
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              Connected: <span className="font-mono">{wsConnected ? 'yes' : 'no'}</span>
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              Last message:{' '}
+              <span className="font-mono">
+                {wsLastMessageAtMs === null
+                  ? 'never'
+                  : wsNowMs === 0
+                    ? 'unknown'
+                    : `${Math.max(0, Math.round((wsNowMs - wsLastMessageAtMs) / 1000))}s ago`}
+              </span>
+              {wsLastMessageBytes !== null && (
+                <>
+                  {' '}
+                  <span className="text-gray-400 dark:text-gray-500">(</span>
+                  <span className="font-mono">{wsLastMessageBytes}</span>
+                  <span className="text-gray-400 dark:text-gray-500"> bytes)</span>
+                </>
+              )}
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              Rate (last 10s):{' '}
+              <span className="font-mono">
+                {wsMessagesPerSec === null ? 'unknown' : `${wsMessagesPerSec} msg/s`}
+              </span>
+              {wsMessagesLast10s !== null && (
+                <>
+                  {' '}
+                  <span className="text-gray-400 dark:text-gray-500">(</span>
+                  <span className="font-mono">{wsMessagesLast10s}</span>
+                  <span className="text-gray-400 dark:text-gray-500"> msgs)</span>
+                </>
+              )}
+            </p>
           </div>
         </div>
       )}

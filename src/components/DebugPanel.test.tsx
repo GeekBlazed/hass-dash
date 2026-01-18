@@ -1,14 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { container } from '../core/di-container';
-import { useFeatureFlags } from '../hooks/useFeatureFlag';
-import { pageReloader } from '../utils/pageReloader';
+import { useEntityStore } from '../stores/useEntityStore';
+import type { HaEntityState } from '../types/home-assistant';
 import * as DebugPanelModule from './DebugPanel';
-
-// Mock the useFeatureFlags hook
-vi.mock('../hooks/useFeatureFlag', () => ({
-  useFeatureFlags: vi.fn(),
-}));
 
 vi.mock('../core/di-container', () => ({
   container: {
@@ -16,387 +11,108 @@ vi.mock('../core/di-container', () => ({
   },
 }));
 
-const reloadSpy = vi.spyOn(pageReloader, 'reload').mockImplementation(() => undefined);
-
 describe('DebugPanel', () => {
-  const mockService = {
-    isEnabled: vi.fn(),
-    getAll: vi.fn(),
-    enable: vi.fn(),
-    disable: vi.fn(),
-  };
-
   const mockHaClient = {
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    isConnected: vi.fn(),
-    getStates: vi.fn(),
+    connect: vi.fn<() => Promise<void>>().mockResolvedValue(),
+    getStates: vi.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
+    getServices: vi.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
     getState: vi.fn(),
-    getServices: vi.fn(),
     subscribeToEvents: vi.fn(),
     callService: vi.fn(),
   };
 
   const mockEntityService = {
-    fetchStates: vi.fn(),
+    fetchStates: vi.fn<() => Promise<HaEntityState[]>>().mockResolvedValue([]),
     subscribeToStateChanges: vi.fn(),
+  };
+
+  const mockWebSocketService = {
+    isConnected: vi.fn<() => boolean>().mockReturnValue(false),
+    subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
+    subscribeConnectionStatus: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
+    send: vi.fn(),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    reloadSpy.mockClear();
-    // Set to development mode by default
-    vi.stubEnv('DEV', true);
+    window.localStorage.removeItem('hass-dash:entities');
+    useEntityStore.getState().clear();
 
     vi.mocked(container.get).mockImplementation((token) => {
       const tokenKey = (() => {
         if (typeof token === 'symbol') {
-          // `symbol.description` may be missing (older runtimes/polyfills), so fall back.
           return token.description ?? token.toString();
         }
         return String(token);
       })();
 
-      const key = tokenKey;
-      if (key.includes('IEntityService')) return mockEntityService;
+      if (tokenKey.includes('IWebSocketService')) return mockWebSocketService;
+      if (tokenKey.includes('IEntityService')) return mockEntityService;
       return mockHaClient;
     });
   });
 
-  it('should render feature flags', () => {
-    const mockFlags = {
-      FLOOR_PLAN: false,
-      HA_CONNECTION: true,
-      DEBUG_PANEL: true,
-    };
-
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: mockFlags,
-      service: mockService,
-    });
-
+  it('renders the dev tools header and help text', () => {
     render(<DebugPanelModule.DebugPanel />);
-
-    // Check that all flags are displayed
-    expect(screen.getByText('FLOOR_PLAN')).toBeInTheDocument();
-    expect(screen.getByText('HA_CONNECTION')).toBeInTheDocument();
-    expect(screen.getByText('DEBUG_PANEL')).toBeInTheDocument();
-
-    // Check indicators are present (we can't easily test role="listitem" since divs don't have that)
-    const container = screen.getByText('FLOOR_PLAN').closest('div');
-    expect(container).toHaveTextContent('❌');
-
-    const haContainer = screen.getByText('HA_CONNECTION').closest('div');
-    expect(haContainer).toHaveTextContent('✅');
+    expect(screen.getByRole('heading', { name: /dev tools/i })).toBeInTheDocument();
+    expect(screen.getByText(/toggle this panel with/i)).toBeInTheDocument();
   });
 
-  it('should show message when no flags are defined', () => {
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: {},
-      service: mockService,
-    });
-
+  it('renders the WebSocket health section', () => {
     render(<DebugPanelModule.DebugPanel />);
-
-    expect(screen.getByText(/no feature flags defined/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /websocket health/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/websocket health/i)).toBeInTheDocument();
+    expect(screen.getByText(/rate \(last 10s\):/i)).toBeInTheDocument();
   });
 
-  it('should show toggle button for flags in dev mode', () => {
-    vi.stubEnv('DEV', true);
-    const mockFlags = { FLOOR_PLAN: false };
-
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: mockFlags,
-      service: mockService,
-    });
+  it('runs the Home Assistant connection smoke test', async () => {
+    mockHaClient.getStates.mockResolvedValueOnce([{}, {}]);
+    mockHaClient.getServices.mockResolvedValueOnce([{}]);
 
     render(<DebugPanelModule.DebugPanel />);
 
-    // Button shows "Toggle" text and has aria-label with flag name
-    const toggleButton = screen.getByRole('button', { name: /toggle floor_plan/i });
-    expect(toggleButton).toBeInTheDocument();
-    expect(toggleButton).toHaveTextContent('Toggle');
-  });
-
-  it('should call enable and reload when toggle button clicked for disabled flag', () => {
-    vi.stubEnv('DEV', true);
-    const mockFlags = { FLOOR_PLAN: false };
-
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: mockFlags,
-      service: mockService,
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /run home assistant connection smoke test/i })
+      );
     });
 
-    render(<DebugPanelModule.DebugPanel />);
-
-    const toggleButton = screen.getByRole('button', { name: /toggle floor_plan/i });
-    fireEvent.click(toggleButton);
-
-    // Should call enable since flag is currently false
-    expect(mockService.enable).toHaveBeenCalledWith('FLOOR_PLAN');
-    expect(mockService.disable).not.toHaveBeenCalled();
-    expect(reloadSpy).toHaveBeenCalled();
-  });
-
-  it('should call disable and reload when toggle button clicked for enabled flag', () => {
-    vi.stubEnv('DEV', true);
-    const mockFlags = { FLOOR_PLAN: true };
-
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: mockFlags,
-      service: mockService,
-    });
-
-    render(<DebugPanelModule.DebugPanel />);
-
-    const toggleButton = screen.getByRole('button', { name: /toggle floor_plan/i });
-    fireEvent.click(toggleButton);
-
-    // Should call disable since flag is currently true
-    expect(mockService.disable).toHaveBeenCalledWith('FLOOR_PLAN');
-    expect(mockService.enable).not.toHaveBeenCalled();
-    expect(reloadSpy).toHaveBeenCalled();
-  });
-
-  it('should not show toggle buttons in production mode', () => {
-    vi.stubEnv('DEV', false);
-    const mockFlags = { FLOOR_PLAN: false, HA_CONNECTION: true };
-
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: mockFlags,
-      service: mockService,
-    });
-
-    render(<DebugPanelModule.DebugPanel />);
-
-    // No toggle buttons should be present in production
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-  });
-
-  it('should show dev mode indicator in development', () => {
-    vi.stubEnv('DEV', true);
-    const mockFlags = { FLOOR_PLAN: false };
-
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: mockFlags,
-      service: mockService,
-    });
-
-    render(<DebugPanelModule.DebugPanel />);
-
-    expect(screen.getByText(/dev mode/i)).toBeInTheDocument();
-  });
-
-  it('should not show dev mode indicator in production', () => {
-    vi.stubEnv('DEV', false);
-    const mockFlags = { FLOOR_PLAN: false };
-
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: mockFlags,
-      service: mockService,
-    });
-
-    render(<DebugPanelModule.DebugPanel />);
-
-    expect(screen.queryByText(/dev mode/i)).not.toBeInTheDocument();
-  });
-
-  it('should have correct heading and flag count', () => {
-    const mockFlags = { FLOOR_PLAN: false, HA_CONNECTION: true, DEBUG_PANEL: false };
-
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: mockFlags,
-      service: mockService,
-    });
-
-    render(<DebugPanelModule.DebugPanel />);
-
-    // Check heading exists
-    expect(screen.getByText('Feature Flags')).toBeInTheDocument();
-
-    // Check all three flags are displayed
-    expect(screen.getByText('FLOOR_PLAN')).toBeInTheDocument();
-    expect(screen.getByText('HA_CONNECTION')).toBeInTheDocument();
-    expect(screen.getByText('DEBUG_PANEL')).toBeInTheDocument();
-  });
-
-  it('should show HA smoke test section only when HA_CONNECTION flag enabled in dev mode', () => {
-    vi.stubEnv('DEV', true);
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: { HA_CONNECTION: true },
-      service: mockService,
-    });
-
-    render(<DebugPanelModule.DebugPanel />);
-
-    expect(screen.getByText('Home Assistant Connection')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /home assistant connection smoke test/i })
-    ).toBeInTheDocument();
-    expect(screen.getAllByText(/not run yet/i)).toHaveLength(2);
-  });
-
-  it('should show Entity Debug section only when ENTITY_DEBUG flag enabled in dev mode', () => {
-    vi.stubEnv('DEV', true);
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: { ENTITY_DEBUG: true },
-      service: mockService,
-    });
-
-    render(<DebugPanelModule.DebugPanel />);
-
-    expect(screen.getByText('Entity Debug')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /load home assistant entities/i })
-    ).toBeInTheDocument();
-  });
-
-  it('should not show HA smoke test section in production mode', () => {
-    vi.stubEnv('DEV', false);
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: { HA_CONNECTION: true },
-      service: mockService,
-    });
-
-    render(<DebugPanelModule.DebugPanel />);
-
-    expect(screen.queryByText('Home Assistant Connection')).not.toBeInTheDocument();
-  });
-
-  it('should run HA smoke test and display counts on success', async () => {
-    vi.stubEnv('DEV', true);
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: { HA_CONNECTION: true },
-      service: mockService,
-    });
-
-    mockHaClient.connect.mockResolvedValue(undefined);
-    mockHaClient.getStates.mockResolvedValue([{ entity_id: 'light.kitchen' }]);
-    mockHaClient.getServices.mockResolvedValue([{ domain: 'light', services: {} }]);
-
-    render(<DebugPanelModule.DebugPanel />);
-
-    fireEvent.click(screen.getByRole('button', { name: /home assistant connection smoke test/i }));
-
-    expect(
-      await screen.findByText(/connected\. states: 1\. service domains: 1\./i)
-    ).toBeInTheDocument();
     expect(mockHaClient.connect).toHaveBeenCalledTimes(1);
     expect(mockHaClient.getStates).toHaveBeenCalledTimes(1);
     expect(mockHaClient.getServices).toHaveBeenCalledTimes(1);
-  });
-
-  it('should show error message when HA smoke test fails', async () => {
-    vi.stubEnv('DEV', true);
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: { HA_CONNECTION: true },
-      service: mockService,
-    });
-
-    mockHaClient.connect.mockRejectedValue(new Error('bad token'));
-
-    render(<DebugPanelModule.DebugPanel />);
-
-    fireEvent.click(screen.getByRole('button', { name: /home assistant connection smoke test/i }));
-
-    expect(await screen.findByText(/error: bad token/i)).toBeInTheDocument();
-  });
-
-  it('should toggle a specific light entity and show resulting state', async () => {
-    vi.stubEnv('DEV', true);
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: { HA_CONNECTION: true },
-      service: mockService,
-    });
-
-    mockHaClient.connect.mockResolvedValue(undefined);
-    mockHaClient.callService.mockResolvedValue(undefined);
-    mockHaClient.getState.mockResolvedValueOnce({
-      entity_id: 'light.norad_corner_torch',
-      state: 'off',
-      attributes: {},
-      last_changed: new Date().toISOString(),
-      last_updated: new Date().toISOString(),
-      context: { id: '1', parent_id: null, user_id: null },
-    });
-
-    const mockUnsubscribe = vi.fn().mockResolvedValue(undefined);
-    mockHaClient.subscribeToEvents.mockImplementation(async (_eventType, handler) => {
-      setTimeout(() => {
-        handler({
-          event_type: 'state_changed',
-          data: {
-            entity_id: 'light.norad_corner_torch',
-            old_state: {
-              entity_id: 'light.norad_corner_torch',
-              state: 'off',
-              attributes: {},
-              last_changed: new Date().toISOString(),
-              last_updated: new Date().toISOString(),
-              context: { id: '1', parent_id: null, user_id: null },
-            },
-            new_state: {
-              entity_id: 'light.norad_corner_torch',
-              state: 'on',
-              attributes: {},
-              last_changed: new Date().toISOString(),
-              last_updated: new Date().toISOString(),
-              context: { id: '2', parent_id: null, user_id: null },
-            },
-          },
-          time_fired: new Date().toISOString(),
-          origin: 'LOCAL',
-          context: { id: '3', parent_id: null, user_id: null },
-        });
-      }, 0);
-
-      return { unsubscribe: mockUnsubscribe };
-    });
-
-    render(<DebugPanelModule.DebugPanel />);
-
-    fireEvent.click(
-      screen.getByRole('button', { name: /toggle light\.norad_corner_torch via home assistant/i })
-    );
 
     expect(
-      await screen.findByText(/toggled light\.norad_corner_torch\. current state: on\./i)
+      await screen.findByText(/Connected\. States: 2\. Service domains: 1\./i)
     ).toBeInTheDocument();
-    expect(mockHaClient.connect).toHaveBeenCalledTimes(1);
-    expect(mockHaClient.callService).toHaveBeenCalledWith({
-      domain: 'light',
-      service: 'toggle',
-      service_data: {
-        entity_id: 'light.norad_corner_torch',
-      },
-    });
-    expect(mockHaClient.getState).toHaveBeenCalledWith('light.norad_corner_torch');
   });
 
-  it('should show error message when light toggle test fails', async () => {
-    vi.stubEnv('DEV', true);
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      flags: { HA_CONNECTION: true },
-      service: mockService,
-    });
+  it('loads entities via the Entity Debug section', async () => {
+    const states: HaEntityState[] = [
+      {
+        entity_id: 'light.kitchen',
+        state: 'on',
+        attributes: {},
+        last_changed: '2026-01-01T00:00:00.000Z',
+        last_updated: '2026-01-01T00:00:00.000Z',
+        context: {
+          id: '00000000000000000000000000000000',
+          parent_id: null,
+          user_id: null,
+        },
+      },
+    ];
 
-    mockHaClient.connect.mockResolvedValue(undefined);
-    mockHaClient.getState.mockResolvedValueOnce({
-      entity_id: 'light.norad_corner_torch',
-      state: 'off',
-      attributes: {},
-      last_changed: new Date().toISOString(),
-      last_updated: new Date().toISOString(),
-      context: { id: '1', parent_id: null, user_id: null },
-    });
-    mockHaClient.callService.mockRejectedValue(new Error('service failed'));
+    mockEntityService.fetchStates.mockResolvedValueOnce(states);
 
     render(<DebugPanelModule.DebugPanel />);
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /toggle light\.norad_corner_torch via home assistant/i })
-    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /load home assistant entities/i }));
+    });
 
-    expect(await screen.findByText(/error: service failed/i)).toBeInTheDocument();
+    expect(mockEntityService.fetchStates).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/Loaded 1 entities\./i)).toBeInTheDocument();
   });
 });

@@ -9,7 +9,7 @@ export function DashboardStage({ onRetryFloorplan }: { onRetryFloorplan: () => v
 
   return (
     <main className="stage" aria-label="Floorplan">
-      <div className="floorplan" aria-label="Interactive SVG floorplan">
+      <div className="floorplan" aria-label="Interactive floorplan">
         <FloorplanCanvas onRetry={onRetryFloorplan} />
         <MapControlsToggle
           isOpen={isMapControlsOpen}

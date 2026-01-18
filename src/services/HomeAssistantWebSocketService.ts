@@ -118,9 +118,15 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
     await new Promise<void>((resolve, reject) => {
       let settled = false;
       let authenticated = false;
+      let authFailed = false;
 
       const socket = new WebSocket(wsUrl);
       this.socket = socket;
+
+      // In dev (Vite + React StrictMode), the app can transiently open/close sockets during HMR.
+      // Some browsers surface this as: "Data frame received after close".
+      // Auto-reconnect during the auth handshake helps self-heal without spamming callers.
+      const reconnectOnHandshakeFailure = import.meta.env.DEV;
 
       const cleanup = () => {
         socket.onopen = null;
@@ -149,6 +155,9 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
       };
 
       socket.onerror = () => {
+        if (reconnectOnHandshakeFailure && this.shouldReconnect && !authenticated && !authFailed) {
+          this.scheduleReconnect();
+        }
         fail(
           new Error(
             `Failed to connect to Home Assistant WebSocket (${wsUrl}). ` +
@@ -168,6 +177,24 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
           const code = (event as { code?: unknown }).code;
           const reasonText = typeof reason === 'string' && reason ? `: ${reason}` : '';
           const codeNum = typeof code === 'number' ? code : 0;
+
+          if (import.meta.env.DEV) {
+            // Helpful when diagnosing proxy / network websocket issues.
+            // Avoids noisy logs in prod.
+            console.debug(
+              `[hass-dash] HA websocket closed during handshake (${codeNum}${reasonText})`,
+              event
+            );
+          }
+
+          if (
+            reconnectOnHandshakeFailure &&
+            this.shouldReconnect &&
+            !authenticated &&
+            !authFailed
+          ) {
+            this.scheduleReconnect();
+          }
           fail(new Error(`WebSocket closed before auth completed (${codeNum}${reasonText})`));
           return;
         }
@@ -203,6 +230,7 @@ export class HomeAssistantWebSocketService implements IWebSocketService {
           }
 
           if (this.isAuthInvalid(message)) {
+            authFailed = true;
             fail(new Error(message.message));
           }
         } catch (error) {

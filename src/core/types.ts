@@ -19,6 +19,8 @@ export const TYPES = {
   IWebSocketService: Symbol.for('IWebSocketService'),
   IEntityService: Symbol.for('IEntityService'),
 
+  IEntityLabelService: Symbol.for('IEntityLabelService'),
+
   IHomeAssistantConnectionConfig: Symbol.for('IHomeAssistantConnectionConfig'),
 
   IFloorplanDataSource: Symbol.for('IFloorplanDataSource'),

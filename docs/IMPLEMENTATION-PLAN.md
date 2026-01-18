@@ -148,10 +148,7 @@ Each iteration is a **single PR** that can be merged and deployed immediately.
 └─────────────────────────────────────┘
 ```
 
-**Feature Flags:**
-
-- `VITE_FEATURE_FLOOR_PLAN=false` (not built yet)
-- `VITE_FEATURE_HA_CONNECTION=false` (not built yet)
+**Feature Flags:** Removed (features are always enabled)
 
 **Files Created:**
 
@@ -232,43 +229,22 @@ package.json
 ```typescript
 interface IConfigService {
   getAppVersion(): string;
-  isFeatureEnabled(flag: string): boolean;
 }
 
 class ConfigService implements IConfigService {
   getAppVersion(): string {
     return import.meta.env.VITE_APP_VERSION || '0.1.0';
   }
-
-  isFeatureEnabled(flag: string): boolean {
-    return import.meta.env[`VITE_FEATURE_${flag}`] === 'true';
-  }
 }
 ```
 
 ---
 
-#### Iteration 0.5: Feature Flag System
+#### Iteration 0.5: Feature Flag System (Removed)
 
-**Goal:** Feature flags working throughout app  
-**Time:** 2-3 hours  
-**Deliverable:** Flag service with React hooks
+Feature flags were implemented early for CI/CD, then removed once the app reached a stage where features should always be enabled.
 
-**Tasks:**
-
-- ✅ Create `IFeatureFlagService` interface
-- ✅ Implement FeatureFlagService
-- ✅ Create `useFeatureFlag` React hook
-- ✅ Add feature flag UI (debug panel)
-- ✅ Document feature flag usage
-- ✅ Add tests for flag service
-- ✅ **Acceptance:** Flags can be toggled, UI responds
-
-**Feature Flags:**
-
-- `VITE_FEATURE_DEBUG_PANEL=true` (show flag status)
-- `VITE_FEATURE_FLOOR_PLAN=false`
-- `VITE_FEATURE_HA_CONNECTION=false`
+**Dev-only diagnostics:** use `import.meta.env.DEV` plus URL query params (e.g., `?debug`, `?debugOverlay`, `?debugLights=1`).
 
 ---
 
@@ -292,7 +268,7 @@ class ConfigService implements IConfigService {
 
 **Feature Flags:**
 
-- `VITE_FEATURE_NAVIGATION=true` (enabled)
+- Not needed (keep enabled by default)
 
 ---
 
@@ -314,7 +290,7 @@ class ConfigService implements IConfigService {
 
 **Feature Flags:**
 
-- `VITE_FEATURE_COMPONENT_SHOWCASE=true` (dev only)
+- Not needed (keep enabled by default)
 
 ---
 
@@ -329,7 +305,7 @@ class ConfigService implements IConfigService {
 - ✅ Install Zustand + Immer
 - ✅ Create `useAppStore` for global settings
 - ✅ Store theme preference (light/dark)
-- ✅ Store feature flag overrides (dev mode)
+- ✅ Store dev-only runtime overrides (dev mode)
 - ✅ Create a dedicated dashboard/parity UI store (e.g., `useDashboardStore`) for:
   - active panel state (`agenda | climate | lighting | media | null`)
   - stage view state (`x`, `y`, `scale`) for pan/zoom
@@ -463,14 +439,12 @@ class ConfigService implements IConfigService {
 
 - ✅ Create `IHomeAssistantConnectionConfig` interface
 - ✅ Implement validation for HA URL and token
-- ✅ Create settings form (feature-flagged)
+- ✅ Create settings form
 - ✅ Store connection details securely
 - ✅ Add connection status indicator
 - ✅ **Acceptance:** User can input HA URL and see validation
 
-**Feature Flags:**
-
-- `VITE_FEATURE_HA_CONNECTION=true` (enable when ready)
+**Feature Flags:** Removed
 
 ---
 
@@ -490,9 +464,7 @@ class ConfigService implements IConfigService {
 - ✅ Add connection test coverage (HA smoke test + entity REST fetch)
 - ✅ **Acceptance:** Can successfully call HA API
 
-**Feature Flags:**
-
-- `VITE_FEATURE_HA_CONNECTION=true`
+**Feature Flags:** Removed
 
 ---
 
@@ -512,9 +484,7 @@ class ConfigService implements IConfigService {
 - ✅ Create event subscription system
 - ✅ **Acceptance:** WebSocket connects, reconnects on disconnect
 
-**Feature Flags:**
-
-- `VITE_FEATURE_HA_CONNECTION=true`
+**Feature Flags:** Removed
 
 ---
 
@@ -534,10 +504,7 @@ class ConfigService implements IConfigService {
 - ✅ Add filtering and search
 - ✅ **Acceptance:** Entities display in debug panel, update in real-time
 
-**Feature Flags:**
-
-- `VITE_FEATURE_HA_CONNECTION=true`
-- `VITE_FEATURE_ENTITY_DEBUG=true` (dev panel)
+**Feature Flags:** Removed
 
 ---
 
@@ -551,16 +518,22 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create floor plan TypeScript interfaces
-- [ ] Create JSON schema for validation
-- [ ] Create example floor plan JSON file
-- [ ] Add JSON loader/validator
-- [ ] Document floor plan format
-- [ ] **Acceptance:** Example JSON loads and validates
+- ✅ Create floor plan TypeScript interfaces
+- ✅ Create JSON schema for validation
+- ✅ Create example floor plan JSON file
+- ✅ Add JSON loader/validator
+- ✅ Document floor plan format
+- ✅ **Acceptance:** Example JSON loads and validates
 
-**Feature Flags:**
+**Files:**
 
-- `VITE_FEATURE_FLOOR_PLAN=true`
+- `src/features/model/floorplan.ts` (TypeScript model)
+- `public/schemas/floorplan.schema.json` (JSON Schema)
+- `public/data/floorplan.json` (example JSON)
+- `src/features/model/floorplanJson.ts` (Ajv-based validator + loader)
+- `src/features/model/floorplanJson.test.ts` (unit tests)
+
+**Feature Flags:** Removed
 
 ---
 
@@ -572,16 +545,13 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Install Konva + react-konva
-- [ ] Create FloorPlanCanvas component
-- [ ] Implement pan/zoom controls
-- [ ] Add grid background (optional)
-- [ ] Add keyboard shortcuts (zoom in/out)
-- [ ] **Acceptance:** Canvas renders, user can pan and zoom
+- ✅ Install Konva + react-konva
+- ✅ Create Konva canvas component (dev-only toggle: `?konva=1`)
+- ✅ Implement pan/zoom controls
+- ✅ Add keyboard shortcuts (arrows pan, +/- zoom, `0` reset)
+- ✅ **Acceptance:** Canvas renders, user can pan and zoom
 
-**Feature Flags:**
-
-- `VITE_FEATURE_FLOOR_PLAN=true`
+**Feature Flags:** Removed
 
 ---
 
@@ -593,17 +563,14 @@ class ConfigService implements IConfigService {
 
 **Tasks:**
 
-- [ ] Create Room component (Konva shapes)
-- [ ] Parse floor plan JSON
-- [ ] Render rooms at correct positions/sizes
-- [ ] Add room labels
-- [ ] Add room hover effects
-- [ ] Add room click handler (log for now)
-- [ ] **Acceptance:** Rooms render correctly, interactive
+- ✅ Create Room component (Konva shapes)
+- ✅ Render rooms from floorplan model
+- ✅ Add room labels
+- ✅ Add room hover effects
+- ✅ Add room click handler (log for now)
+- ✅ **Acceptance:** Rooms render correctly, interactive
 
-**Feature Flags:**
-
-- `VITE_FEATURE_FLOOR_PLAN=true`
+**Feature Flags:** Removed
 
 ---
 
@@ -622,9 +589,7 @@ class ConfigService implements IConfigService {
 - [ ] Add keyboard shortcuts (arrow keys, 1-9)
 - [ ] **Acceptance:** User can navigate between floors
 
-**Feature Flags:**
-
-- `VITE_FEATURE_FLOOR_PLAN=true`
+**Feature Flags:** Removed
 
 ---
 
@@ -647,7 +612,7 @@ class ConfigService implements IConfigService {
 
 **Feature Flags:**
 
-- `VITE_FEATURE_OVERLAYS=true`
+- Not needed (keep enabled by default)
 
 ---
 
@@ -668,8 +633,7 @@ class ConfigService implements IConfigService {
 
 **Feature Flags:**
 
-- `VITE_FEATURE_OVERLAYS=true`
-- `VITE_OVERLAY_LIGHTING=true`
+- Not needed (keep enabled by default)
 
 ---
 
@@ -690,8 +654,7 @@ class ConfigService implements IConfigService {
 
 **Feature Flags:**
 
-- `VITE_FEATURE_OVERLAYS=true`
-- `VITE_OVERLAY_LIGHTING=true`
+- Not needed (keep enabled by default)
 
 ---
 
@@ -712,8 +675,7 @@ class ConfigService implements IConfigService {
 
 **Feature Flags:**
 
-- `VITE_FEATURE_OVERLAYS=true`
-- `VITE_OVERLAY_LIGHTING=true`
+- Removed
 
 ---
 
@@ -793,7 +755,7 @@ class ConfigService implements IConfigService {
 
 **Feature Flags:**
 
-- `VITE_FEATURE_ONBOARDING=true`
+- Removed
 
 ---
 
@@ -912,57 +874,22 @@ jobs:
 
 ---
 
-## Feature Flag Management
+## Dev Diagnostics (Query Params)
 
-### Environment Variables
+Feature flags are supported via `IFeatureFlagService` (env-backed flags with dev-mode runtime overrides). For quick dev-only UI and diagnostics, the app also supports URL query parameters gated by `import.meta.env.DEV`.
 
-```bash
-# .env.example
-VITE_APP_VERSION=0.1.0
+Flag env var conventions:
 
-# Feature Flags
-VITE_FEATURE_DEBUG_PANEL=false
-VITE_FEATURE_FLOOR_PLAN=false
-VITE_FEATURE_HA_CONNECTION=false
-VITE_FEATURE_OVERLAYS=false
-VITE_FEATURE_ONBOARDING=false
+- `VITE_FEATURE_<NAME>=true|false`
+- `VITE_OVERLAY_<NAME>=true|false`
 
-# Overlay Flags
-VITE_OVERLAY_LIGHTING=false
-VITE_OVERLAY_CLIMATE=false
-VITE_OVERLAY_SURVEILLANCE=false
-VITE_OVERLAY_AV=false
-VITE_OVERLAY_NETWORK=false
+Examples:
 
-# Development
-VITE_FEATURE_COMPONENT_SHOWCASE=false
-VITE_FEATURE_ENTITY_DEBUG=false
-```
+- `?debug` - show debug panel
+- `?debugOverlay` - show tracking/debug overlays (dev only)
+- `?debugLights=1` - show lighting debug tools (dev only)
 
-### Feature Flag Service
-
-```typescript
-interface IFeatureFlagService {
-  isEnabled(flag: string): boolean;
-  enable(flag: string): void; // Dev only
-  disable(flag: string): void; // Dev only
-  getAll(): Record<string, boolean>;
-}
-
-// Usage
-const showFloorPlan = featureFlags.isEnabled('FLOOR_PLAN');
-
-// React Hook
-const { isEnabled } = useFeatureFlag('FLOOR_PLAN');
-```
-
-### Production Feature Flags
-
-For production, consider:
-
-- **LaunchDarkly** (feature flag service)
-- **Firebase Remote Config** (free tier)
-- **Custom API endpoint** (your own service)
+In production builds, these controls should be ignored/disabled.
 
 ---
 
@@ -1000,8 +927,8 @@ For production, consider:
 **Risk:** PR too large, hard to review  
 **Mitigation:** Break into smaller iterations, use draft PRs
 
-**Risk:** Feature flag forgotten, never removed  
-**Mitigation:** Add "TODO: Remove flag" comments, quarterly flag audit
+**Risk:** Dev-only diagnostics accidentally shipped as user-facing UI  
+**Mitigation:** Guard behind `import.meta.env.DEV` and keep tests around debug-only behavior
 
 **Risk:** Breaking changes slip through  
 **Mitigation:** Strict testing requirements, staging environment

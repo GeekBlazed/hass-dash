@@ -9,19 +9,6 @@ import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityState } from '../../../types/home-assistant';
 import { HaRoomLightingOverlayBridge } from './HaRoomLightingOverlayBridge';
 
-let mockHaConnectionEnabled = true;
-
-vi.mock('../../../hooks/useFeatureFlag', () => {
-  return {
-    useFeatureFlag: (flag: string) => {
-      return {
-        isEnabled: flag === 'HA_CONNECTION' ? mockHaConnectionEnabled : false,
-        service: {},
-      };
-    },
-  };
-});
-
 const makeLight = (entityId: string, state: 'on' | 'off', friendlyName?: string): HaEntityState => {
   const attrs: Record<string, unknown> = {};
   if (friendlyName) attrs.friendly_name = friendlyName;
@@ -38,7 +25,6 @@ const makeLight = (entityId: string, state: 'on' | 'off', friendlyName?: string)
 
 describe('HaRoomLightingOverlayBridge', () => {
   beforeEach(() => {
-    mockHaConnectionEnabled = true;
     document.body.innerHTML = '';
     // Ensure debug query flags don't leak between tests.
     window.history.replaceState({}, '', '/');
@@ -75,12 +61,7 @@ describe('HaRoomLightingOverlayBridge', () => {
     useDashboardStore.getState().setActivePanel('lighting');
   });
 
-  it('removes hassdash toggles and does not invoke HA when HA feature flag is disabled', async () => {
-    mockHaConnectionEnabled = false;
-
-    // Enable debugViaQuery so debugEvents branches are exercised.
-    window.history.replaceState({}, '', '/?debugLights=1');
-
+  it('removes non-managed toggles from the lights layer on mount', () => {
     document.body.innerHTML = `
       <svg id="floorplan-svg" viewBox="0 0 10 10">
         <g id="labels-layer">
@@ -89,34 +70,27 @@ describe('HaRoomLightingOverlayBridge', () => {
           </g>
         </g>
         <g id="lights-layer">
-          <g class="light-toggle" data-hassdash="1" data-room-id="kitchen"></g>
+          <g class="light-toggle" data-room-id="kitchen"></g>
         </g>
       </svg>
     `;
 
+    useEntityStore.getState().setHouseholdEntityIds(new Set(['light.kitchen_ceiling']));
     useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'off'));
 
-    const connect = vi.fn().mockResolvedValue(undefined);
-    const callService = vi.fn().mockResolvedValue(undefined);
-
-    const mockClient: Partial<IHomeAssistantClient> = { connect, callService };
+    const mockClient: Partial<IHomeAssistantClient> = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      callService: vi.fn().mockResolvedValue(undefined),
+    };
     const getSpy = vi
       .spyOn(container, 'get')
       .mockReturnValue(mockClient as unknown as IHomeAssistantClient);
 
     render(<HaRoomLightingOverlayBridge />);
 
-    // The bridge should remove only hassdash-created toggles.
-    expect(document.querySelector('#lights-layer g.light-toggle[data-hassdash]')).toBeNull();
+    expect(document.querySelector('#lights-layer g.light-toggle:not([data-hassdash])')).toBeNull();
+    expect(document.querySelector('#lights-layer g.light-toggle[data-hassdash]')).not.toBeNull();
 
-    // Even if we dispatch events, delegated handlers are disabled.
-    const layer = document.getElementById('lights-layer');
-    await act(async () => {
-      layer?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      await Promise.resolve();
-    });
-
-    expect(callService).toHaveBeenCalledTimes(0);
     getSpy.mockRestore();
   });
 

@@ -113,6 +113,37 @@ export interface HaWsEventMessage<TEvent = HaEvent> {
   event: TEvent;
 }
 
+export interface HaTriggerStateChange {
+  platform: 'state' | string;
+  entity_id: HaEntityId;
+  from_state: HaEntityState | null;
+  to_state: HaEntityState | null;
+  for: unknown;
+  attribute: string | null;
+  description?: string;
+}
+
+export interface HaTriggerEvent {
+  variables: {
+    trigger: HaTriggerStateChange;
+  };
+  context: HaContext;
+}
+
+/**
+ * Trigger configuration used by the Home Assistant WebSocket `subscribe_trigger` API.
+ *
+ * Home Assistant accepts either a single trigger object or an array of triggers.
+ * We keep this type permissive (platform + arbitrary keys) so we can extend it
+ * without fighting HA's evolving trigger schema.
+ */
+export type HaTriggerConfig = Record<string, unknown> & { platform: string };
+
+/**
+ * The `trigger` field passed to `subscribe_trigger`.
+ */
+export type HaSubscribeTriggerConfig = HaTriggerConfig | ReadonlyArray<HaTriggerConfig>;
+
 export interface HaWsPingMessage {
   id: number;
   type: 'ping';

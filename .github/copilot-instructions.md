@@ -294,34 +294,31 @@ VITE_APP_VERSION=0.1.0
 # VITE_HA_WEBSOCKET_URL=ws://homeassistant.local:8123/api/websocket
 # VITE_HA_ACCESS_TOKEN=your_long_lived_access_token_here
 
-# Feature Flags
-VITE_FEATURE_NAVIGATION=false
-VITE_FEATURE_DEBUG_PANEL=false
-VITE_FEATURE_DEVICE_TRACKING=false
-VITE_FEATURE_TRACKING_DEBUG_OVERLAY=false
-VITE_FEATURE_COMPONENT_SHOWCASE=false
-VITE_FEATURE_FLOOR_PLAN=false
-VITE_FEATURE_HA_CONNECTION=false
-VITE_FEATURE_OVERLAYS=false
-VITE_FEATURE_ONBOARDING=false
-
-# Overlay Flags
-VITE_OVERLAY_LIGHTING=false
-VITE_OVERLAY_CLIMATE=false
-VITE_OVERLAY_SURVEILLANCE=false
-VITE_OVERLAY_AV=false
-VITE_OVERLAY_NETWORK=false
-
 # Tracking debug overlay
-# Controls what raw location values are shown next to each marker when
-# VITE_FEATURE_TRACKING_DEBUG_OVERLAY=true.
+# Dev-only overlay enabled via URL query params in the UI.
+# This controls what raw location values are shown next to each marker.
 # Allowed: xyz | geo
 VITE_TRACKING_DEBUG_OVERLAY_MODE=xyz
 
 # Tracking (ESPresense)
 # Minimum confidence required to accept a device position update.
-# Initial default: accept only when confidence > 69
 VITE_TRACKING_ESPRESENSE_MIN_CONFIDENCE=69
+
+# Tracking
+# Hide tracked device markers when no update has been received for more than N minutes.
+# Default: 30
+VITE_TRACKING_STALE_TIMEOUT_MINUTES=30
+
+# Tracking
+# When a tracked device is older than N minutes, keep it visible but render it as stale
+# (gray) with a "> N minutes" label.
+# Default: 10
+VITE_TRACKING_STALE_WARNING_MINUTES=10
+
+# Logging
+# Controls client-side console verbosity.
+# Allowed: debug | info | warn | error | silent
+VITE_LOG_LEVEL=info
 ```
 
 ### ESPresense / Presence Tracking Notes

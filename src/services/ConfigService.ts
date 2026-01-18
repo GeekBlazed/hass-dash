@@ -18,19 +18,6 @@ export class ConfigService implements IConfigService {
   }
 
   /**
-   * Check if a feature flag is enabled
-   * Feature flags are prefixed with VITE_FEATURE_ in the environment
-   *
-   * @param flag - The feature flag name (without the VITE_FEATURE_ prefix)
-   * @returns true if the feature is enabled
-   */
-  isFeatureEnabled(flag: string): boolean {
-    const envKey = `VITE_FEATURE_${flag.toUpperCase()}`;
-    const value = import.meta.env[envKey];
-    return value === 'true' || value === true;
-  }
-
-  /**
    * Get a configuration value by key
    * Keys are automatically prefixed with VITE_ if not already prefixed
    *

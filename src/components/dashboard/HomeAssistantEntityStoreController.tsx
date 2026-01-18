@@ -1,11 +1,10 @@
 import { useEffect } from 'react';
 
 import { TYPES } from '../../core/types';
-import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { useService } from '../../hooks/useService';
+import type { IEntityLabelService } from '../../interfaces/IEntityLabelService';
 import type { IEntityService } from '../../interfaces/IEntityService';
 import type { IHouseholdAreaEntityIndexService } from '../../interfaces/IHouseholdAreaEntityIndexService';
-import type { IHouseholdEntityLabelService } from '../../interfaces/IHouseholdEntityLabelService';
 import { useEntityStore } from '../../stores/useEntityStore';
 import { useHouseholdAreaEntityIndexStore } from '../../stores/useHouseholdAreaEntityIndexStore';
 import type { HaEntityState } from '../../types/home-assistant';
@@ -18,38 +17,85 @@ export function HomeAssistantEntityStoreController({
 }: {
   entityIds?: ReadonlyArray<string>;
 }) {
-  const { isEnabled: haEnabled } = useFeatureFlag('HA_CONNECTION');
-
   const entityService = useService<IEntityService>(TYPES.IEntityService);
-  const householdLabelService = useService<IHouseholdEntityLabelService>(
-    TYPES.IHouseholdEntityLabelService
-  );
+  const entityLabelService = useService<IEntityLabelService>(TYPES.IEntityLabelService);
   const householdAreaIndexService = useService<IHouseholdAreaEntityIndexService>(
     TYPES.IHouseholdAreaEntityIndexService
   );
   const setAllEntities = useEntityStore((s) => s.setAll);
-  const upsertEntity = useEntityStore((s) => s.upsert);
+  const upsertManyEntities = useEntityStore((s) => s.upsertMany);
   const setHouseholdEntityIds = useEntityStore((s) => s.setHouseholdEntityIds);
   const setHouseholdAreaIndex = useHouseholdAreaEntityIndexStore((s) => s.setIndex);
 
   useEffect(() => {
-    if (!haEnabled) return;
+    const forceAllEntitiesInDev =
+      import.meta.env.DEV &&
+      (() => {
+        try {
+          return new URLSearchParams(window.location.search).has('allEntities');
+        } catch {
+          return false;
+        }
+      })();
 
-    const entityIdSet = entityIds ? new Set(entityIds) : null;
-    const shouldCapture = (state: HaEntityState): boolean => {
-      if (!entityIdSet) return true;
-      return entityIdSet.has(state.entity_id);
-    };
+    const explicitEntityIdSet = entityIds ? new Set(entityIds) : null;
+
+    const mode: 'explicit' | 'all' | 'reduced' = explicitEntityIdSet
+      ? 'explicit'
+      : forceAllEntitiesInDev
+        ? 'all'
+        : 'reduced';
+    const shouldReduceSubscriptions = mode === 'reduced';
+
+    let shouldCapture: (state: HaEntityState) => boolean;
+    let subscriptionEntityIds: string[] | null;
+
+    if (explicitEntityIdSet) {
+      shouldCapture = (state) => explicitEntityIdSet.has(state.entity_id);
+      subscriptionEntityIds = entityIds ? [...entityIds] : [];
+    } else if (mode === 'all') {
+      shouldCapture = () => true;
+      subscriptionEntityIds = null;
+    } else {
+      // We'll compute the reduced set after resolving labels and reading the initial snapshot.
+      const computedSet = new Set<string>();
+      shouldCapture = (state) => computedSet.has(state.entity_id);
+      subscriptionEntityIds = [];
+    }
 
     let subscription: { unsubscribe: () => Promise<void> } | null = null;
+    const pendingByEntityId = new Map<string, HaEntityState>();
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const flushPending = () => {
+      flushTimer = null;
+      if (pendingByEntityId.size === 0) return;
+      const batch = Array.from(pendingByEntityId.values());
+      pendingByEntityId.clear();
+      upsertManyEntities(batch);
+    };
+
+    const scheduleFlush = () => {
+      if (flushTimer) return;
+      // Keep the WS message handler lightweight by batching updates.
+      flushTimer = setTimeout(flushPending, 50);
+    };
 
     void (async () => {
+      // When reducing subscriptions, compute a stable allow-list from a single label.
+      // This reduces WS traffic by not subscribing to noisy entities.
+      const reducedEntityIdSet = shouldReduceSubscriptions ? new Set<string>() : null;
+
       try {
-        const ids = await householdLabelService.getHouseholdEntityIds();
+        const ids = await entityLabelService.getEntityIdsByLabelName('hass-dash');
         setHouseholdEntityIds(ids);
+
+        if (reducedEntityIdSet) {
+          for (const entityId of ids) reducedEntityIdSet.add(entityId);
+        }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        logger.warn(`Failed to fetch Household labels: ${message}`);
+        logger.warn(`Failed to fetch hass-dash label entities: ${message}`);
       }
 
       try {
@@ -102,12 +148,24 @@ export function HomeAssistantEntityStoreController({
 
       try {
         const states = await entityService.fetchStates();
-        if (!entityIdSet) {
+
+        if (mode === 'all') {
           setAllEntities(states);
+        } else if (mode === 'explicit') {
+          const filtered = states.filter(shouldCapture);
+          if (filtered.length > 0) {
+            upsertManyEntities(filtered);
+          }
         } else {
-          for (const state of states) {
-            if (!shouldCapture(state)) continue;
-            upsertEntity(state);
+          // Update our local capture predicate + subscription allowlist.
+          const reducedIds = Array.from(reducedEntityIdSet ?? []);
+          subscriptionEntityIds = reducedIds;
+
+          shouldCapture = (state) => reducedEntityIdSet?.has(state.entity_id) === true;
+
+          const filtered = states.filter(shouldCapture);
+          if (filtered.length > 0) {
+            upsertManyEntities(filtered);
           }
         }
       } catch (error: unknown) {
@@ -116,10 +174,25 @@ export function HomeAssistantEntityStoreController({
       }
 
       try {
-        subscription = await entityService.subscribeToStateChanges((next) => {
+        const onNext = (next: HaEntityState) => {
           if (!shouldCapture(next)) return;
-          upsertEntity(next);
-        });
+          // Dedupe within the batch window: keep only the latest update per entity.
+          pendingByEntityId.set(next.entity_id, next);
+          scheduleFlush();
+        };
+
+        if (subscriptionEntityIds && entityService.subscribeToStateChangesFiltered) {
+          if (subscriptionEntityIds.length > 0) {
+            subscription = await entityService.subscribeToStateChangesFiltered(
+              subscriptionEntityIds,
+              onNext
+            );
+          } else {
+            logger.warn('Reduced subscription list is empty; skipping state subscription');
+          }
+        } else {
+          subscription = await entityService.subscribeToStateChanges(onNext);
+        }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         logger.warn(`Failed to subscribe to entity updates: ${message}`);
@@ -127,20 +200,24 @@ export function HomeAssistantEntityStoreController({
     })();
 
     return () => {
+      if (flushTimer) {
+        clearTimeout(flushTimer);
+        flushTimer = null;
+      }
+      pendingByEntityId.clear();
       if (subscription) {
         void subscription.unsubscribe();
       }
     };
   }, [
-    haEnabled,
     entityIds,
     entityService,
+    entityLabelService,
     householdAreaIndexService,
-    householdLabelService,
     setAllEntities,
     setHouseholdAreaIndex,
     setHouseholdEntityIds,
-    upsertEntity,
+    upsertManyEntities,
   ]);
 
   return null;
