@@ -140,6 +140,9 @@ export const useDashboardStore = create<DashboardState>()(
       }),
       {
         name: 'hass-dash:dashboard',
+        // v2 schema: introduce/normalize the `overlays` field in persisted dashboard state.
+        // The migrate function backfills a valid overlays map for users with pre-v2 data
+        // and ensures all known DashboardOverlay keys are present with boolean values.
         version: 2,
         migrate: (persistedState) => {
           const s = persistedState as Partial<DashboardState> | null;

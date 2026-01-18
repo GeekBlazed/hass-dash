@@ -4,7 +4,6 @@ import {
   getTrackingDebugOverlayMode,
   type TrackingDebugOverlayMode,
 } from '../../../features/tracking/trackingDebugOverlayConfig';
-import { getTrackingShowConfidenceWhenLessThan } from '../../../features/tracking/trackingShowConfidenceConfig';
 import { getTrackingStaleTimeoutMs } from '../../../features/tracking/trackingStaleTimeoutConfig';
 import { getTrackingStaleWarningMs } from '../../../features/tracking/trackingStaleWarningConfig';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
@@ -12,6 +11,7 @@ import type { DeviceLocation } from '../../../stores/useDeviceLocationStore';
 import { useDeviceLocationStore } from '../../../stores/useDeviceLocationStore';
 import { useDeviceTrackerMetadataStore } from '../../../stores/useDeviceTrackerMetadataStore';
 import { computeInitials } from '../../../utils/deviceLocationTracking';
+import { computeMarkerStatusText } from './computeMarkerStatusText';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -361,7 +361,7 @@ const upsertDebugLabel = (
   });
 };
 
-const upsertStatusLabel = (marker: SVGGElement, text: string | null): void => {
+const upsertMarkerStatusLabel = (marker: SVGGElement, text: string | null): void => {
   const existing = marker.querySelector<SVGTextElement>(`text[${STALE_LABEL_ATTR}="true"]`);
   if (!text) {
     existing?.remove();
@@ -415,7 +415,7 @@ const syncMarkers = (
   if (!isEnabled) {
     for (const marker of existingTrackingMarkers.values()) {
       upsertDebugLabel(marker, null, debugMode);
-      upsertStatusLabel(marker, null);
+      upsertMarkerStatusLabel(marker, null);
       marker.classList.remove('device-marker--stale');
 
       const kind = marker.getAttribute(TRACKING_KIND_ATTR);
@@ -442,7 +442,7 @@ const syncMarkers = (
   for (const [entityId, marker] of existingTrackingMarkers.entries()) {
     if (!desiredEntityIds.has(entityId)) {
       upsertDebugLabel(marker, null, debugMode);
-      upsertStatusLabel(marker, null);
+      upsertMarkerStatusLabel(marker, null);
       marker.classList.remove('device-marker--stale');
 
       const kind = marker.getAttribute(TRACKING_KIND_ATTR);
@@ -553,21 +553,9 @@ const syncMarkers = (
       marker.classList.remove('device-marker--stale');
     }
 
-    const statusText = (() => {
-      if (isStale && ageMinutes && ageMinutes > 0) {
-        return `> ${ageMinutes} minutes`;
-      }
+    const statusText = computeMarkerStatusText(location, isStale, ageMinutes);
 
-      const confidence = location.confidence;
-      if (!Number.isFinite(confidence)) return null;
-
-      const threshold = getTrackingShowConfidenceWhenLessThan();
-      if (typeof threshold !== 'number' || !Number.isFinite(threshold)) return null;
-      if (confidence >= threshold) return null;
-      return `${Math.round(confidence)}%`;
-    })();
-
-    upsertStatusLabel(marker, statusText);
+    upsertMarkerStatusLabel(marker, statusText);
 
     marker.setAttribute('transform', `translate(${x} ${yRender})`);
 
