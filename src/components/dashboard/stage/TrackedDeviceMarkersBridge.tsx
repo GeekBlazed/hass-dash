@@ -6,6 +6,7 @@ import {
 } from '../../../features/tracking/trackingDebugOverlayConfig';
 import { getTrackingStaleTimeoutMs } from '../../../features/tracking/trackingStaleTimeoutConfig';
 import { getTrackingStaleWarningMs } from '../../../features/tracking/trackingStaleWarningConfig';
+import { useDashboardStore } from '../../../stores/useDashboardStore';
 import type { DeviceLocation } from '../../../stores/useDeviceLocationStore';
 import { useDeviceLocationStore } from '../../../stores/useDeviceLocationStore';
 import { useDeviceTrackerMetadataStore } from '../../../stores/useDeviceTrackerMetadataStore';
@@ -596,6 +597,7 @@ const getNextStaleCheckDelayMs = (
 };
 
 export function TrackedDeviceMarkersBridge() {
+  const isOverlayVisible = useDashboardStore((s) => s.overlays.tracking);
   const locationsByEntityId = useDeviceLocationStore((s) => s.locationsByEntityId);
   const metadataByEntityId = useDeviceTrackerMetadataStore((s) => s.metadataByEntityId);
   const [staleTick, setStaleTick] = useState(0);
@@ -618,6 +620,22 @@ export function TrackedDeviceMarkersBridge() {
     if (!layer) return;
 
     const nowMs = Date.now();
+
+    if (!isOverlayVisible) {
+      // Ensure we don't leave stale DOM behind when the overlay is disabled.
+      syncMarkers(
+        layer,
+        false,
+        {},
+        metadataByEntityId,
+        showDebugOverlay,
+        debugMode,
+        nowMs,
+        staleWarningMs
+      );
+      return;
+    }
+
     const filteredLocationsByEntityId = filterNonStaleLocations(
       locationsByEntityId,
       nowMs,
@@ -674,6 +692,7 @@ export function TrackedDeviceMarkersBridge() {
       }
     };
   }, [
+    isOverlayVisible,
     locationsByEntityId,
     metadataByEntityId,
     showDebugOverlay,

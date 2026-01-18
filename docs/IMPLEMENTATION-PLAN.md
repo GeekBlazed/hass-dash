@@ -574,20 +574,23 @@ Feature flags were implemented early for CI/CD, then removed once the app reache
 
 ---
 
-#### Iteration 3.4: Multi-Floor Navigation
+#### Iteration 3.4: Multi-Floor Navigation (Won't Implement - out of MVP)
 
 **Goal:** Switch between floors  
-**Time:** 3-4 hours  
-**Deliverable:** Floor selector UI
+**Time:** N/A (removed from MVP)  
+**Deliverable:** N/A
+
+**Status:** 🚫 Won't implement for MVP. Multi-floor navigation is deferred until after the
+single-floor floorplan + overlays experience is stable.
 
 **Tasks:**
 
-- [ ] Create floor selector component
-- [ ] Load multiple floors from JSON
-- [ ] Switch active floor on selection
-- [ ] Preserve zoom/pan per floor
-- [ ] Add keyboard shortcuts (arrow keys, 1-9)
-- [ ] **Acceptance:** User can navigate between floors
+- Create floor selector component
+- Load multiple floors from JSON
+- Switch active floor on selection
+- Preserve zoom/pan per floor
+- Add keyboard shortcuts (arrow keys, 1-9)
+- **Acceptance:** User can navigate between floors
 
 **Feature Flags:** Removed
 

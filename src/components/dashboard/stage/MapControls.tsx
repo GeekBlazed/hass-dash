@@ -3,6 +3,7 @@ import { useMemo, type ChangeEvent } from 'react';
 import { getDefaultFloor } from '../../../features/model/floorplan';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { clampScale, computeBaseViewBoxFromFloor } from './floorplanViewBox';
+import { getOverlayDefinitions } from './overlayDefinitions';
 
 interface MapControlsProps {
   isOpen?: boolean;
@@ -13,6 +14,8 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
   const floorplanModel = useDashboardStore((s) => s.floorplan.model);
   const stageView = useDashboardStore((s) => s.stageView);
   const setStageView = useDashboardStore((s) => s.setStageView);
+  const overlays = useDashboardStore((s) => s.overlays);
+  const toggleOverlay = useDashboardStore((s) => s.toggleOverlay);
 
   const floor = useMemo(() => {
     if (!floorplanModel) return undefined;
@@ -160,6 +163,33 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
           >
             ←
           </button>
+        </div>
+      </div>
+
+      <div className="map-controls__divider" role="separator" aria-hidden="true" />
+
+      <div className="map-controls__overlays" aria-label="Overlays">
+        <div className="map-controls__overlays-head">
+          <span className="map-controls__label">Overlays</span>
+        </div>
+        <div className="map-controls__overlays-row">
+          {getOverlayDefinitions().map((overlay) => {
+            const isEnabled = overlays[overlay.id];
+            return (
+              <button
+                key={overlay.id}
+                className="map-controls__overlay-btn"
+                type="button"
+                aria-pressed={isEnabled}
+                aria-label={`Toggle ${overlay.label} overlay`}
+                onClick={() => {
+                  toggleOverlay(overlay.id);
+                }}
+              >
+                {overlay.label}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -255,11 +255,6 @@ const computeRoomLightGroups = (
   return groups;
 };
 
-const isLightingOverlayVisible = (activePanel: string | null): boolean => {
-  // light toggles only show when lighting panel is active.
-  return activePanel === 'lighting';
-};
-
 export function HaRoomLightingOverlayBridge() {
   const haClient = useService<IHomeAssistantClient>(TYPES.IHomeAssistantClient);
 
@@ -283,7 +278,7 @@ export function HaRoomLightingOverlayBridge() {
   const hasInstalledDelegatedListenersRef = useRef(false);
 
   const floorplanModel = useDashboardStore((s) => s.floorplan?.model ?? null);
-  const activePanel = useDashboardStore((s) => s.activePanel);
+  const isOverlayVisible = useDashboardStore((s) => s.overlays.lighting);
 
   const entitiesById = useEntityStore((s) => s.entitiesById);
   const householdEntityIds = useEntityStore((s) => s.householdEntityIds);
@@ -478,7 +473,7 @@ export function HaRoomLightingOverlayBridge() {
     const debugEvents = import.meta.env.DEV && (logLevel === 'debug' || debugViaQuery);
     const debugReason = debugViaQuery ? 'query' : logLevel === 'debug' ? 'env' : 'off';
 
-    delegatedRef.current.enabled = true;
+    delegatedRef.current.enabled = isOverlayVisible;
 
     // Log mount once to avoid spamming when this effect re-runs frequently.
     if (!hasLoggedMountRef.current) {
@@ -707,7 +702,7 @@ export function HaRoomLightingOverlayBridge() {
       entitiesById,
       householdEntityIds
     );
-    const visible = isLightingOverlayVisible(activePanel);
+    const visible = isOverlayVisible;
 
     if (debugEvents) {
       logger.debug(
@@ -869,7 +864,7 @@ export function HaRoomLightingOverlayBridge() {
         rafId = null;
       }
     };
-  }, [haClient, roomIndex, entitiesById, householdEntityIds, activePanel, optimisticSetState]);
+  }, [haClient, roomIndex, entitiesById, householdEntityIds, isOverlayVisible, optimisticSetState]);
 
   return null;
 }

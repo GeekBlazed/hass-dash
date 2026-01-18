@@ -5,6 +5,8 @@ import type { FloorplanModel } from '../features/model/floorplan';
 
 export type DashboardPanel = 'agenda' | 'climate' | 'lighting' | 'media' | null;
 
+export type DashboardOverlay = 'tracking' | 'climate' | 'lighting';
+
 export interface StageView {
   x: number;
   y: number;
@@ -16,6 +18,10 @@ export type FloorplanLoadState = 'idle' | 'loading' | 'loaded' | 'error';
 interface DashboardState {
   activePanel: DashboardPanel;
   setActivePanel: (panel: DashboardPanel) => void;
+
+  overlays: Record<DashboardOverlay, boolean>;
+  setOverlayEnabled: (overlay: DashboardOverlay, enabled: boolean) => void;
+  toggleOverlay: (overlay: DashboardOverlay) => void;
 
   isMapControlsOpen: boolean;
   setMapControlsOpen: (open: boolean) => void;
@@ -33,6 +39,21 @@ interface DashboardState {
   setFloorplanLoaded: (model: FloorplanModel) => void;
   setFloorplanError: (message: string) => void;
 }
+
+const DEFAULT_OVERLAYS: Record<DashboardOverlay, boolean> = {
+  tracking: true,
+  climate: true,
+  lighting: false,
+};
+
+const normalizeOverlays = (
+  overlays: Partial<Record<DashboardOverlay, boolean>> | undefined
+): Record<DashboardOverlay, boolean> => {
+  return {
+    ...DEFAULT_OVERLAYS,
+    ...(overlays ?? {}),
+  };
+};
 
 const DEFAULT_STAGE_VIEW: StageView = {
   x: 0,
@@ -53,6 +74,24 @@ export const useDashboardStore = create<DashboardState>()(
         activePanel: 'climate',
         setActivePanel: (panel) => {
           set({ activePanel: panel });
+        },
+
+        overlays: DEFAULT_OVERLAYS,
+        setOverlayEnabled: (overlay, enabled) => {
+          set((state) => ({
+            overlays: {
+              ...state.overlays,
+              [overlay]: enabled,
+            },
+          }));
+        },
+        toggleOverlay: (overlay) => {
+          set((state) => ({
+            overlays: {
+              ...state.overlays,
+              [overlay]: !state.overlays[overlay],
+            },
+          }));
         },
 
         isMapControlsOpen: false,
@@ -101,9 +140,19 @@ export const useDashboardStore = create<DashboardState>()(
       }),
       {
         name: 'hass-dash:dashboard',
-        version: 1,
+        version: 2,
+        migrate: (persistedState) => {
+          const s = persistedState as Partial<DashboardState> | null;
+          if (!s) return persistedState as DashboardState;
+
+          return {
+            ...s,
+            overlays: normalizeOverlays(s.overlays as Partial<Record<DashboardOverlay, boolean>>),
+          } as DashboardState;
+        },
         partialize: (state) => ({
           activePanel: state.activePanel,
+          overlays: state.overlays,
           isMapControlsOpen: state.isMapControlsOpen,
           stageView: state.stageView,
           floorplan: state.floorplan,

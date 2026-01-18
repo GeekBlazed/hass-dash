@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useDashboardStore } from '../../stores/useDashboardStore';
 import { useEntityStore } from '../../stores/useEntityStore';
 import { useHouseholdAreaEntityIndexStore } from '../../stores/useHouseholdAreaEntityIndexStore';
 import type { HaEntityState } from '../../types/home-assistant';
@@ -45,6 +46,13 @@ const makeSensor = (
 describe('HaAreaClimateOverlayBridge', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
+    useDashboardStore.setState({
+      overlays: {
+        tracking: true,
+        climate: true,
+        lighting: false,
+      },
+    });
     useEntityStore.getState().clear();
     useHouseholdAreaEntityIndexStore.getState().clear();
   });
@@ -104,7 +112,7 @@ describe('HaAreaClimateOverlayBridge', () => {
     expect(el?.textContent).toBe('72°F');
   });
 
-  it('unhides an existing climate label when the climate overlay is visible', () => {
+  it('unhides an existing climate label when the climate overlay is enabled', () => {
     document.body.innerHTML = `
       <section id="climate-panel" class="tile climate-panel"></section>
       <svg id="floorplan-svg" viewBox="0 0 10 10">
@@ -185,7 +193,15 @@ describe('HaAreaClimateOverlayBridge', () => {
     expect(el?.textContent).toBe('72°F');
   });
 
-  it('creates climate label hidden when the climate overlay is hidden', () => {
+  it('creates climate label hidden when the climate overlay is disabled', () => {
+    useDashboardStore.setState({
+      overlays: {
+        tracking: true,
+        climate: false,
+        lighting: false,
+      },
+    });
+
     document.body.innerHTML = `
       <section id="climate-panel" class="tile climate-panel is-hidden"></section>
       <svg id="floorplan-svg" viewBox="0 0 10 10">
@@ -520,13 +536,11 @@ describe('HaAreaClimateOverlayBridge', () => {
     useEntityStore
       .getState()
       .upsert(makeSensor('sensor.family_room_temperature', 125, '°F', { includeHousehold: true }));
-    useEntityStore
-      .getState()
-      .upsert(
-        makeSensor('sensor.family_room_temperature_household', 72, '°F', {
-          includeHousehold: false,
-        })
-      );
+    useEntityStore.getState().upsert(
+      makeSensor('sensor.family_room_temperature_household', 72, '°F', {
+        includeHousehold: false,
+      })
+    );
 
     render(<HaAreaClimateOverlayBridge />);
 

@@ -9,10 +9,27 @@ describe('MapControls', () => {
   beforeEach(() => {
     useDashboardStore.setState({
       activePanel: 'climate',
+      overlays: {
+        tracking: true,
+        climate: true,
+        lighting: false,
+      },
       isMapControlsOpen: false,
       stageView: { x: 0, y: 0, scale: 1 },
       floorplan: { state: 'idle', model: null, errorMessage: null },
     });
+  });
+
+  it('toggles overlays via the overlay buttons', () => {
+    render(<MapControls isOpen={true} />);
+
+    expect(useDashboardStore.getState().overlays.lighting).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle Lighting overlay' }));
+    expect(useDashboardStore.getState().overlays.lighting).toBe(true);
+
+    expect(useDashboardStore.getState().overlays.climate).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle Climate overlay' }));
+    expect(useDashboardStore.getState().overlays.climate).toBe(false);
   });
 
   it('applies is-hidden when closed, and not when open', () => {

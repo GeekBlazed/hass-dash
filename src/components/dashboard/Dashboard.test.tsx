@@ -44,10 +44,10 @@ describe('Dashboard', () => {
 
   it('should render quick action buttons', async () => {
     await renderAndSettle(<Dashboard />);
-    expect(screen.getByRole('button', { name: /lighting/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /climate/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /media/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /agenda/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^lighting$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^climate$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^media$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^agenda$/i })).toBeInTheDocument();
   });
 
   it('should render the climate panel thermostat values', async () => {
@@ -128,9 +128,9 @@ describe('Dashboard', () => {
       await Promise.resolve();
     });
 
-    const lightingButton = screen.getByRole('button', { name: /lighting/i });
-    const climateButton = screen.getByRole('button', { name: /climate/i });
-    const agendaButton = screen.getByRole('button', { name: /agenda/i });
+    const lightingButton = screen.getByRole('button', { name: /^lighting$/i });
+    const climateButton = screen.getByRole('button', { name: /^climate$/i });
+    const agendaButton = screen.getByRole('button', { name: /^agenda$/i });
 
     const lightingPanel = container.querySelector('#lighting-panel');
     const climatePanel = container.querySelector('#climate-panel');
@@ -167,7 +167,7 @@ describe('Dashboard', () => {
     const user = userEvent.setup();
     await renderAndSettle(<Dashboard />);
 
-    await user.click(screen.getByRole('button', { name: /lighting/i }));
+    await user.click(screen.getByRole('button', { name: /^lighting$/i }));
 
     expect(screen.getByText('There are no lights on.')).toBeInTheDocument();
   });

@@ -34,10 +34,10 @@ describe('App', () => {
     await renderAndSettle(<App />);
 
     // Quick action buttons should be present
-    expect(screen.getByRole('button', { name: /Lighting/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Climate/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Media/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Agenda/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^lighting$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^climate$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^media$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^agenda$/i })).toBeInTheDocument();
   });
 
   it('renders weather display', async () => {

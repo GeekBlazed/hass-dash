@@ -758,6 +758,58 @@ button.qa {
   gap: 10px;
 }
 
+.map-controls__divider {
+  height: 1px;
+  margin: 12px 0 10px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.map-controls__overlays {
+  display: grid;
+  gap: 8px;
+}
+
+.map-controls__overlays-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.map-controls__overlays-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.map-controls__overlay-btn {
+  appearance: none;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 9, 9, 0.5);
+  color: rgba(234, 231, 223, 0.86);
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.map-controls__overlay-btn:hover {
+  border-color: rgba(255, 201, 125, 0.28);
+  background: rgba(18, 18, 18, 0.42);
+}
+
+.map-controls__overlay-btn:focus-visible {
+  outline: 2px solid rgba(255, 201, 125, 0.55);
+  outline-offset: 2px;
+}
+
+.map-controls__overlay-btn[aria-pressed='true'] {
+  border-color: rgba(255, 201, 125, 0.45);
+  background: rgba(255, 182, 92, 0.14);
+}
+
 .map-controls__zoom {
   display: grid;
   gap: 6px;

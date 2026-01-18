@@ -58,7 +58,13 @@ describe('HaRoomLightingOverlayBridge', () => {
       ],
     });
 
-    useDashboardStore.getState().setActivePanel('lighting');
+    useDashboardStore.setState({
+      overlays: {
+        tracking: true,
+        climate: true,
+        lighting: true,
+      },
+    });
   });
 
   it('removes non-managed toggles from the lights layer on mount', () => {
@@ -1285,8 +1291,14 @@ describe('HaRoomLightingOverlayBridge', () => {
     }
   });
 
-  it('hides room light toggles when lighting panel is not active', () => {
-    useDashboardStore.getState().setActivePanel('climate');
+  it('hides room light toggles when the lighting overlay is disabled', () => {
+    useDashboardStore.setState({
+      overlays: {
+        tracking: true,
+        climate: true,
+        lighting: false,
+      },
+    });
 
     document.body.innerHTML = `
       <svg id="floorplan-svg" viewBox="0 0 10 10">
