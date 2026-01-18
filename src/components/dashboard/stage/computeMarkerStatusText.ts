@@ -11,6 +11,8 @@ export const computeMarkerStatusText = (
   }
 
   const confidence = location.confidence;
+  // Defensive: confidence is typed as a number, but we still guard against
+  // non-finite values that could come from malformed or unexpected upstream data.
   if (!Number.isFinite(confidence)) return null;
 
   const threshold = getTrackingShowConfidenceWhenLessThan();

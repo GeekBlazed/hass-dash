@@ -12,7 +12,7 @@ describe('useEntityStore', () => {
   let nowSpy: ReturnType<typeof vi.spyOn> | null = null;
 
   beforeEach(async () => {
-    await Promise.resolve(useEntityStore.persist.clearStorage());
+    await useEntityStore.persist.clearStorage();
     useEntityStore.setState(createInitialEntityState());
   });
 

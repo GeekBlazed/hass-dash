@@ -27,6 +27,7 @@ const TRACKING_KIND_ATTR = 'data-hass-dash-tracking-kind';
 const ORIG_TRANSFORM_ATTR = 'data-hass-dash-orig-transform';
 const DEBUG_LABEL_ATTR = 'data-hass-dash-tracking-debug';
 const STALE_LABEL_ATTR = 'data-hass-dash-tracking-stale';
+const LABEL_FONT_SIZE_SCALE = 1.35;
 
 const createSvgElement = <T extends keyof SVGElementTagNameMap>(
   tag: T
@@ -98,7 +99,7 @@ const applyMarkerSizing = (marker: SVGGElement, unitsPerPx: number): void => {
 
   const label = marker.querySelector<SVGTextElement>('text.device-label');
   if (label) {
-    const labelFontSize = deviceLabelFontSizeInUserUnits * 1.35;
+    const labelFontSize = deviceLabelFontSizeInUserUnits * LABEL_FONT_SIZE_SCALE;
     label.setAttribute('font-size', String(labelFontSize));
     label.setAttribute('x', '0');
     label.setAttribute('y', String(-devicePinHeightInUserUnits - deviceLabelGapInUserUnits / 4));
