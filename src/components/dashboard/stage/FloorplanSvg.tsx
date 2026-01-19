@@ -24,6 +24,7 @@ export function FloorplanSvg() {
   const floorplanModel = useDashboardStore((s) => s.floorplan.model);
   const stageView = useDashboardStore((s) => s.stageView);
   const setStageView = useDashboardStore((s) => s.setStageView);
+  const stageFontScale = useDashboardStore((s) => s.stageFontScale);
 
   const floor = useMemo(() => {
     if (!floorplanModel) return undefined;
@@ -104,11 +105,11 @@ export function FloorplanSvg() {
         if (prev === null) return nextUnitsPerPx;
         return Math.abs(prev - nextUnitsPerPx) < 1e-9 ? prev : nextUnitsPerPx;
       });
-      const roomFontSize = 14 * nextUnitsPerPx;
-      const roomClimateFontSize = 11 * nextUnitsPerPx;
-      const nodeFontSize = 11 * nextUnitsPerPx;
+      const roomFontSize = 14 * nextUnitsPerPx * stageFontScale;
+      const roomClimateFontSize = 11 * nextUnitsPerPx * stageFontScale;
+      const nodeFontSize = 11 * nextUnitsPerPx * stageFontScale;
       const nodeRadius = 4 * nextUnitsPerPx;
-      const nodeLabelDx = 6 * nextUnitsPerPx;
+      const nodeLabelDx = 6 * nextUnitsPerPx * stageFontScale;
 
       for (const el of svg.querySelectorAll('.room-label')) {
         if (el instanceof SVGTextElement) el.setAttribute('font-size', String(roomFontSize));
@@ -142,7 +143,7 @@ export function FloorplanSvg() {
     return () => {
       ro.disconnect();
     };
-  }, [computedViewBox]);
+  }, [computedViewBox, stageFontScale]);
 
   useEffect(() => {
     const svg = svgRef.current;

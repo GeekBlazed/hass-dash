@@ -55,8 +55,18 @@ export function DashboardShell() {
     setReloadNonce((n) => n + 1);
   };
 
+  const virtualPanelEnv = import.meta.env.VITE_FEATURE_SHOW_VIRTUAL_PANEL;
+  const virtualPanelEnabled = virtualPanelEnv !== 'false';
+  if (typeof virtualPanelEnv !== 'undefined') {
+    console.info(
+      '[DEPRECATION WARNING] The virtual panel feature is deprecated and will be removed in a future release.'
+    );
+  }
+
+  const viewportClassName = `viewport${virtualPanelEnabled ? '' : ' no-virtual-panel'}`;
+
   return (
-    <div className="viewport">
+    <div className={viewportClassName}>
       <HaLightHotwireBridge />
       <ConnectivityController />
       <HomeAssistantEntityStoreController />

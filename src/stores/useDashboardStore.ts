@@ -30,6 +30,9 @@ interface DashboardState {
   setStageView: (view: Partial<StageView>) => void;
   resetStageView: () => void;
 
+  stageFontScale: number;
+  setStageFontScale: (scale: number) => void;
+
   floorplan: {
     state: FloorplanLoadState;
     model: FloorplanModel | null;
@@ -60,6 +63,8 @@ const DEFAULT_STAGE_VIEW: StageView = {
   y: 0,
   scale: 1,
 };
+
+const DEFAULT_STAGE_FONT_SCALE = 1;
 
 const DEFAULT_FLOORPLAN: DashboardState['floorplan'] = {
   state: 'idle',
@@ -109,6 +114,11 @@ export const useDashboardStore = create<DashboardState>()(
           set({ stageView: DEFAULT_STAGE_VIEW });
         },
 
+        stageFontScale: DEFAULT_STAGE_FONT_SCALE,
+        setStageFontScale: (scale) => {
+          set({ stageFontScale: scale });
+        },
+
         floorplan: DEFAULT_FLOORPLAN,
         setFloorplanLoading: () => {
           set({
@@ -143,7 +153,7 @@ export const useDashboardStore = create<DashboardState>()(
         // v2 schema: introduce/normalize the `overlays` field in persisted dashboard state.
         // The migrate function backfills a valid overlays map for users with pre-v2 data
         // and ensures all known DashboardOverlay keys are present with boolean values.
-        version: 2,
+        version: 3,
         migrate: (persistedState) => {
           const s = persistedState as Partial<DashboardState> | null;
           if (!s) return persistedState as DashboardState;
@@ -151,6 +161,10 @@ export const useDashboardStore = create<DashboardState>()(
           return {
             ...s,
             overlays: normalizeOverlays(s.overlays as Partial<Record<DashboardOverlay, boolean>>),
+            stageFontScale:
+              typeof s.stageFontScale === 'number' && Number.isFinite(s.stageFontScale)
+                ? s.stageFontScale
+                : DEFAULT_STAGE_FONT_SCALE,
           } as DashboardState;
         },
         partialize: (state) => ({
@@ -158,6 +172,7 @@ export const useDashboardStore = create<DashboardState>()(
           overlays: state.overlays,
           isMapControlsOpen: state.isMapControlsOpen,
           stageView: state.stageView,
+          stageFontScale: state.stageFontScale,
           floorplan: state.floorplan,
         }),
       }

@@ -64,6 +64,46 @@ describe('DashboardShell', () => {
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+
+    vi.unstubAllEnvs();
+  });
+
+  it("does not apply no-virtual-panel when env var isn't false", () => {
+    vi.stubEnv('VITE_FEATURE_SHOW_VIRTUAL_PANEL', 'true');
+    globalThis.fetch = vi.fn() as unknown as typeof fetch;
+
+    useServiceMock.mockReturnValue({
+      getFloorplan: vi.fn().mockResolvedValue({}),
+    });
+
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const { container } = render(<DashboardShell />);
+    const root = container.firstElementChild;
+
+    expect(root).not.toBeNull();
+    expect(root).toHaveClass('viewport');
+    expect(root).not.toHaveClass('no-virtual-panel');
+
+    consoleInfoSpy.mockRestore();
+  });
+
+  it('applies no-virtual-panel when explicitly disabled (env var false)', () => {
+    vi.stubEnv('VITE_FEATURE_SHOW_VIRTUAL_PANEL', 'false');
+    globalThis.fetch = vi.fn() as unknown as typeof fetch;
+
+    useServiceMock.mockReturnValue({
+      getFloorplan: vi.fn().mockResolvedValue({}),
+    });
+
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const { container } = render(<DashboardShell />);
+    const root = container.firstElementChild;
+
+    expect(root).not.toBeNull();
+    expect(root).toHaveClass('viewport');
+    expect(root).toHaveClass('no-virtual-panel');
+
+    consoleInfoSpy.mockRestore();
   });
 
   it('reports an error when fetch is unavailable', () => {

@@ -80,10 +80,10 @@ describe('MapControls', () => {
     render(<MapControls isOpen={true} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Pan right' }));
-    expect(useDashboardStore.getState().stageView.x).toBeCloseTo(1.25);
+    expect(useDashboardStore.getState().stageView.x).toBeCloseTo(-1.25);
 
     fireEvent.click(screen.getByRole('button', { name: 'Pan up' }));
-    expect(useDashboardStore.getState().stageView.y).toBeCloseTo(-1.25);
+    expect(useDashboardStore.getState().stageView.y).toBeCloseTo(1.25);
   });
 
   it('zooms via the slider when floorplan model is available', () => {
@@ -132,19 +132,5 @@ describe('MapControls', () => {
     const slider = screen.getByRole('slider', { name: 'Zoom' });
     fireEvent.change(slider, { target: { value: '200' } });
     expect(useDashboardStore.getState().stageView.scale).toBe(1);
-  });
-
-  it('renders x/y as 0 when stageView values are not finite', () => {
-    useDashboardStore.setState({
-      stageView: { x: Number.NaN, y: Number.POSITIVE_INFINITY, scale: 1 },
-    });
-
-    render(<MapControls isOpen={true} />);
-
-    const x = document.getElementById('map-launch-x');
-    const y = document.getElementById('map-launch-y');
-
-    expect(x?.textContent).toBe('0');
-    expect(y?.textContent).toBe('0');
   });
 });

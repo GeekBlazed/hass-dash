@@ -556,7 +556,7 @@ button.qa {
 .floorplan {
   position: absolute;
   inset: 0;
-  padding: 22px 22px 26px;
+  padding: 2px;
 }
 
 .floorplan-empty {
@@ -646,6 +646,40 @@ button.qa {
   cursor: grabbing;
 }
 
+.stage-dev-readout {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  z-index: 40;
+  pointer-events: none;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 9, 9, 0.36);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35);
+}
+
+.stage-dev-readout__line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-dev-readout__label {
+  color: rgba(185, 182, 175, 0.92);
+  font-size: 12px;
+}
+
+.stage-dev-readout__value {
+  color: rgba(234, 231, 223, 0.92);
+  font-size: 12px;
+}
+
 .map-controls {
   position: absolute;
   right: 18px;
@@ -668,21 +702,14 @@ button.qa {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   margin-bottom: 10px;
 }
 
-.map-controls__camera {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.map-controls__camera-line {
+.map-controls__pan {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  align-items: center;
+  gap: 6px;
 }
 
 .map-controls__close {
@@ -751,11 +778,9 @@ button.qa {
   opacity: 0.95;
 }
 
-.map-controls__row {
+.map-controls__sliders {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .map-controls__divider {
@@ -1199,6 +1224,20 @@ button.qa {
 .tile .avatar .who {
   font-size: 22px;
   font-weight: 700;
+}
+
+.no-virtual-panel {
+  padding: 0;
+}
+
+.no-virtual-panel .frame {
+  width: min(100%);
+  aspect-ratio: revert;
+  border-radius: revert;
+  background: rgba(10, 10, 10, 0.56);
+  border: none;
+  box-shadow: none;
+  height: 100%;
 }
 
 /* Sidebar media panel (mutually exclusive with Agenda) */
