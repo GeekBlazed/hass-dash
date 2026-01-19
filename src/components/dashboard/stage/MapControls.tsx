@@ -16,10 +16,14 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
   const setStageView = useDashboardStore((s) => s.setStageView);
   const stageFontScale = useDashboardStore((s) => s.stageFontScale);
   const setStageFontScale = useDashboardStore((s) => s.setStageFontScale);
+  const stageIconScale = useDashboardStore((s) => s.stageIconScale);
+  const setStageIconScale = useDashboardStore((s) => s.setStageIconScale);
   const overlays = useDashboardStore((s) => s.overlays);
   const toggleOverlay = useDashboardStore((s) => s.toggleOverlay);
   const stageFontScaleMin = 50;
   const stageFontScaleMax = 400;
+  const stageIconScaleMin = 50;
+  const stageIconScaleMax = 400;
   const zoomMinScale = 50;
   const zoomMaxScale = 300;
 
@@ -36,6 +40,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
   const clampedScale = clampScale(stageView.scale);
   const zoomPercent = Math.round(clampedScale * 100);
   const fontPercent = Math.round(stageFontScale * 100);
+  const iconPercent = Math.round(stageIconScale * 100);
 
   const isActuallyOpen = isOpen ?? false;
   const rootClassName = `map-controls${!isActuallyOpen ? ' is-hidden' : ''}`;
@@ -69,6 +74,11 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
   const handleFontPercent = (nextPercent: number) => {
     const clamped = Math.max(stageFontScaleMin, Math.min(stageFontScaleMax, nextPercent));
     setStageFontScale(clamped / 100);
+  };
+
+  const handleIconPercent = (nextPercent: number) => {
+    const clamped = Math.max(stageIconScaleMin, Math.min(stageIconScaleMax, nextPercent));
+    setStageIconScale(clamped / 100);
   };
 
   return (
@@ -170,6 +180,30 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
             }}
             step="1"
             aria-label="Font size"
+          />
+        </div>
+
+        <div className="map-controls__zoom">
+          <div className="map-controls__zoom-head">
+            <label className="map-controls__label" htmlFor="map-icon-scale">
+              Markers / icons
+            </label>
+            <div className="map-controls__value" id="map-icon-scale-value" aria-hidden="true">
+              {`${iconPercent}%`}
+            </div>
+          </div>
+          <input
+            id="map-icon-scale"
+            className="map-controls__slider"
+            type="range"
+            min={stageIconScaleMin}
+            max={stageIconScaleMax}
+            value={iconPercent}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              handleIconPercent(Number(e.target.value));
+            }}
+            step="1"
+            aria-label="Markers / icons"
           />
         </div>
       </div>

@@ -16,6 +16,8 @@ describe('MapControls', () => {
       },
       isMapControlsOpen: false,
       stageView: { x: 0, y: 0, scale: 1 },
+      stageFontScale: 1,
+      stageIconScale: 1,
       floorplan: { state: 'idle', model: null, errorMessage: null },
     });
   });
@@ -121,6 +123,17 @@ describe('MapControls', () => {
     expect(view.scale).toBe(2);
     expect(view.x).toBeCloseTo(3.125);
     expect(view.y).toBeCloseTo(3.125);
+  });
+
+  it('updates marker/icon scale via the slider', () => {
+    render(<MapControls isOpen={true} />);
+
+    expect(useDashboardStore.getState().stageIconScale).toBe(1);
+
+    const slider = screen.getByRole('slider', { name: 'Markers / icons' });
+    fireEvent.change(slider, { target: { value: '175' } });
+
+    expect(useDashboardStore.getState().stageIconScale).toBeCloseTo(1.75);
   });
 
   it('does nothing for pan/zoom when the base viewBox is unavailable', () => {

@@ -43,7 +43,7 @@ const readViewBoxRaw = (
   return { x, y, w, h };
 };
 
-const resizeLightToggles = (svg: SVGSVGElement): void => {
+const resizeLightToggles = (svg: SVGSVGElement, stageIconScale: number): void => {
   const rect = svg.getBoundingClientRect();
   if (!rect.width) return;
 
@@ -60,11 +60,11 @@ const resizeLightToggles = (svg: SVGSVGElement): void => {
     const cy = Number(g.getAttribute('data-cy'));
     if (!Number.isFinite(cx) || !Number.isFinite(cy)) continue;
 
-    const bgW = 34 * unitsPerPx;
-    const bgH = 26 * unitsPerPx;
-    const bgR = 10 * unitsPerPx;
-    const iconSize = 18 * unitsPerPx;
-    const yOffset = 28 * unitsPerPx;
+    const bgW = 34 * unitsPerPx * stageIconScale;
+    const bgH = 26 * unitsPerPx * stageIconScale;
+    const bgR = 10 * unitsPerPx * stageIconScale;
+    const iconSize = 18 * unitsPerPx * stageIconScale;
+    const yOffset = 28 * unitsPerPx * stageIconScale;
 
     g.setAttribute('transform', `translate(${cx} ${cy + yOffset})`);
 
@@ -279,6 +279,7 @@ export function HaRoomLightingOverlayBridge() {
 
   const floorplanModel = useDashboardStore((s) => s.floorplan?.model ?? null);
   const isOverlayVisible = useDashboardStore((s) => s.overlays.lighting);
+  const stageIconScale = useDashboardStore((s) => s.stageIconScale);
 
   const entitiesById = useEntityStore((s) => s.entitiesById);
   const householdEntityIds = useEntityStore((s) => s.householdEntityIds);
@@ -817,14 +818,14 @@ export function HaRoomLightingOverlayBridge() {
       });
     }
 
-    resizeLightToggles(svg);
+    resizeLightToggles(svg, stageIconScale);
 
     let rafId: number | null = null;
     const scheduleResize = () => {
       if (rafId !== null) return;
       rafId = window.requestAnimationFrame(() => {
         rafId = null;
-        resizeLightToggles(svg);
+        resizeLightToggles(svg, stageIconScale);
       });
     };
 
@@ -864,6 +865,7 @@ export function HaRoomLightingOverlayBridge() {
     entitiesById,
     householdEntityIds,
     isOverlayVisible,
+    stageIconScale,
     optimisticSetState,
   ]);
 

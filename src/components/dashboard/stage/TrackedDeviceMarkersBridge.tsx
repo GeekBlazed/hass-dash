@@ -85,13 +85,13 @@ const readUnitsPerPx = (): number | null => {
 const applyMarkerSizing = (
   marker: SVGGElement,
   unitsPerPx: number,
-  stageFontScale: number
+  stageIconScale: number
 ): void => {
   // Match sizing rules.
-  const devicePinHeightInUserUnits = 34 * DEVICE_PIN_SCALE * unitsPerPx;
-  const devicePinWidthInUserUnits = 26 * DEVICE_PIN_SCALE * unitsPerPx;
-  const deviceLabelGapInUserUnits = 6 * DEVICE_PIN_SCALE * unitsPerPx * stageFontScale;
-  const deviceLabelFontSizeInUserUnits = 11 * unitsPerPx * stageFontScale;
+  const devicePinHeightInUserUnits = 34 * DEVICE_PIN_SCALE * unitsPerPx * stageIconScale;
+  const devicePinWidthInUserUnits = 26 * DEVICE_PIN_SCALE * unitsPerPx * stageIconScale;
+  const deviceLabelGapInUserUnits = 6 * DEVICE_PIN_SCALE * unitsPerPx * stageIconScale;
+  const deviceLabelFontSizeInUserUnits = 11 * unitsPerPx * stageIconScale;
 
   const use = marker.querySelector<SVGUseElement>('use.device-pin');
   if (use) {
@@ -115,7 +115,7 @@ const applyMarkerSizing = (
       status.setAttribute('font-size', String(labelFontSize * 0.8));
       status.setAttribute('x', '0');
       // Move up ~one text line for tighter grouping.
-      status.setAttribute('y', String(-9 * unitsPerPx * stageFontScale));
+      status.setAttribute('y', String(-9 * unitsPerPx * stageIconScale));
     }
   }
 
@@ -134,7 +134,7 @@ const applyMarkerSizing = (
 
   const avatarText = marker.querySelector<SVGTextElement>('text.device-avatar-text');
   if (avatarText) {
-    avatarText.setAttribute('font-size', String(avatarSizeInUserUnits * 0.42 * stageFontScale));
+    avatarText.setAttribute('font-size', String(avatarSizeInUserUnits * 0.42 * stageIconScale));
     avatarText.setAttribute('x', '0');
     avatarText.setAttribute('y', String(avatarCenterY));
   }
@@ -334,7 +334,7 @@ const upsertDebugLabel = (
   marker: SVGGElement,
   lines: string[] | null,
   mode: TrackingDebugOverlayMode,
-  stageFontScale: number
+  stageIconScale: number
 ): void => {
   const existing = marker.querySelector<SVGTextElement>(`text[${DEBUG_LABEL_ATTR}="true"]`);
   if (!lines || lines.length === 0) {
@@ -350,7 +350,7 @@ const upsertDebugLabel = (
     el.setAttribute('y', mode === 'geo' ? '-0.9' : '-0.7');
     el.setAttribute('text-anchor', 'start');
     el.setAttribute('dominant-baseline', 'hanging');
-    el.setAttribute('font-size', String(0.22 * stageFontScale));
+    el.setAttribute('font-size', String(0.22 * stageIconScale));
     el.setAttribute('fill', 'var(--text-muted)');
     el.setAttribute('pointer-events', 'none');
     marker.appendChild(el);
@@ -407,7 +407,7 @@ const syncMarkers = (
   debugMode: TrackingDebugOverlayMode,
   nowMs: number,
   staleWarningMs: number,
-  stageFontScale: number
+  stageIconScale: number
 ): void => {
   const unitsPerPx = readUnitsPerPx();
 
@@ -421,7 +421,7 @@ const syncMarkers = (
 
   if (!isEnabled) {
     for (const marker of existingTrackingMarkers.values()) {
-      upsertDebugLabel(marker, null, debugMode, stageFontScale);
+      upsertDebugLabel(marker, null, debugMode, stageIconScale);
       upsertMarkerStatusLabel(marker, null);
       marker.classList.remove('device-marker--stale');
 
@@ -448,7 +448,7 @@ const syncMarkers = (
 
   for (const [entityId, marker] of existingTrackingMarkers.entries()) {
     if (!desiredEntityIds.has(entityId)) {
-      upsertDebugLabel(marker, null, debugMode, stageFontScale);
+      upsertDebugLabel(marker, null, debugMode, stageIconScale);
       upsertMarkerStatusLabel(marker, null);
       marker.classList.remove('device-marker--stale');
 
@@ -551,7 +551,7 @@ const syncMarkers = (
     // Ensure consistent sizing on first paint (especially when markers are created
     // after an earlier renderer sizing pass).
     if (unitsPerPx !== null) {
-      applyMarkerSizing(marker, unitsPerPx, stageFontScale);
+      applyMarkerSizing(marker, unitsPerPx, stageIconScale);
     }
 
     if (isStale) {
@@ -571,10 +571,10 @@ const syncMarkers = (
         marker,
         formatDebugLabelLines(location, debugMode),
         debugMode,
-        stageFontScale
+        stageIconScale
       );
     } else {
-      upsertDebugLabel(marker, null, debugMode, stageFontScale);
+      upsertDebugLabel(marker, null, debugMode, stageIconScale);
     }
   }
 };
@@ -626,7 +626,7 @@ const getNextStaleCheckDelayMs = (
 
 export function TrackedDeviceMarkersBridge() {
   const isOverlayVisible = useDashboardStore((s) => s.overlays.tracking);
-  const stageFontScale = useDashboardStore((s) => s.stageFontScale);
+  const stageIconScale = useDashboardStore((s) => s.stageIconScale);
   const locationsByEntityId = useDeviceLocationStore((s) => s.locationsByEntityId);
   const metadataByEntityId = useDeviceTrackerMetadataStore((s) => s.metadataByEntityId);
   const [staleTick, setStaleTick] = useState(0);
@@ -661,7 +661,7 @@ export function TrackedDeviceMarkersBridge() {
         debugMode,
         nowMs,
         staleWarningMs,
-        stageFontScale
+        stageIconScale
       );
       return;
     }
@@ -682,7 +682,7 @@ export function TrackedDeviceMarkersBridge() {
       debugMode,
       nowMs,
       staleWarningMs,
-      stageFontScale
+      stageIconScale
     );
 
     // The devices layer can be cleared/re-rendered by other code; re-apply markers.
@@ -697,7 +697,7 @@ export function TrackedDeviceMarkersBridge() {
         debugMode,
         nowMs,
         staleWarningMs,
-        stageFontScale
+        stageIconScale
       );
     });
 
@@ -725,7 +725,7 @@ export function TrackedDeviceMarkersBridge() {
     };
   }, [
     isOverlayVisible,
-    stageFontScale,
+    stageIconScale,
     locationsByEntityId,
     metadataByEntityId,
     showDebugOverlay,
