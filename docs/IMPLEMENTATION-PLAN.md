@@ -512,26 +512,25 @@ Feature flags were implemented early for CI/CD, then removed once the app reache
 
 #### Iteration 3.1: Floor Plan Data Model
 
-**Goal:** JSON schema for floor plans  
+**Goal:** Floor plan data model (YAML-authored)  
 **Time:** 2-3 hours  
-**Deliverable:** TypeScript types and example JSON
+**Deliverable:** TypeScript types, schema, and example YAML
 
 **Tasks:**
 
 - ✅ Create floor plan TypeScript interfaces
 - ✅ Create JSON schema for validation
-- ✅ Create example floor plan JSON file
-- ✅ Add JSON loader/validator
+- ✅ Create example floor plan YAML file
 - ✅ Document floor plan format
-- ✅ **Acceptance:** Example JSON loads and validates
+- ✅ **Acceptance:** Example YAML loads and validates
 
 **Files:**
 
 - `src/features/model/floorplan.ts` (TypeScript model)
 - `public/schemas/floorplan.schema.json` (JSON Schema)
-- `public/data/floorplan.json` (example JSON)
-- `src/features/model/floorplanJson.ts` (Ajv-based validator + loader)
-- `src/features/model/floorplanJson.test.ts` (unit tests)
+- `public/data/floorplan.yaml` (example YAML)
+- `src/services/PublicFloorplanYamlDataSource.ts` (YAML loader)
+- `src/services/PublicFloorplanYamlDataSource.test.ts` (unit tests)
 
 **Feature Flags:** Removed
 
@@ -557,7 +556,7 @@ Feature flags were implemented early for CI/CD, then removed once the app reache
 
 #### Iteration 3.3: Room Rendering
 
-**Goal:** Display rooms from floor plan JSON  
+**Goal:** Display rooms from floor plan data  
 **Time:** 4-5 hours  
 **Deliverable:** Static room layout
 
@@ -636,6 +635,7 @@ single-floor floorplan + overlays experience is stable.
 **Tasks:**
 
 - [ ] Add device placement to floor plan JSON
+- [ ] Add device placement to floor plan data
 - [ ] Create LightIcon component
 - [ ] Render lights from entity list + floor plan
 - [ ] Show light state (on/off) with color

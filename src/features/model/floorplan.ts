@@ -167,7 +167,11 @@ export function normalizeFloorplan(doc: unknown): FloorplanModel {
     const bounds = asBounds(floor.bounds);
     const initialView = asInitialView(floor);
 
-    floors.push({ id, name, rooms, bounds, initialView });
+    const normalizedFloor: FloorplanFloor = { id, name, rooms };
+    if (bounds) normalizedFloor.bounds = bounds;
+    if (initialView) normalizedFloor.initialView = initialView;
+
+    floors.push(normalizedFloor);
   }
 
   const nodesRaw = Array.isArray(raw.nodes) ? raw.nodes : [];
@@ -192,7 +196,11 @@ export function normalizeFloorplan(doc: unknown): FloorplanModel {
     nodes.push({ id: id.trim(), name: name.trim(), point, floor, room });
   }
 
-  return { defaultFloorId, gps, floors, nodes: nodes.length ? nodes : undefined };
+  const model: FloorplanModel = { defaultFloorId, floors };
+  if (gps) model.gps = gps;
+  if (nodes.length) model.nodes = nodes;
+
+  return model;
 }
 
 export function getDefaultFloor(model: FloorplanModel): FloorplanFloor | undefined {
