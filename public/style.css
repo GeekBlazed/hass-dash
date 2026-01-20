@@ -40,6 +40,18 @@
 
 #root {
   height: 100%;
+  position: relative;
+}
+
+#boot-splash {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  color: var(--text-secondary);
 }
 
 * {

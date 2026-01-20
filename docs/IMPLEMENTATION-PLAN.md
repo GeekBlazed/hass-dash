@@ -743,7 +743,7 @@ single-floor floorplan + overlays experience is stable.
 - ✅ Lazy load overlays
 - [ ] Optimize images (WebP)
 - ✅ Minimize bundle size
-- [ ] Run Lighthouse audit
+- ✅ Run Lighthouse audit
 - [ ] **Acceptance:** All Core Web Vitals green
 
 **Feature Flags:** None (optimization)

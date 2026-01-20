@@ -13,6 +13,10 @@ dist-ssr
 *.local
 coverage
 
+# Lighthouse CI (generated reports / temp state)
+lighthouseci/
+.lighthouseci/
+
 # Environment variables
 .env
 .env.local
