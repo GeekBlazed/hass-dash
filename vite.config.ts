@@ -5,6 +5,24 @@ import { VitePWA } from 'vite-plugin-pwa';
 // https://vite.dev/config/
 export default defineConfig(() => {
   return {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return;
+
+            // Group the biggest/most-stable deps into their own cacheable chunks.
+            if (id.includes('/react/') || id.includes('/react-dom/')) return 'react-vendor';
+            if (id.includes('/@radix-ui/')) return 'radix-vendor';
+            if (id.includes('/konva/') || id.includes('/react-konva/')) return 'konva-vendor';
+            if (id.includes('/inversify/') || id.includes('/reflect-metadata/')) return 'di-vendor';
+            if (id.includes('/ajv/') || id.includes('/yaml/')) return 'data-vendor';
+
+            return 'vendor';
+          },
+        },
+      },
+    },
     plugins: [
       react(),
       VitePWA({
@@ -14,6 +32,7 @@ export default defineConfig(() => {
           'favicon.svg',
           'manifest.webmanifest',
           'icons/apple-touch-icon.png',
+          'icons/quick-actions.svg',
           'icons/pwa-192.png',
           'icons/pwa-512.png',
           'icons/pwa-maskable-192.png',

@@ -740,9 +740,9 @@ single-floor floorplan + overlays experience is stable.
 **Tasks:**
 
 - [ ] Code splitting for routes
-- [ ] Lazy load overlays
+- ✅ Lazy load overlays
 - [ ] Optimize images (WebP)
-- [ ] Minimize bundle size
+- ✅ Minimize bundle size
 - [ ] Run Lighthouse audit
 - [ ] **Acceptance:** All Core Web Vitals green
 
