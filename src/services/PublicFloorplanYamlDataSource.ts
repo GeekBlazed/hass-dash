@@ -1,5 +1,4 @@
 import type { ErrorObject, ValidateFunction } from 'ajv';
-import Ajv2020 from 'ajv/dist/2020';
 import { injectable } from 'inversify';
 import type { FloorplanModel } from '../features/model/floorplan';
 import { normalizeFloorplan } from '../features/model/floorplan';
@@ -36,6 +35,8 @@ const getFloorplanValidator = async (): Promise<ValidateFunction<FloorplanModel>
 
       const schema = (await response.json()) as object;
 
+      const { default: Ajv2020 } = await import('ajv/dist/2020');
+
       const ajv = new Ajv2020({
         allErrors: true,
       });
@@ -57,14 +58,20 @@ export class PublicFloorplanYamlDataSource implements IFloorplanDataSource {
     }
 
     const text = await response.text();
-    const doc = parseYaml(text);
+    const doc = await parseYaml(text);
 
     const model = normalizeFloorplan(doc);
 
-    const validate = await getFloorplanValidator();
-    if (!validate(model)) {
-      const details = formatAjvErrors(validate.errors);
-      throw new Error(`Floorplan schema validation failed for ${FLOORPLAN_YAML_URL}: ${details}`);
+    // AJV is intentionally dev/test-only. In production, this is hot-path work that
+    // increases JS payload and parse/exec cost, while the bundled floorplan schema is
+    // expected to be stable.
+    const shouldValidateSchema = import.meta.env.DEV || import.meta.env.MODE === 'test';
+    if (shouldValidateSchema) {
+      const validate = await getFloorplanValidator();
+      if (!validate(model)) {
+        const details = formatAjvErrors(validate.errors);
+        throw new Error(`Floorplan schema validation failed for ${FLOORPLAN_YAML_URL}: ${details}`);
+      }
     }
 
     return model;

@@ -1,5 +1,3 @@
-import { registerSW } from 'virtual:pwa-register';
-
 export function registerServiceWorker(): void {
   if (!import.meta.env.PROD) return;
 
@@ -11,7 +9,13 @@ export function registerServiceWorker(): void {
     if (params.has('lhci') || params.get('sw') === '0') return;
   }
 
-  registerSW({
-    immediate: true,
-  });
+  // Defer the SW module load itself to keep initial JS smaller.
+  // (workbox-window is not needed to paint the UI.)
+  void (async () => {
+    const { registerSW } = await import('virtual:pwa-register');
+
+    registerSW({
+      immediate: true,
+    });
+  })();
 }

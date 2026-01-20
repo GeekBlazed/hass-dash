@@ -1,18 +1,19 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 
 import { TYPES } from '../../core/types';
 import { useService } from '../../hooks/useService';
 import type { IFloorplanDataSource } from '../../interfaces/IFloorplanDataSource';
 import { useDashboardStore } from '../../stores/useDashboardStore';
-import { ConnectivityController } from './ConnectivityController';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardStage } from './DashboardStage';
-import { DeviceLocationTrackingController } from './DeviceLocationTrackingController';
-import { HaLightHotwireBridge } from './HaLightHotwireBridge';
-import { HomeAssistantEntityStoreController } from './HomeAssistantEntityStoreController';
+
+const LazyDashboardControllers = lazy(() =>
+  import('./DashboardControllers').then((m) => ({ default: m.DashboardControllers }))
+);
 
 export function DashboardShell() {
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [shouldMountControllers, setShouldMountControllers] = useState(false);
 
   const floorplanSource = useService<IFloorplanDataSource>(TYPES.IFloorplanDataSource);
 
@@ -51,6 +52,42 @@ export function DashboardShell() {
     };
   }, [reloadNonce, floorplanSource, setFloorplanLoading, setFloorplanLoaded, setFloorplanError]);
 
+  useEffect(() => {
+    // Defer "side-effect" controllers (WebSocket, tracking, etc.) so the initial render
+    // stays as small/fast as possible.
+    //
+    // This is a real-user win (smaller critical-path JS) and helps Lighthouse avoid
+    // counting those chunks as unused JS during initial load.
+    if (shouldMountControllers) return;
+
+    const w = window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+
+    let idleId: number | undefined;
+    let timeoutId: number | undefined;
+
+    const mount = () => {
+      setShouldMountControllers(true);
+    };
+
+    if (typeof w.requestIdleCallback === 'function') {
+      idleId = w.requestIdleCallback(mount, { timeout: 2500 });
+    } else {
+      timeoutId = window.setTimeout(mount, 750);
+    }
+
+    return () => {
+      if (typeof idleId === 'number' && typeof w.cancelIdleCallback === 'function') {
+        w.cancelIdleCallback(idleId);
+      }
+      if (typeof timeoutId === 'number') {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [shouldMountControllers]);
+
   const retryFloorplan = () => {
     setReloadNonce((n) => n + 1);
   };
@@ -67,10 +104,7 @@ export function DashboardShell() {
 
   return (
     <div className={viewportClassName}>
-      <HaLightHotwireBridge />
-      <ConnectivityController />
-      <HomeAssistantEntityStoreController />
-      <DeviceLocationTrackingController />
+      <Suspense fallback={null}>{shouldMountControllers && <LazyDashboardControllers />}</Suspense>
       <div className="frame" role="application" aria-label="Floorplan dashboard">
         <div className="app">
           <DashboardSidebar />
