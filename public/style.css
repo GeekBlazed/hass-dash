@@ -340,6 +340,203 @@ button.qa {
   letter-spacing: 0.2px;
 }
 
+.lighting-panel .lighting-item__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.lighting-panel .lighting-item__details {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 18px;
+  position: relative;
+}
+
+.lighting-panel .lighting-item__details::after {
+  content: '›';
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(185, 182, 175, 0.55);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.lighting-panel .lighting-item__details:hover::after {
+  color: rgba(255, 201, 125, 0.75);
+}
+
+.lighting-panel .lighting-item__details:focus-visible {
+  outline: 2px solid rgba(255, 201, 125, 0.55);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+.lighting-panel .lighting-item__button {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  color: rgba(234, 231, 223, 0.92);
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 9, 9, 0.38);
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.lighting-panel .lighting-item__button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 201, 125, 0.28);
+  background: rgba(18, 18, 18, 0.42);
+}
+
+.lighting-panel .lighting-item__button:active {
+  transform: translateY(0);
+}
+
+.lighting-panel .lighting-item__button:focus-visible {
+  outline: 2px solid rgba(255, 201, 125, 0.55);
+  outline-offset: 2px;
+}
+
+.lighting-details {
+  position: relative;
+  width: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lighting-details__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 4px 12px;
+  margin: -6px -6px 0;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(18, 18, 18, 0.18);
+}
+
+.lighting-details__back {
+  appearance: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 18, 0.3);
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.lighting-details__back:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 201, 125, 0.28);
+  background: rgba(18, 18, 18, 0.42);
+}
+
+.lighting-details__back:active {
+  transform: translateY(0);
+}
+
+.lighting-details__back:focus-visible {
+  outline: 2px solid rgba(255, 201, 125, 0.55);
+  outline-offset: 2px;
+}
+
+.lighting-details__title {
+  color: var(--text-primary);
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  line-height: 1.25;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lighting-details__control {
+  display: grid;
+  gap: 8px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(18, 18, 18, 0.2);
+}
+
+.lighting-details__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(185, 182, 175, 0.92);
+  font-size: 12px;
+  letter-spacing: 0.2px;
+}
+
+.lighting-details__value {
+  color: rgba(234, 231, 223, 0.92);
+}
+
+.lighting-details input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.lighting-details input[type='color'] {
+  width: 100%;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 9, 9, 0.38);
+}
+
+.lighting-details input[type='color']:focus-visible {
+  outline: 2px solid rgba(255, 201, 125, 0.55);
+  outline-offset: 2px;
+}
+
+.lighting-details__empty {
+  padding: 10px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(18, 18, 18, 0.2);
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.2px;
+}
+
 .climate-panel {
   flex: 1;
   overflow: auto;

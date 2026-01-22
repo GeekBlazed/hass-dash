@@ -678,12 +678,12 @@ single-floor floorplan + overlays experience is stable.
 
 **Tasks:**
 
-- [ ] Create LightDetailsPanel component
-- [ ] Show brightness slider (if supported)
-- [ ] Show color picker (if supported)
-- [ ] Show color temperature (if supported)
-- [ ] Call HA service to update
-- [ ] **Acceptance:** Full light control from panel
+- ✅ Create LightDetailsPanel component
+- ✅ Show brightness slider (if supported)
+- ✅ Show color picker (if supported)
+- ✅ Show color temperature (if supported)
+- ✅ Call HA service to update
+- ✅ **Acceptance:** Full light control from panel
 
 **Feature Flags:**
 
