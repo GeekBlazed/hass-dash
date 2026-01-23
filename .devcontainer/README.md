@@ -13,6 +13,7 @@ The container will:
 - Use Node.js 20 on Debian Bookworm
 - Enable Corepack and install `pnpm`
 - Run `pnpm install` automatically
+- Install Playwright browsers + system deps (Chromium/Firefox/WebKit)
 
 ## Common commands
 
@@ -23,4 +24,5 @@ The container will:
 ## Notes
 
 - The Vite dev server is forwarded on port `5173`.
-- If Playwright is used, you may need to run `pnpm exec playwright install --with-deps` inside the container.
+- Playwright should work out-of-the-box (the container runs `pnpm exec playwright install --with-deps` during setup).
+- GitHub Copilot + Copilot Chat extensions are installed in the container, but you still need to sign into GitHub in VS Code for them to activate.
