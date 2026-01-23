@@ -4,7 +4,9 @@ module.exports = {
     collect: {
       // Build is executed by CI (pnpm build). Locally, run `pnpm build` first.
       staticDistDir: './dist',
-      url: ['http://localhost/?lhci=1'],
+      url: [
+        'http://localhost/?lhci=1&lhciSeedLights=1&lhciOpenLightDetails=1&lhciLightEntityId=light.lhci_demo',
+      ],
       numberOfRuns: 3,
       // `--no-sandbox` is required on many CI Linux runners.
       chromeFlags: [
@@ -15,13 +17,13 @@ module.exports = {
         '--disable-renderer-backgrounding',
       ],
       settings: {
-        // Prefer Mobile as the stricter baseline.
-        formFactor: 'mobile',
+        // Use Desktop emulation so report screenshots reflect tablet/desktop layouts.
+        formFactor: 'desktop',
         screenEmulation: {
-          mobile: true,
-          width: 360,
-          height: 640,
-          deviceScaleFactor: 2,
+          mobile: false,
+          width: 1280,
+          height: 800,
+          deviceScaleFactor: 1,
           disabled: false,
         },
         throttlingMethod: 'simulate',

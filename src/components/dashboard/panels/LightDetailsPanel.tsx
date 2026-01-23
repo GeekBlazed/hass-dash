@@ -6,6 +6,9 @@ import { useService } from '../../../hooks/useService';
 import type { ILightService } from '../../../interfaces/ILightService';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityState } from '../../../types/home-assistant';
+import { createLogger } from '../../../utils/logger';
+
+const logger = createLogger('hass-dash');
 
 type LightColorMode =
   | 'onoff'
@@ -121,9 +124,35 @@ const miredToKelvin = (mired: number): number => {
 
 type TimeoutHandle = ReturnType<typeof setTimeout>;
 
-export function LightDetailsPanel({ entityId, onBack }: { entityId: string; onBack: () => void }) {
+export function LightDetailsPanel({
+  entityId,
+  onBack,
+  backLabel = 'Back',
+  backAriaLabel = 'Back to lights',
+}: {
+  entityId: string;
+  onBack: () => void;
+  backLabel?: string;
+  backAriaLabel?: string;
+}) {
   const lightService = useService<ILightService>(TYPES.ILightService);
   const entity = useEntityStore((s) => s.entitiesById[entityId]);
+
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const handleServiceError = (error: unknown): void => {
+    logger.error('[lights] light service call failed', error);
+    if (!mountedRef.current) return;
+    setErrorMessage('Failed to update light. Check Home Assistant and try again.');
+  };
 
   const attrs = useMemo(() => {
     const raw = (entity?.attributes ?? {}) as Record<string, unknown>;
@@ -217,12 +246,21 @@ export function LightDetailsPanel({ entityId, onBack }: { entityId: string; onBa
           type="button"
           className="lighting-details__back"
           onClick={onBack}
-          aria-label="Back to lights"
+          aria-label={backAriaLabel}
         >
-          Back
+          {backLabel}
         </button>
         <div className="lighting-details__title">{name}</div>
       </div>
+
+      {errorMessage && (
+        <div
+          role="alert"
+          className="border-danger-dark/40 bg-danger-dark/10 text-danger-light mx-4 mt-3 rounded-md border px-3 py-2 text-sm"
+        >
+          {errorMessage}
+        </div>
+      )}
 
       {canBrightness && (
         <label className="lighting-details__control" aria-label="Brightness">
@@ -235,6 +273,7 @@ export function LightDetailsPanel({ entityId, onBack }: { entityId: string; onBa
             max={255}
             value={brightness}
             onChange={(e) => {
+              setErrorMessage(null);
               const next = clamp(Number(e.currentTarget.value), 1, 255);
               setBrightness(next);
               pendingBrightnessRef.current = next;
@@ -246,7 +285,7 @@ export function LightDetailsPanel({ entityId, onBack }: { entityId: string; onBa
                   lastSentBrightnessRef.current = value;
                 },
                 send: (value) => {
-                  void lightService.setBrightness(entityId, value);
+                  void lightService.setBrightness(entityId, value).catch(handleServiceError);
                 },
               });
             }}
@@ -269,6 +308,7 @@ export function LightDetailsPanel({ entityId, onBack }: { entityId: string; onBa
             max={maxMireds}
             value={colorTemp ?? minMireds}
             onChange={(e) => {
+              setErrorMessage(null);
               const next = clamp(Number(e.currentTarget.value), minMireds, maxMireds);
               setColorTemp(next);
               pendingColorTempRef.current = next;
@@ -280,7 +320,7 @@ export function LightDetailsPanel({ entityId, onBack }: { entityId: string; onBa
                   lastSentColorTempRef.current = value;
                 },
                 send: (value) => {
-                  void lightService.setColorTemperature(entityId, value);
+                  void lightService.setColorTemperature(entityId, value).catch(handleServiceError);
                 },
               });
             }}
@@ -295,11 +335,12 @@ export function LightDetailsPanel({ entityId, onBack }: { entityId: string; onBa
             type="color"
             value={hexColor}
             onChange={(e) => {
+              setErrorMessage(null);
               const nextHex = e.currentTarget.value;
               setHexColor(nextHex);
               const rgb = hexToRgb(nextHex);
               if (!rgb) return;
-              void lightService.setRgbColor(entityId, rgb);
+              void lightService.setRgbColor(entityId, rgb).catch(handleServiceError);
             }}
           />
         </label>

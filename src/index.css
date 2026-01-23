@@ -1,3 +1,41 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.modal {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: auto !important;
+  background: rgba(0, 0, 0, 0.68) !important;
+  overflow: hidden;
+  vertical-align: middle;
+  align-content: center;
+  border: none;
+
+  /* Ensure the overlay centers the container reliably */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-container {
+  width: min(60vw, 48rem);
+  max-width: 80vw;
+  max-height: 80vh;
+  border: solid #ffb65c 2px;
+  border-radius: 12px;
+  padding: 12px;
+  background-color: rgb(0 0 0 / 80%);
+  overflow: hidden;
+
+  /* Make header/body/footer layout work */
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-body {
+  min-height: 0;
+  overflow: auto;
+}

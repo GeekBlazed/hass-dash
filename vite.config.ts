@@ -90,12 +90,35 @@ export default defineConfig(() => {
           manualChunks(id) {
             if (!id.includes('node_modules')) return;
 
+            // Normalize to POSIX separators since Rollup/Vite ids can vary by platform.
+            const normalizedId = id.replaceAll('\\\\', '/');
+
             // Group the biggest/most-stable deps into their own cacheable chunks.
-            if (id.includes('/react/') || id.includes('/react-dom/')) return 'react-vendor';
-            if (id.includes('/@radix-ui/')) return 'radix-vendor';
-            if (id.includes('/konva/') || id.includes('/react-konva/')) return 'konva-vendor';
-            if (id.includes('/inversify/') || id.includes('/reflect-metadata/')) return 'di-vendor';
-            if (id.includes('/ajv/') || id.includes('/yaml/')) return 'data-vendor';
+            // Important: React depends on scheduler / use-sync-external-store. If those land in a
+            // different chunk, Rollup can create a circular chunk graph (react-vendor <-> vendor)
+            // which breaks module initialization in some environments (e.g. Lighthouse).
+            if (
+              normalizedId.includes('/react/') ||
+              normalizedId.includes('/react-dom/') ||
+              normalizedId.includes('/scheduler/') ||
+              normalizedId.includes('/use-sync-external-store/') ||
+              normalizedId.includes('/react-is/')
+            ) {
+              return 'react-vendor';
+            }
+
+            if (normalizedId.includes('/@radix-ui/')) return 'radix-vendor';
+            if (normalizedId.includes('/konva/') || normalizedId.includes('/react-konva/')) {
+              return 'konva-vendor';
+            }
+            if (
+              normalizedId.includes('/inversify/') ||
+              normalizedId.includes('/reflect-metadata/')
+            ) {
+              return 'di-vendor';
+            }
+            if (normalizedId.includes('/ajv/') || normalizedId.includes('/yaml/'))
+              return 'data-vendor';
 
             return 'vendor';
           },

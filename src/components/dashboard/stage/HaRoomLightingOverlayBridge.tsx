@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { TYPES } from '../../../core/types';
 import type { FloorplanModel } from '../../../features/model/floorplan';
@@ -8,6 +8,15 @@ import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityId, HaEntityState } from '../../../types/home-assistant';
 import { createLogger } from '../../../utils/logger';
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../../ui/Dialog';
+import { LightDetailsPanel } from '../panels/LightDetailsPanel';
 
 const logger = createLogger('hass-dash');
 
@@ -258,6 +267,17 @@ const computeRoomLightGroups = (
 export function HaRoomLightingOverlayBridge() {
   const lightService = useService<ILightService>(TYPES.ILightService);
 
+  const [detailsEntityId, setDetailsEntityId] = useState<string | null>(null);
+
+  const openDetailsRef = useRef<(entityId: string) => void>(() => {
+    return;
+  });
+  useEffect(() => {
+    openDetailsRef.current = (entityId: string) => {
+      setDetailsEntityId(entityId);
+    };
+  }, []);
+
   const hasLoggedMountRef = useRef(false);
   const hasLoggedDebugListenersRef = useRef(false);
   const lastToggleCountRef = useRef<number | null>(null);
@@ -266,6 +286,17 @@ export function HaRoomLightingOverlayBridge() {
     enabled: boolean;
     invoke: (toggle: SVGGElement) => void;
     downByPointerId: Map<number, { x: number; y: number; t: number; toggle: SVGGElement }>;
+    longPressByPointerId: Map<
+      number,
+      {
+        x: number;
+        y: number;
+        toggle: SVGGElement;
+        timeoutId: ReturnType<typeof setTimeout>;
+        fired: boolean;
+      }
+    >;
+    lastLongPressAt: number;
   }>({
     enabled: false,
     // Will be replaced on first effect run.
@@ -273,6 +304,8 @@ export function HaRoomLightingOverlayBridge() {
       return;
     },
     downByPointerId: new Map(),
+    longPressByPointerId: new Map(),
+    lastLongPressAt: 0,
   });
 
   const hasInstalledDelegatedListenersRef = useRef(false);
@@ -301,6 +334,7 @@ export function HaRoomLightingOverlayBridge() {
 
     const ACTIVATION_MAX_MOVE_PX = 6;
     const ACTIVATION_MAX_MS = 800;
+    const LONG_PRESS_MS = 500;
 
     const debugDelegated = (() => {
       try {
@@ -310,12 +344,33 @@ export function HaRoomLightingOverlayBridge() {
       }
     })();
 
+    const cancelLongPress = (pointerId: number) => {
+      const state = delegatedRef.current;
+      const existing = state.longPressByPointerId.get(pointerId);
+      if (!existing) return;
+      clearTimeout(existing.timeoutId);
+      state.longPressByPointerId.delete(pointerId);
+    };
+
+    const maybeOpenDetailsFromToggle = (toggle: SVGGElement): void => {
+      const raw = toggle.getAttribute('data-entity-ids') ?? '';
+      const entityId = raw
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)[0];
+      if (!entityId) return;
+      openDetailsRef.current(entityId);
+    };
+
     const onDelegatedPointerDown = (e: PointerEvent) => {
       const state = delegatedRef.current;
       if (!state.enabled) return;
+      if (typeof e.button === 'number' && e.button !== 0) return;
       const target = e.target instanceof Element ? e.target : null;
       const toggle = target?.closest?.('g.light-toggle') as SVGGElement | null;
       if (!toggle) return;
+      if (!toggle.isConnected) return;
+      if (toggle.classList.contains('is-hidden')) return;
 
       if (debugDelegated) {
         console.debug('[lights] delegated pointerdown matched toggle', {
@@ -324,11 +379,71 @@ export function HaRoomLightingOverlayBridge() {
       }
 
       state.downByPointerId.set(e.pointerId, { x: e.clientX, y: e.clientY, t: Date.now(), toggle });
+
+      cancelLongPress(e.pointerId);
+      const timeoutId = setTimeout(() => {
+        const nowState = delegatedRef.current;
+        if (!nowState.enabled) return;
+        const record = nowState.longPressByPointerId.get(e.pointerId);
+        if (!record || record.fired) return;
+        if (!record.toggle.isConnected) {
+          cancelLongPress(e.pointerId);
+          return;
+        }
+        if (record.toggle.classList.contains('is-hidden')) {
+          cancelLongPress(e.pointerId);
+          return;
+        }
+
+        record.fired = true;
+        nowState.lastLongPressAt = Date.now();
+        maybeOpenDetailsFromToggle(record.toggle);
+      }, LONG_PRESS_MS);
+
+      state.longPressByPointerId.set(e.pointerId, {
+        x: e.clientX,
+        y: e.clientY,
+        toggle,
+        timeoutId,
+        fired: false,
+      });
+    };
+
+    const onDelegatedPointerMove = (e: PointerEvent) => {
+      const state = delegatedRef.current;
+      if (!state.enabled) return;
+      const record = state.longPressByPointerId.get(e.pointerId);
+      if (!record) return;
+      if (record.fired) return;
+      const dx = e.clientX - record.x;
+      const dy = e.clientY - record.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > ACTIVATION_MAX_MOVE_PX) {
+        cancelLongPress(e.pointerId);
+      }
+    };
+
+    const onDelegatedPointerCancel = (e: PointerEvent) => {
+      cancelLongPress(e.pointerId);
+      const state = delegatedRef.current;
+      state.downByPointerId.delete(e.pointerId);
     };
 
     const onDelegatedPointerUp = (e: PointerEvent) => {
       const state = delegatedRef.current;
       if (!state.enabled) return;
+
+      const longPress = state.longPressByPointerId.get(e.pointerId);
+      if (longPress) {
+        clearTimeout(longPress.timeoutId);
+        state.longPressByPointerId.delete(e.pointerId);
+        if (longPress.fired) {
+          state.downByPointerId.delete(e.pointerId);
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }
 
       const record = state.downByPointerId.get(e.pointerId);
       state.downByPointerId.delete(e.pointerId);
@@ -408,6 +523,13 @@ export function HaRoomLightingOverlayBridge() {
     const onDelegatedClick = (e: MouseEvent) => {
       const state = delegatedRef.current;
       if (!state.enabled) return;
+
+      // Ignore the synthetic click that follows a long press.
+      if (state.lastLongPressAt && Date.now() - state.lastLongPressAt < 500) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       const target = e.target instanceof Element ? e.target : null;
       const toggle = target?.closest?.('g.light-toggle') as SVGGElement | null;
       if (!toggle) return;
@@ -435,6 +557,8 @@ export function HaRoomLightingOverlayBridge() {
     };
 
     document.addEventListener('pointerdown', onDelegatedPointerDown, { capture: true });
+    document.addEventListener('pointermove', onDelegatedPointerMove, { capture: true });
+    document.addEventListener('pointercancel', onDelegatedPointerCancel, { capture: true });
     document.addEventListener('pointerup', onDelegatedPointerUp, { capture: true });
     document.addEventListener('click', onDelegatedClick, { capture: true });
 
@@ -442,9 +566,15 @@ export function HaRoomLightingOverlayBridge() {
 
     return () => {
       document.removeEventListener('pointerdown', onDelegatedPointerDown, { capture: true });
+      document.removeEventListener('pointermove', onDelegatedPointerMove, { capture: true });
+      document.removeEventListener('pointercancel', onDelegatedPointerCancel, { capture: true });
       document.removeEventListener('pointerup', onDelegatedPointerUp, { capture: true });
       document.removeEventListener('click', onDelegatedClick, { capture: true });
       delegatedStateForCleanup.downByPointerId.clear();
+      delegatedStateForCleanup.longPressByPointerId.forEach((rec) => {
+        clearTimeout(rec.timeoutId);
+      });
+      delegatedStateForCleanup.longPressByPointerId.clear();
 
       // Important for React StrictMode in dev: effects run setup → cleanup → setup.
       // If we keep the guard set to true, the second setup will bail out and
@@ -869,5 +999,40 @@ export function HaRoomLightingOverlayBridge() {
     optimisticSetState,
   ]);
 
-  return null;
+  return (
+    <Dialog
+      open={detailsEntityId !== null}
+      onOpenChange={(open) => {
+        if (!open) setDetailsEntityId(null);
+      }}
+    >
+      {detailsEntityId !== null && (
+        <DialogContent overlayClassName="modal" className="modal-container" showCloseButton={false}>
+          <DialogHeader className="sr-only">
+            <DialogTitle>
+              Light details for{' '}
+              {(() => {
+                const entity = entitiesById[detailsEntityId];
+                const friendlyName = entity?.attributes?.friendly_name;
+                return typeof friendlyName === 'string' && friendlyName.trim()
+                  ? friendlyName.trim()
+                  : detailsEntityId;
+              })()}
+            </DialogTitle>
+            <DialogDescription>
+              Adjust light settings like brightness, color temperature, and color.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="modal-body" onContextMenu={(e) => e.preventDefault()}>
+            <LightDetailsPanel
+              entityId={detailsEntityId}
+              onBack={() => setDetailsEntityId(null)}
+              backLabel="Close"
+              backAriaLabel="Close light details"
+            />
+          </div>
+        </DialogContent>
+      )}
+    </Dialog>
+  );
 }
