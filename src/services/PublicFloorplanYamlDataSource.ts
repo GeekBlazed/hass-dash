@@ -64,7 +64,10 @@ export class PublicFloorplanYamlDataSource implements IFloorplanDataSource {
 
     // AJV is intentionally dev/test-only. In production, this is hot-path work that
     // increases JS payload and parse/exec cost, while the bundled floorplan schema is
-    // expected to be stable.
+    // expected to be stable and validated as part of release/CI tooling. If the
+    // production floorplan ever diverges from the schema, the mismatch will surface
+    // later (e.g., during normalization or when consuming the model) as runtime
+    // errors or incorrect rendering rather than as an explicit validation error here.
     const shouldValidateSchema = import.meta.env.DEV || import.meta.env.MODE === 'test';
     if (shouldValidateSchema) {
       const validate = await getFloorplanValidator();

@@ -19,6 +19,9 @@ async function copyFileWithRetries(
   destination: string,
   maxAttempts: number
 ): Promise<void> {
+  if (!Number.isInteger(maxAttempts) || maxAttempts <= 0) {
+    throw new Error('maxAttempts must be a positive integer');
+  }
   let attempt = 0;
   // Small backoff to tolerate transient Windows file locks (AV/indexers, etc).
   while (true) {

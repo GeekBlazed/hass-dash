@@ -1,6 +1,8 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import React from 'react';
 
+const DIALOG_Z_INDEX = 2147483000;
+
 /**
  * Dialog Root - Main container for dialog state
  */
@@ -31,7 +33,7 @@ export const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={`data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out pointer-events-auto fixed inset-0 bg-black/40 backdrop-blur-sm dark:bg-black/40 ${className}`}
-    style={{ zIndex: 2147483000, ...props.style }}
+    style={{ ...props.style, zIndex: DIALOG_Z_INDEX }}
     {...props}
   />
 ));
@@ -51,13 +53,13 @@ export const DialogContent = React.forwardRef<
 >(({ className = '', overlayClassName = '', showCloseButton = true, children, ...props }, ref) => (
   <DialogPortal>
     <div
-      className={`data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out pointer-events-auto fixed inset-0 z-[2147483000] flex items-center justify-center overflow-hidden bg-black/40 p-4 backdrop-blur-sm dark:bg-black/40 ${overlayClassName}`}
-      style={{ zIndex: 2147483000 }}
+      className={`data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out pointer-events-auto fixed inset-0 flex items-center justify-center overflow-hidden bg-black/40 p-4 backdrop-blur-sm dark:bg-black/40 ${overlayClassName}`}
+      style={{ zIndex: DIALOG_Z_INDEX }}
     >
       <DialogPrimitive.Content
         ref={ref}
         className={`data-[state=open]:animate-slide-in data-[state=closed]:animate-slide-out relative w-full max-w-lg gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-lg duration-200 sm:rounded-lg dark:border-gray-700 dark:bg-gray-800 ${className}`}
-        style={{ zIndex: 2147483010, ...props.style }}
+        style={{ ...props.style, zIndex: DIALOG_Z_INDEX + 10 }}
         {...props}
       >
         {children}
