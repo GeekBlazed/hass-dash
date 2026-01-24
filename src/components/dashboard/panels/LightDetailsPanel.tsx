@@ -191,14 +191,12 @@ export function LightDetailsPanel({
   const lastSentBrightnessRef = useRef<number | null>(null);
 
   const brightnessDraftClearTimerRef = useRef<TimeoutHandle | null>(null);
-
   const colorTempTimerRef = useRef<TimeoutHandle | null>(null);
   const pendingColorTempRef = useRef<number | null>(null);
   const lastSentColorTempRef = useRef<number | null>(null);
 
   const colorTempDraftClearTimerRef = useRef<TimeoutHandle | null>(null);
   const hexColorDraftClearTimerRef = useRef<TimeoutHandle | null>(null);
-
   const clearTimer = (id: TimeoutHandle | null): void => {
     if (id === null) return;
     clearTimeout(id);
@@ -232,7 +230,6 @@ export function LightDetailsPanel({
 
       clearTimer(brightnessDraftClearTimerRef.current);
       brightnessDraftClearTimerRef.current = null;
-
       clearTimer(colorTempTimerRef.current);
       colorTempTimerRef.current = null;
       pendingColorTempRef.current = null;
@@ -299,7 +296,6 @@ export function LightDetailsPanel({
                 brightnessDraftClearTimerRef.current = null;
                 setBrightnessDraft(null);
               }, 2500);
-
               schedule({
                 timerRef: brightnessTimerRef,
                 getPending: () => pendingBrightnessRef.current,
@@ -341,7 +337,6 @@ export function LightDetailsPanel({
                 colorTempDraftClearTimerRef.current = null;
                 setColorTempDraft(null);
               }, 2500);
-
               schedule({
                 timerRef: colorTempTimerRef,
                 getPending: () => pendingColorTempRef.current,
@@ -374,7 +369,6 @@ export function LightDetailsPanel({
                 hexColorDraftClearTimerRef.current = null;
                 setHexColorDraft(null);
               }, 2500);
-
               const rgb = hexToRgb(nextHex);
               if (!rgb) return;
               void lightService.setRgbColor(entityId, rgb).catch(handleServiceError);

@@ -9,7 +9,6 @@ const FLOORPLAN_YAML_URL = '/data/floorplan.yaml';
 const FLOORPLAN_SCHEMA_URL = '/schemas/floorplan.schema.json';
 
 const MAX_FORMATTED_ERRORS = 10;
-
 let floorplanValidatorPromise: Promise<ValidateFunction<FloorplanModel>> | undefined;
 
 const formatAjvErrors = (errors: ErrorObject[] | null | undefined): string => {

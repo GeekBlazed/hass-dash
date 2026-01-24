@@ -1,8 +1,8 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import React from 'react';
 
-// High, but within a reasonable range to keep dialogs above most UI without using near-max int values.
-const DIALOG_Z_INDEX = 10000;
+// Keep dialogs above essentially all other UI.
+const DIALOG_Z_INDEX = 2147483000;
 
 /**
  * Dialog Root - Main container for dialog state
@@ -34,7 +34,7 @@ export const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={`data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out pointer-events-auto fixed inset-0 bg-black/40 backdrop-blur-sm dark:bg-black/40 ${className}`}
-    style={{ ...props.style, zIndex: DIALOG_Z_INDEX }}
+    style={{ zIndex: DIALOG_Z_INDEX, ...props.style }}
     {...props}
   />
 ));
@@ -60,7 +60,7 @@ export const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={`data-[state=open]:animate-slide-in data-[state=closed]:animate-slide-out relative w-full max-w-lg gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-lg duration-200 sm:rounded-lg dark:border-gray-700 dark:bg-gray-800 ${className}`}
-        style={{ ...props.style, zIndex: DIALOG_Z_INDEX + 10 }}
+        style={{ zIndex: DIALOG_Z_INDEX + 10, ...props.style }}
         {...props}
       >
         {children}

@@ -12,7 +12,7 @@ createRoot(document.getElementById('root')!).render(
 );
 
 // Keep service-worker registration off the critical rendering path.
-const windowRef = window;
+const windowRef = window as Window;
 
 if (typeof windowRef.requestIdleCallback === 'function') {
   windowRef.requestIdleCallback(() => registerServiceWorker(), { timeout: 2000 });
