@@ -16,6 +16,7 @@ coverage
 # Lighthouse CI (generated reports / temp state)
 lighthouseci/
 .lighthouseci/
+.pnpm-store/
 
 # Environment variables
 .env
