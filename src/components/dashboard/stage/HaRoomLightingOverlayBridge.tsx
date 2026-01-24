@@ -335,6 +335,7 @@ export function HaRoomLightingOverlayBridge() {
     const ACTIVATION_MAX_MOVE_PX = 6;
     const ACTIVATION_MAX_MS = 800;
     const LONG_PRESS_MS = 500;
+    const LONG_PRESS_COOLDOWN_MS = 500;
 
     const debugDelegated = (() => {
       try {
@@ -525,7 +526,7 @@ export function HaRoomLightingOverlayBridge() {
       if (!state.enabled) return;
 
       // Ignore the synthetic click that follows a long press.
-      if (state.lastLongPressAt && Date.now() - state.lastLongPressAt < 500) {
+      if (state.lastLongPressAt && Date.now() - state.lastLongPressAt < LONG_PRESS_COOLDOWN_MS) {
         e.preventDefault();
         e.stopPropagation();
         return;

@@ -91,7 +91,7 @@ export default defineConfig(() => {
             if (!id.includes('node_modules')) return;
 
             // Normalize to POSIX separators since Rollup/Vite ids can vary by platform.
-            const normalizedId = id.replaceAll('\\\\', '/');
+            const normalizedId = id.replaceAll('\\', '/');
 
             // Group the biggest/most-stable deps into their own cacheable chunks.
             // Important: React depends on scheduler / use-sync-external-store. If those land in a
