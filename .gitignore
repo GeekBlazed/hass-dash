@@ -30,6 +30,7 @@ lighthouseci/
 *.ntvs*
 *.njsproj
 *.sln
+.pnpm-store
 *.sw?
 
 **/*--IGNORE*
