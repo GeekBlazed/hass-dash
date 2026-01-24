@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { Icon } from '@iconify/react';
+
 import { TYPES } from '../../../core/types';
 import { useService } from '../../../hooks/useService';
 import type { IEntityLabelService } from '../../../interfaces/IEntityLabelService';
@@ -111,6 +113,32 @@ const formatWeatherDescription = (value: string): string => {
   }
 
   return out;
+};
+
+const readHaIconName = (entity: HaEntityState | undefined): string => {
+  const attrs = entity?.attributes as Record<string, unknown> | undefined;
+  const icon = attrs?.icon;
+  if (typeof icon !== 'string') return '';
+  const trimmed = icon.trim();
+  // Expect values like "mdi:weather-partly-cloudy".
+  return trimmed.includes(':') ? trimmed : '';
+};
+
+const weatherStateToMdiIcon = (state: string): string => {
+  const trimmed = state.trim().toLowerCase();
+  if (!trimmed) return '';
+
+  // Home Assistant weather condition states:
+  // https://www.home-assistant.io/integrations/weather/#condition-mapping
+  // Some icon names don't match the raw state 1:1.
+  if (trimmed === 'clear-night') return 'mdi:weather-night';
+  if (trimmed === 'partlycloudy') return 'mdi:weather-partly-cloudy';
+
+  // Most map cleanly to `mdi:weather-${state}`.
+  // Accept only safe characters to avoid rendering arbitrary icon names.
+  if (!/^[a-z0-9_-]+$/.test(trimmed)) return '';
+  const normalized = trimmed.replace(/_/g, '-');
+  return `mdi:weather-${normalized}`;
 };
 
 export function WeatherSummary() {
@@ -231,14 +259,35 @@ export function WeatherSummary() {
     return 'Weather';
   }, [entitiesById, weatherDescriptionEntityIds]);
 
+  const iconName = useMemo(() => {
+    const ids = weatherDescriptionEntityIds;
+    if (!ids || ids.size === 0) return '';
+
+    for (const entityId of ids) {
+      const entity = entitiesById[entityId];
+      const iconFromAttr = readHaIconName(entity);
+      if (iconFromAttr) return iconFromAttr;
+
+      const state = typeof entity?.state === 'string' ? entity.state : '';
+      const iconFromState = weatherStateToMdiIcon(state);
+      if (iconFromState) return iconFromState;
+    }
+
+    return '';
+  }, [entitiesById, weatherDescriptionEntityIds]);
+
   return (
     <div className="weather" aria-label="Weather summary">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M6 14.5a4.5 4.5 0 0 1 4.43-4.5A5.5 5.5 0 0 1 21 12.5a4.5 4.5 0 0 1-4.5 4.5H7.5A3.5 3.5 0 0 1 6 14.5zm4.5 4.5h2l-1 3h-2l1-3zm4 0h2l-1 3h-2l1-3z"
-        />
-      </svg>
+      {iconName ? (
+        <Icon icon={iconName} aria-hidden="true" data-testid="weather-icon" />
+      ) : (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M6 14.5a4.5 4.5 0 0 1 4.43-4.5A5.5 5.5 0 0 1 21 12.5a4.5 4.5 0 0 1-4.5 4.5H7.5A3.5 3.5 0 0 1 6 14.5zm4.5 4.5h2l-1 3h-2l1-3zm4 0h2l-1 3h-2l1-3z"
+          />
+        </svg>
+      )}
       <div>
         <div className="temp">{temperatureText}</div>
         <div className="desc">{descriptionText}</div>

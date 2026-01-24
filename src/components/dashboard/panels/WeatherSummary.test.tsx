@@ -17,6 +17,15 @@ vi.mock('../../../hooks/useService', () => {
   };
 });
 
+vi.mock('@iconify/react', () => {
+  return {
+    Icon: (props: { icon: string } & Record<string, unknown>) => {
+      const testId = typeof props['data-testid'] === 'string' ? props['data-testid'] : undefined;
+      return <svg data-testid={testId} data-icon={props.icon} aria-hidden="true" />;
+    },
+  };
+});
+
 const makeEntity = (
   entityId: string,
   state: string,
@@ -257,5 +266,27 @@ describe('WeatherSummary', () => {
     render(<WeatherSummary />);
 
     expect(await screen.findByText('Lightning, Rainy')).toBeInTheDocument();
+  });
+
+  it('renders a dynamic HA icon from the raw state when attributes.icon is missing', async () => {
+    getEntityIdsByLabelNameMock.mockImplementation((labelName: string) => {
+      if (labelName === 'hass-dash')
+        return Promise.resolve(new Set(['sensor.weather_description']));
+      if (labelName === 'Weather Description') {
+        return Promise.resolve(new Set(['sensor.weather_description']));
+      }
+      return Promise.resolve(new Set());
+    });
+
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.weather_description', 'lightning-rainy', {
+        friendly_name: 'Wx',
+      })
+    );
+
+    render(<WeatherSummary />);
+
+    const icon = await screen.findByTestId('weather-icon');
+    expect(icon).toHaveAttribute('data-icon', 'mdi:weather-lightning-rainy');
   });
 });
