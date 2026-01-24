@@ -47,6 +47,30 @@ describe('useDashboardStore', () => {
     expect(useDashboardStore.getState().isMapControlsOpen).toBe(false);
   });
 
+  it('can enable/disable and toggle overlays', () => {
+    const state = useDashboardStore.getState();
+
+    expect(state.overlays.tracking).toBe(true);
+    expect(state.overlays.climate).toBe(true);
+    expect(state.overlays.lighting).toBe(false);
+
+    state.setOverlayEnabled('lighting', true);
+    expect(useDashboardStore.getState().overlays.lighting).toBe(true);
+
+    state.toggleOverlay('lighting');
+    expect(useDashboardStore.getState().overlays.lighting).toBe(false);
+  });
+
+  it('can set stage font/icon scales', () => {
+    const state = useDashboardStore.getState();
+
+    state.setStageFontScale(1.25);
+    state.setStageIconScale(0.75);
+
+    expect(useDashboardStore.getState().stageFontScale).toBe(1.25);
+    expect(useDashboardStore.getState().stageIconScale).toBe(0.75);
+  });
+
   it('can set floorplan loading state', () => {
     useDashboardStore.getState().setFloorplanLoading();
     expect(useDashboardStore.getState().floorplan).toEqual({
@@ -62,6 +86,51 @@ describe('useDashboardStore', () => {
       state: 'error',
       model: null,
       errorMessage: 'nope',
+    });
+  });
+
+  it('migrate() preserves null persisted state', () => {
+    const options = useDashboardStore.persist.getOptions();
+    const migrate = options.migrate as unknown as (persistedState: unknown) => unknown;
+
+    // Covers: if (!s) return persistedState
+    expect(migrate(null)).toBeNull();
+  });
+
+  it('migrate() normalizes overlays and stage scales', () => {
+    const options = useDashboardStore.persist.getOptions();
+    const migrate = options.migrate as unknown as (persistedState: unknown) => {
+      overlays?: Record<string, unknown>;
+      stageFontScale?: unknown;
+      stageIconScale?: unknown;
+    };
+
+    // Covers: overlays normalization + finite/non-finite branches.
+    const migrated = migrate({
+      overlays: { lighting: true },
+      stageFontScale: 2,
+      stageIconScale: Number.NaN,
+    });
+
+    expect(migrated.overlays).toEqual({
+      tracking: true,
+      climate: true,
+      lighting: true,
+    });
+    expect(migrated.stageFontScale).toBe(2);
+    expect(migrated.stageIconScale).toBe(1);
+
+    // Covers: overlays undefined fallback.
+    const migratedDefaults = migrate({
+      overlays: undefined,
+      stageFontScale: undefined,
+      stageIconScale: undefined,
+    });
+
+    expect(migratedDefaults.overlays).toEqual({
+      tracking: true,
+      climate: true,
+      lighting: false,
     });
   });
 });

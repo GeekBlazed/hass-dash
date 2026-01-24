@@ -4,6 +4,7 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const MAX_COPY_RETRIES = 10;
 function isRetriableFsError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const code = (error as { code?: unknown }).code;
@@ -19,6 +20,9 @@ async function copyFileWithRetries(
   destination: string,
   maxAttempts: number
 ): Promise<void> {
+  if (!Number.isInteger(maxAttempts) || maxAttempts <= 0) {
+    throw new Error('maxAttempts must be a positive integer');
+  }
   let attempt = 0;
   // Small backoff to tolerate transient Windows file locks (AV/indexers, etc).
   while (true) {
@@ -70,7 +74,7 @@ function robustCopyPublicDirPlugin() {
 
           if (dirent.isFile()) {
             await fs.mkdir(path.dirname(destPath), { recursive: true });
-            await copyFileWithRetries(srcPath, destPath, 10);
+            await copyFileWithRetries(srcPath, destPath, MAX_COPY_RETRIES);
           }
         }
       }
@@ -91,7 +95,7 @@ export default defineConfig(() => {
             if (!id.includes('node_modules')) return;
 
             // Normalize to POSIX separators since Rollup/Vite ids can vary by platform.
-            const normalizedId = id.replaceAll('\\\\', '/');
+            const normalizedId = id.replaceAll('\\', '/');
 
             // Group the biggest/most-stable deps into their own cacheable chunks.
             // Important: React depends on scheduler / use-sync-external-store. If those land in a

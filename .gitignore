@@ -17,6 +17,7 @@ coverage
 lighthouseci/
 .lighthouseci/
 
+
 # Environment variables
 .env
 .env.local

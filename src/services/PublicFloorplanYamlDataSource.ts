@@ -8,13 +8,14 @@ import type { IFloorplanDataSource } from '../interfaces/IFloorplanDataSource';
 const FLOORPLAN_YAML_URL = '/data/floorplan.yaml';
 const FLOORPLAN_SCHEMA_URL = '/schemas/floorplan.schema.json';
 
+const MAX_FORMATTED_ERRORS = 10;
 let floorplanValidatorPromise: Promise<ValidateFunction<FloorplanModel>> | undefined;
 
 const formatAjvErrors = (errors: ErrorObject[] | null | undefined): string => {
   if (!errors?.length) return 'Unknown schema validation error.';
 
   return errors
-    .slice(0, 10)
+    .slice(0, MAX_FORMATTED_ERRORS)
     .map((e) => {
       const path = e.instancePath && e.instancePath.length ? e.instancePath : '/';
       const msg = e.message ?? 'invalid';
@@ -58,13 +59,22 @@ export class PublicFloorplanYamlDataSource implements IFloorplanDataSource {
     }
 
     const text = await response.text();
-    const doc = await parseYaml(text);
+    let doc: unknown;
+    try {
+      doc = await parseYaml(text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to parse YAML from ${FLOORPLAN_YAML_URL}: ${message}`);
+    }
 
     const model = normalizeFloorplan(doc);
 
     // AJV is intentionally dev/test-only. In production, this is hot-path work that
     // increases JS payload and parse/exec cost, while the bundled floorplan schema is
-    // expected to be stable.
+    // expected to be stable and validated as part of release/CI tooling. If the
+    // production floorplan ever diverges from the schema, the mismatch will surface
+    // later (e.g., during normalization or when consuming the model) as runtime
+    // errors or incorrect rendering rather than as an explicit validation error here.
     const shouldValidateSchema = import.meta.env.DEV || import.meta.env.MODE === 'test';
     if (shouldValidateSchema) {
       const validate = await getFloorplanValidator();

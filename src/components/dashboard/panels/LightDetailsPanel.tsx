@@ -161,18 +161,42 @@ export function LightDetailsPanel({
 
   const name = entity ? getDisplayName(entity) : entityId;
 
-  const [brightness, setBrightness] = useState<number>(255);
-  const [colorTemp, setColorTemp] = useState<number | null>(null);
-  const [hexColor, setHexColor] = useState<string>('#ffffff');
+  const brightnessFromEntity = useMemo((): number => {
+    if (!isFiniteNumber(attrs.brightness)) return 255;
+    return clamp(attrs.brightness, 1, 255);
+  }, [attrs.brightness]);
+
+  const colorTempFromEntity = useMemo((): number | null => {
+    if (!isFiniteNumber(attrs.color_temp)) return null;
+    return attrs.color_temp;
+  }, [attrs.color_temp]);
+
+  const hexColorFromEntity = useMemo((): string => {
+    if (!Array.isArray(attrs.rgb_color) || attrs.rgb_color.length !== 3) return '#ffffff';
+    const [r, g, b] = attrs.rgb_color;
+    if (![r, g, b].every((n) => isFiniteNumber(n))) return '#ffffff';
+    return rgbToHex([r, g, b]);
+  }, [attrs.rgb_color]);
+
+  const [brightnessDraft, setBrightnessDraft] = useState<number | null>(null);
+  const [colorTempDraft, setColorTempDraft] = useState<number | null>(null);
+  const [hexColorDraft, setHexColorDraft] = useState<string | null>(null);
+
+  const brightness = brightnessDraft ?? brightnessFromEntity;
+  const colorTemp = colorTempDraft ?? colorTempFromEntity;
+  const hexColor = hexColorDraft ?? hexColorFromEntity;
 
   const brightnessTimerRef = useRef<TimeoutHandle | null>(null);
   const pendingBrightnessRef = useRef<number | null>(null);
   const lastSentBrightnessRef = useRef<number | null>(null);
 
+  const brightnessDraftClearTimerRef = useRef<TimeoutHandle | null>(null);
   const colorTempTimerRef = useRef<TimeoutHandle | null>(null);
   const pendingColorTempRef = useRef<number | null>(null);
   const lastSentColorTempRef = useRef<number | null>(null);
 
+  const colorTempDraftClearTimerRef = useRef<TimeoutHandle | null>(null);
+  const hexColorDraftClearTimerRef = useRef<TimeoutHandle | null>(null);
   const clearTimer = (id: TimeoutHandle | null): void => {
     if (id === null) return;
     clearTimeout(id);
@@ -197,25 +221,6 @@ export function LightDetailsPanel({
   };
 
   useEffect(() => {
-    if (!entity) return;
-
-    if (isFiniteNumber(attrs.brightness)) {
-      setBrightness(clamp(attrs.brightness, 1, 255));
-    }
-
-    if (isFiniteNumber(attrs.color_temp)) {
-      setColorTemp(attrs.color_temp);
-    }
-
-    if (Array.isArray(attrs.rgb_color) && attrs.rgb_color.length === 3) {
-      const [r, g, b] = attrs.rgb_color;
-      if ([r, g, b].every((n) => isFiniteNumber(n))) {
-        setHexColor(rgbToHex([r, g, b]));
-      }
-    }
-  }, [entityId, entity, attrs.brightness, attrs.color_temp, attrs.rgb_color]);
-
-  useEffect(() => {
     // When switching entity or unmounting, cancel any pending debounced sends.
     return () => {
       clearTimer(brightnessTimerRef.current);
@@ -223,10 +228,18 @@ export function LightDetailsPanel({
       pendingBrightnessRef.current = null;
       lastSentBrightnessRef.current = null;
 
+      clearTimer(brightnessDraftClearTimerRef.current);
+      brightnessDraftClearTimerRef.current = null;
       clearTimer(colorTempTimerRef.current);
       colorTempTimerRef.current = null;
       pendingColorTempRef.current = null;
       lastSentColorTempRef.current = null;
+
+      clearTimer(colorTempDraftClearTimerRef.current);
+      colorTempDraftClearTimerRef.current = null;
+
+      clearTimer(hexColorDraftClearTimerRef.current);
+      hexColorDraftClearTimerRef.current = null;
     };
   }, [entityId]);
 
@@ -275,8 +288,14 @@ export function LightDetailsPanel({
             onChange={(e) => {
               setErrorMessage(null);
               const next = clamp(Number(e.currentTarget.value), 1, 255);
-              setBrightness(next);
+              setBrightnessDraft(next);
               pendingBrightnessRef.current = next;
+
+              clearTimer(brightnessDraftClearTimerRef.current);
+              brightnessDraftClearTimerRef.current = setTimeout(() => {
+                brightnessDraftClearTimerRef.current = null;
+                setBrightnessDraft(null);
+              }, 2500);
               schedule({
                 timerRef: brightnessTimerRef,
                 getPending: () => pendingBrightnessRef.current,
@@ -310,8 +329,14 @@ export function LightDetailsPanel({
             onChange={(e) => {
               setErrorMessage(null);
               const next = clamp(Number(e.currentTarget.value), minMireds, maxMireds);
-              setColorTemp(next);
+              setColorTempDraft(next);
               pendingColorTempRef.current = next;
+
+              clearTimer(colorTempDraftClearTimerRef.current);
+              colorTempDraftClearTimerRef.current = setTimeout(() => {
+                colorTempDraftClearTimerRef.current = null;
+                setColorTempDraft(null);
+              }, 2500);
               schedule({
                 timerRef: colorTempTimerRef,
                 getPending: () => pendingColorTempRef.current,
@@ -337,7 +362,13 @@ export function LightDetailsPanel({
             onChange={(e) => {
               setErrorMessage(null);
               const nextHex = e.currentTarget.value;
-              setHexColor(nextHex);
+              setHexColorDraft(nextHex);
+
+              clearTimer(hexColorDraftClearTimerRef.current);
+              hexColorDraftClearTimerRef.current = setTimeout(() => {
+                hexColorDraftClearTimerRef.current = null;
+                setHexColorDraft(null);
+              }, 2500);
               const rgb = hexToRgb(nextHex);
               if (!rgb) return;
               void lightService.setRgbColor(entityId, rgb).catch(handleServiceError);

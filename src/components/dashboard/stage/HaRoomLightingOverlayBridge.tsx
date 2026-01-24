@@ -19,6 +19,10 @@ import {
 import { LightDetailsPanel } from '../panels/LightDetailsPanel';
 
 const logger = createLogger('hass-dash');
+const ACTIVATION_MAX_MOVE_PX = 6;
+const ACTIVATION_MAX_MS = 800;
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_COOLDOWN_MS = 500;
 
 type RoomInfo = {
   id: string;
@@ -332,10 +336,6 @@ export function HaRoomLightingOverlayBridge() {
     if (hasInstalledDelegatedListenersRef.current) return;
     hasInstalledDelegatedListenersRef.current = true;
 
-    const ACTIVATION_MAX_MOVE_PX = 6;
-    const ACTIVATION_MAX_MS = 800;
-    const LONG_PRESS_MS = 500;
-
     const debugDelegated = (() => {
       try {
         return new URLSearchParams(window.location.search).has('debugLights');
@@ -525,7 +525,7 @@ export function HaRoomLightingOverlayBridge() {
       if (!state.enabled) return;
 
       // Ignore the synthetic click that follows a long press.
-      if (state.lastLongPressAt && Date.now() - state.lastLongPressAt < 500) {
+      if (state.lastLongPressAt && Date.now() - state.lastLongPressAt < LONG_PRESS_COOLDOWN_MS) {
         e.preventDefault();
         e.stopPropagation();
         return;

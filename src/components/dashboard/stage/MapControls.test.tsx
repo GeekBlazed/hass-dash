@@ -85,6 +85,9 @@ describe('MapControls', () => {
     expect(useDashboardStore.getState().stageView.x).toBeCloseTo(-1.25);
 
     fireEvent.click(screen.getByRole('button', { name: 'Pan up' }));
+    // Pan buttons should move the content in the button direction.
+    // With the updated pan math, that means the view origin moves opposite.
+    expect(useDashboardStore.getState().stageView.x).toBeCloseTo(-1.25);
     expect(useDashboardStore.getState().stageView.y).toBeCloseTo(1.25);
   });
 
