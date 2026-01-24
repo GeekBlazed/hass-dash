@@ -33,7 +33,12 @@ const makeEntity = (
 describe('WeatherSummary', () => {
   beforeEach(() => {
     getEntityIdsByLabelNameMock.mockReset();
-    getEntityIdsByLabelNameMock.mockResolvedValue(new Set());
+    getEntityIdsByLabelNameMock.mockImplementation((labelName: string) => {
+      if (labelName === 'Weather') return Promise.resolve(new Set());
+      if (labelName === 'hass-dash') return Promise.resolve(new Set());
+      if (labelName === 'Weather Description') return Promise.resolve(new Set());
+      return Promise.resolve(new Set());
+    });
 
     useEntityStore.persist.clearStorage();
     useEntityStore.setState({ entitiesById: {}, lastUpdatedAt: null });
@@ -46,9 +51,12 @@ describe('WeatherSummary', () => {
   });
 
   it('renders temperature and humidity from entities labeled Weather', async () => {
-    getEntityIdsByLabelNameMock.mockResolvedValue(
-      new Set(['sensor.weather_temperature', 'sensor.weather_humidity'])
-    );
+    getEntityIdsByLabelNameMock.mockImplementation((labelName: string) => {
+      if (labelName === 'Weather') {
+        return Promise.resolve(new Set(['sensor.weather_temperature', 'sensor.weather_humidity']));
+      }
+      return Promise.resolve(new Set());
+    });
 
     useEntityStore.getState().upsert(
       makeEntity('sensor.weather_temperature', '72.4', {
@@ -71,7 +79,7 @@ describe('WeatherSummary', () => {
   });
 
   it('falls back to matching label/friendly_name when label registry is empty', async () => {
-    getEntityIdsByLabelNameMock.mockResolvedValue(new Set());
+    getEntityIdsByLabelNameMock.mockImplementation(() => Promise.resolve(new Set()));
 
     useEntityStore.getState().upsert(
       makeEntity('sensor.outdoor_temp', '21.4', {
@@ -95,7 +103,12 @@ describe('WeatherSummary', () => {
   });
 
   it('shows placeholders for invalid humidity values (out of 0..100 range)', async () => {
-    getEntityIdsByLabelNameMock.mockResolvedValue(new Set(['sensor.weather_temperature']));
+    getEntityIdsByLabelNameMock.mockImplementation((labelName: string) => {
+      if (labelName === 'Weather') {
+        return Promise.resolve(new Set(['sensor.weather_temperature']));
+      }
+      return Promise.resolve(new Set());
+    });
 
     useEntityStore.getState().upsert(
       makeEntity('sensor.weather_temperature', '72.4', {
@@ -131,14 +144,19 @@ describe('WeatherSummary', () => {
   });
 
   it('skips missing/invalid labeled entity ids until it finds a valid match', async () => {
-    getEntityIdsByLabelNameMock.mockResolvedValue(
-      new Set([
-        'sensor.missing',
-        'sensor.wrong_class',
-        'sensor.invalid_temp',
-        'sensor.weather_temperature',
-      ])
-    );
+    getEntityIdsByLabelNameMock.mockImplementation((labelName: string) => {
+      if (labelName === 'Weather') {
+        return Promise.resolve(
+          new Set([
+            'sensor.missing',
+            'sensor.wrong_class',
+            'sensor.invalid_temp',
+            'sensor.weather_temperature',
+          ])
+        );
+      }
+      return Promise.resolve(new Set());
+    });
 
     useEntityStore.getState().upsert(
       makeEntity('sensor.wrong_class', '72', {
@@ -167,14 +185,27 @@ describe('WeatherSummary', () => {
   });
 
   it('retries label resolution after a transient failure once entity store updates', async () => {
-    getEntityIdsByLabelNameMock
-      .mockRejectedValueOnce(new Error('temporary'))
-      .mockResolvedValueOnce(new Set(['sensor.weather_temperature']));
+    getEntityIdsByLabelNameMock.mockImplementation((labelName: string) => {
+      if (labelName === 'Weather') {
+        return Promise.reject(new Error('temporary'));
+      }
+      return Promise.resolve(new Set());
+    });
 
     render(<WeatherSummary />);
 
     // First attempt (failure)
-    expect(getEntityIdsByLabelNameMock).toHaveBeenCalledTimes(1);
+    expect(
+      getEntityIdsByLabelNameMock.mock.calls.filter(([label]) => label === 'Weather')
+    ).toHaveLength(1);
+
+    // Update the mock to succeed on retry.
+    getEntityIdsByLabelNameMock.mockImplementation((labelName: string) => {
+      if (labelName === 'Weather') {
+        return Promise.resolve(new Set(['sensor.weather_temperature']));
+      }
+      return Promise.resolve(new Set());
+    });
 
     // Trigger a store update (lastUpdatedAt changes), causing the effect to retry.
     useEntityStore.getState().upsert(
@@ -185,6 +216,46 @@ describe('WeatherSummary', () => {
     );
 
     expect(await screen.findByText('72°F')).toBeInTheDocument();
-    expect(getEntityIdsByLabelNameMock).toHaveBeenCalledTimes(2);
+    expect(
+      getEntityIdsByLabelNameMock.mock.calls.filter(([label]) => label === 'Weather')
+    ).toHaveLength(2);
+  });
+
+  it('populates the description from an entity labeled hass-dash + Weather Description', async () => {
+    getEntityIdsByLabelNameMock.mockImplementation((labelName: string) => {
+      if (labelName === 'hass-dash')
+        return Promise.resolve(new Set(['sensor.weather_description']));
+      if (labelName === 'Weather Description') {
+        return Promise.resolve(new Set(['sensor.weather_description']));
+      }
+      return Promise.resolve(new Set());
+    });
+
+    useEntityStore
+      .getState()
+      .upsert(makeEntity('sensor.weather_description', 'Partly cloudy', { friendly_name: 'Wx' }));
+
+    render(<WeatherSummary />);
+
+    expect(await screen.findByText('Partly Cloudy')).toBeInTheDocument();
+  });
+
+  it("formats dashed weather descriptions (e.g. 'lightning-rainy')", async () => {
+    getEntityIdsByLabelNameMock.mockImplementation((labelName: string) => {
+      if (labelName === 'hass-dash')
+        return Promise.resolve(new Set(['sensor.weather_description']));
+      if (labelName === 'Weather Description') {
+        return Promise.resolve(new Set(['sensor.weather_description']));
+      }
+      return Promise.resolve(new Set());
+    });
+
+    useEntityStore
+      .getState()
+      .upsert(makeEntity('sensor.weather_description', 'lightning-rainy', { friendly_name: 'Wx' }));
+
+    render(<WeatherSummary />);
+
+    expect(await screen.findByText('Lightning, Rainy')).toBeInTheDocument();
   });
 });
