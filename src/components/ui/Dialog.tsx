@@ -1,5 +1,5 @@
-import React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
+import React from 'react';
 
 /**
  * Dialog Root - Main container for dialog state
@@ -30,7 +30,8 @@ export const DialogOverlay = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    className={`fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out ${className}`}
+    className={`data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out pointer-events-auto fixed inset-0 bg-black/40 backdrop-blur-sm dark:bg-black/40 ${className}`}
+    style={{ zIndex: 2147483000, ...props.style }}
     {...props}
   />
 ));
@@ -39,34 +40,46 @@ DialogOverlay.displayName = 'DialogOverlay';
 /**
  * Dialog Content - Main dialog container with animations
  */
+type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+  overlayClassName?: string;
+  showCloseButton?: boolean;
+};
+
 export const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className = '', children, ...props }, ref) => (
+  DialogContentProps
+>(({ className = '', overlayClassName = '', showCloseButton = true, children, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={`fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-slide-in data-[state=closed]:animate-slide-out dark:border-gray-700 dark:bg-gray-800 sm:rounded-lg ${className}`}
-      {...props}
+    <div
+      className={`data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out pointer-events-auto fixed inset-0 z-[2147483000] flex items-center justify-center overflow-hidden bg-black/40 p-4 backdrop-blur-sm dark:bg-black/40 ${overlayClassName}`}
+      style={{ zIndex: 2147483000 }}
     >
-      {children}
-      <DialogPrimitive.Close
-        className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:pointer-events-none dark:ring-offset-gray-800"
-        aria-label="Close dialog"
+      <DialogPrimitive.Content
+        ref={ref}
+        className={`data-[state=open]:animate-slide-in data-[state=closed]:animate-slide-out relative w-full max-w-lg gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-lg duration-200 sm:rounded-lg dark:border-gray-700 dark:bg-gray-800 ${className}`}
+        style={{ zIndex: 2147483010, ...props.style }}
+        {...props}
       >
-        <svg
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
+        {children}
+        {showCloseButton && (
+          <DialogPrimitive.Close
+            className="focus:ring-primary absolute top-4 right-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none dark:ring-offset-gray-800"
+            aria-label="Close dialog"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </DialogPrimitive.Close>
+        )}
+      </DialogPrimitive.Content>
+    </div>
   </DialogPortal>
 ));
 DialogContent.displayName = 'DialogContent';
@@ -78,7 +91,9 @@ export function DialogHeader({
   className = '',
   ...props
 }: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
-  return <div className={`flex flex-col space-y-1.5 text-center sm:text-left ${className}`} {...props} />;
+  return (
+    <div className={`flex flex-col space-y-1.5 text-center sm:text-left ${className}`} {...props} />
+  );
 }
 
 /**
@@ -105,7 +120,7 @@ export const DialogTitle = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={`text-lg font-semibold leading-none tracking-tight text-gray-900 dark:text-white ${className}`}
+    className={`text-lg leading-none font-semibold tracking-tight text-gray-900 dark:text-white ${className}`}
     {...props}
   />
 ));

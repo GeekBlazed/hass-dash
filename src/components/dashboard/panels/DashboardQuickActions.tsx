@@ -40,10 +40,7 @@ export function DashboardQuickActions() {
         onClick={() => togglePanel('lighting')}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-20C8.13 1 5 4.13 5 8c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-3.26C17.81 12.47 19 10.38 19 8c0-3.87-3.13-7-7-7z"
-          />
+          <use href="/icons/quick-actions.svg#qa-lighting" />
         </svg>
         <div className="label">Lighting</div>
       </button>
@@ -57,10 +54,7 @@ export function DashboardQuickActions() {
         onClick={() => togglePanel('climate')}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.8 1.42-1.42zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zm9.04-18.95-1.41-1.41-1.8 1.79 1.42 1.42 1.79-1.8zM20 11v2h3v-2h-3zM6.76 19.16l-1.42-1.42-1.79 1.8 1.41 1.41 1.8-1.79zM17.24 19.16l1.8 1.79 1.41-1.41-1.79-1.8-1.42 1.42zM12 6a6 6 0 1 0 0 12a6 6 0 0 0 0-12zm0-5h0v3h0V1z"
-          />
+          <use href="/icons/quick-actions.svg#qa-climate" />
         </svg>
         <div className="label">Climate</div>
       </button>
@@ -74,31 +68,19 @@ export function DashboardQuickActions() {
         onClick={() => togglePanel('media')}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M4 5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2H4zm0 2h10v10H4V7z"
-          />
-          <path fill="currentColor" d="M5 8h1v1H5V8zm0 2h1v1H5v-1zm0 2h1v1H5v-1zm0 2h1v1H5v-1z" />
-          <path fill="currentColor" d="M9 10.2v3.6L12 12l-3-1.8z" />
-          <path fill="currentColor" d="M20 6v8.6a2.2 2.2 0 1 1-1.6-2.1V8.6l-4 1V7.9l5.6-1.4z" />
+          <use href="/icons/quick-actions.svg#qa-media" />
         </svg>
         <div className="label">Media</div>
       </button>
       <button className="qa" type="button" aria-label="Security" aria-disabled="true" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M12 1l9 4v6c0 5.55-3.84 10.74-9 12-5.16-1.26-9-6.45-9-12V5l9-4zm0 4.18L5 7.5V11c0 4.52 2.98 8.84 7 10 4.02-1.16 7-5.48 7-10V7.5l-7-2.32z"
-          />
+          <use href="/icons/quick-actions.svg#qa-security" />
         </svg>
         <div className="label">Security</div>
       </button>
       <a className="qa" href="#top" aria-label="Cameras">
         <svg viewBox="0 0 401.931 401.931" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M395.928,187.794l-272.1-135.687c-5.358-2.669-11.866-0.494-14.538,4.864L51.24,173.379c-1.283,2.573-1.491,5.55-0.579,8.276c0.912,2.727,2.869,4.979,5.443,6.262l81.242,40.511l-7.208,14.455c-2.671,5.358-0.494,11.866,4.864,14.538l2.561,1.278l-13.998,24.929H41.027C33.351,268.782,17.867,258.626,0,258.626v92.338c17.454,0,32.642-9.688,40.49-23.978h95.766c7.838,0,15.065-4.229,18.903-11.063l21.255-37.85l3.695,1.842c5.357,2.671,11.867,0.493,14.539-4.863l7.208-14.455l60.7,30.271c3.501,1.746,7.671,1.471,10.911-0.723l16.753-11.332l29.912,14.916c1.518,0.758,3.174,1.14,4.837,1.14c1.159,0,2.32-0.188,3.439-0.562c2.727-0.91,4.979-2.869,6.262-5.441l30.624-61.413l31.757-20.903c3.239-2.132,5.092-5.832,4.86-9.702C401.679,192.976,399.397,189.525,395.928,187.794z"
-          />
+          <use href="/icons/quick-actions.svg#qa-cameras" />
         </svg>
         <div className="label">Cameras</div>
       </a>
@@ -112,10 +94,7 @@ export function DashboardQuickActions() {
         onClick={() => togglePanel('agenda')}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"
-          />
+          <use href="/icons/quick-actions.svg#qa-agenda" />
         </svg>
         <div className="label">Agenda</div>
       </button>

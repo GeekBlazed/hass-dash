@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -503,6 +503,168 @@ describe('HaRoomLightingOverlayBridge', () => {
     expect(callService).toHaveBeenCalledTimes(0);
 
     nowSpy.mockRestore();
+    getSpy.mockRestore();
+  });
+
+  it('opens a centered modal on long-press and does not invoke toggle', async () => {
+    document.body.innerHTML = `
+      <svg id="floorplan-svg" viewBox="0 0 10 10">
+        <g id="labels-layer">
+          <g class="room-label-group" data-room-id="kitchen">
+            <text class="room-label" x="1" y="1">Kitchen</text>
+          </g>
+        </g>
+        <g id="lights-layer"></g>
+      </svg>
+    `;
+
+    useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'off'));
+
+    const connect = vi.fn().mockResolvedValue(undefined);
+    const callService = vi.fn().mockResolvedValue(undefined);
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
+    const getSpy = vi
+      .spyOn(container, 'get')
+      .mockReturnValue(mockClient as unknown as ILightService);
+
+    render(<HaRoomLightingOverlayBridge />);
+
+    const toggle = document.querySelector(
+      '#lights-layer g.light-toggle[data-room-id="kitchen"]'
+    ) as SVGGElement | null;
+    expect(toggle).not.toBeNull();
+
+    // Start press.
+    await act(async () => {
+      toggle?.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, clientX: 10, clientY: 10 })
+      );
+    });
+
+    // Wait long enough for long-press.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 650));
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.lighting-details')).not.toBeNull();
+    });
+
+    // Release should not toggle.
+    await act(async () => {
+      toggle?.dispatchEvent(
+        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, clientX: 10, clientY: 10 })
+      );
+      await Promise.resolve();
+    });
+
+    expect(callService).toHaveBeenCalledTimes(0);
+    getSpy.mockRestore();
+  });
+
+  it('still toggles on a quick tap (no modal)', async () => {
+    document.body.innerHTML = `
+      <svg id="floorplan-svg" viewBox="0 0 10 10">
+        <g id="labels-layer">
+          <g class="room-label-group" data-room-id="kitchen">
+            <text class="room-label" x="1" y="1">Kitchen</text>
+          </g>
+        </g>
+        <g id="lights-layer"></g>
+      </svg>
+    `;
+
+    useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'off'));
+
+    const connect = vi.fn().mockResolvedValue(undefined);
+    const callService = vi.fn().mockResolvedValue(undefined);
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
+    const getSpy = vi
+      .spyOn(container, 'get')
+      .mockReturnValue(mockClient as unknown as ILightService);
+
+    render(<HaRoomLightingOverlayBridge />);
+
+    const toggle = document.querySelector(
+      '#lights-layer g.light-toggle[data-room-id="kitchen"]'
+    ) as SVGGElement | null;
+    expect(toggle).not.toBeNull();
+
+    await act(async () => {
+      toggle?.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, clientX: 10, clientY: 10 })
+      );
+      toggle?.dispatchEvent(
+        new PointerEvent('pointerup', { bubbles: true, pointerId: 1, clientX: 10, clientY: 10 })
+      );
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(toggle?.classList.contains('is-on')).toBe(true);
+    });
+
+    expect(document.querySelector('.lighting-details')).toBeNull();
+
+    await waitFor(() => {
+      expect(callService).toHaveBeenCalledTimes(1);
+    });
+
+    // Even if time passes, long-press should not open a modal.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 650));
+    });
+
+    expect(document.querySelector('.lighting-details')).toBeNull();
+
+    getSpy.mockRestore();
+  });
+
+  it('cancels long-press when pointer moves too far (no modal)', async () => {
+    document.body.innerHTML = `
+      <svg id="floorplan-svg" viewBox="0 0 10 10">
+        <g id="labels-layer">
+          <g class="room-label-group" data-room-id="kitchen">
+            <text class="room-label" x="1" y="1">Kitchen</text>
+          </g>
+        </g>
+        <g id="lights-layer"></g>
+      </svg>
+    `;
+
+    useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'off'));
+
+    const connect = vi.fn().mockResolvedValue(undefined);
+    const callService = vi.fn().mockResolvedValue(undefined);
+    const mockClient: Partial<ILightService> = makeMockLightService(connect, callService);
+    const getSpy = vi
+      .spyOn(container, 'get')
+      .mockReturnValue(mockClient as unknown as ILightService);
+
+    render(<HaRoomLightingOverlayBridge />);
+
+    const toggle = document.querySelector(
+      '#lights-layer g.light-toggle[data-room-id="kitchen"]'
+    ) as SVGGElement | null;
+    expect(toggle).not.toBeNull();
+
+    await act(async () => {
+      toggle?.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, clientX: 0, clientY: 0 })
+      );
+      toggle?.dispatchEvent(
+        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, clientX: 50, clientY: 0 })
+      );
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 650));
+    });
+
+    expect(document.querySelector('.lighting-details')).toBeNull();
+    expect(callService).toHaveBeenCalledTimes(0);
+
     getSpy.mockRestore();
   });
 

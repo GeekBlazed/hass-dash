@@ -20,9 +20,22 @@ export class HomeAssistantLightService implements ILightService {
     await this.callLightService('turn_off', entityIds);
   }
 
+  async setBrightness(entityId: HaEntityId, brightness: number): Promise<void> {
+    await this.callLightService('turn_on', entityId, { brightness });
+  }
+
+  async setColorTemperature(entityId: HaEntityId, mireds: number): Promise<void> {
+    await this.callLightService('turn_on', entityId, { color_temp: mireds });
+  }
+
+  async setRgbColor(entityId: HaEntityId, rgb: readonly [number, number, number]): Promise<void> {
+    await this.callLightService('turn_on', entityId, { rgb_color: [...rgb] });
+  }
+
   private async callLightService(
     service: 'turn_on' | 'turn_off',
-    entityIds: HaEntityId | HaEntityId[]
+    entityIds: HaEntityId | HaEntityId[],
+    serviceData?: Record<string, unknown>
   ): Promise<void> {
     const targetEntityIds = Array.isArray(entityIds) ? entityIds : [entityIds];
 
@@ -32,6 +45,7 @@ export class HomeAssistantLightService implements ILightService {
       service,
       service_data: {
         entity_id: targetEntityIds,
+        ...(serviceData ?? {}),
       },
       target: {
         entity_id: targetEntityIds,

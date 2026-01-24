@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import type { ComponentType, LazyExoticComponent } from 'react';
 
 import type { DashboardOverlay } from '../stores/useDashboardStore';
 
@@ -14,5 +14,5 @@ export interface IOverlay {
   id: DashboardOverlay;
   label: string;
   renderer: OverlayRenderer;
-  Component: ComponentType;
+  Component: ComponentType | LazyExoticComponent<ComponentType>;
 }

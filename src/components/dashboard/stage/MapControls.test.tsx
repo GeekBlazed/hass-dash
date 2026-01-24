@@ -16,6 +16,8 @@ describe('MapControls', () => {
       },
       isMapControlsOpen: false,
       stageView: { x: 0, y: 0, scale: 1 },
+      stageFontScale: 1,
+      stageIconScale: 1,
       floorplan: { state: 'idle', model: null, errorMessage: null },
     });
   });
@@ -80,10 +82,10 @@ describe('MapControls', () => {
     render(<MapControls isOpen={true} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Pan right' }));
-    expect(useDashboardStore.getState().stageView.x).toBeCloseTo(1.25);
+    expect(useDashboardStore.getState().stageView.x).toBeCloseTo(-1.25);
 
     fireEvent.click(screen.getByRole('button', { name: 'Pan up' }));
-    expect(useDashboardStore.getState().stageView.y).toBeCloseTo(-1.25);
+    expect(useDashboardStore.getState().stageView.y).toBeCloseTo(1.25);
   });
 
   it('zooms via the slider when floorplan model is available', () => {
@@ -123,6 +125,17 @@ describe('MapControls', () => {
     expect(view.y).toBeCloseTo(3.125);
   });
 
+  it('updates marker/icon scale via the slider', () => {
+    render(<MapControls isOpen={true} />);
+
+    expect(useDashboardStore.getState().stageIconScale).toBe(1);
+
+    const slider = screen.getByRole('slider', { name: 'Markers / icons' });
+    fireEvent.change(slider, { target: { value: '175' } });
+
+    expect(useDashboardStore.getState().stageIconScale).toBeCloseTo(1.75);
+  });
+
   it('does nothing for pan/zoom when the base viewBox is unavailable', () => {
     render(<MapControls isOpen={true} />);
 
@@ -132,19 +145,5 @@ describe('MapControls', () => {
     const slider = screen.getByRole('slider', { name: 'Zoom' });
     fireEvent.change(slider, { target: { value: '200' } });
     expect(useDashboardStore.getState().stageView.scale).toBe(1);
-  });
-
-  it('renders x/y as 0 when stageView values are not finite', () => {
-    useDashboardStore.setState({
-      stageView: { x: Number.NaN, y: Number.POSITIVE_INFINITY, scale: 1 },
-    });
-
-    render(<MapControls isOpen={true} />);
-
-    const x = document.getElementById('map-launch-x');
-    const y = document.getElementById('map-launch-y');
-
-    expect(x?.textContent).toBe('0');
-    expect(y?.textContent).toBe('0');
   });
 });

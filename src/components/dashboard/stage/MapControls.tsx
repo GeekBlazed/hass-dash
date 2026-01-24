@@ -14,8 +14,18 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
   const floorplanModel = useDashboardStore((s) => s.floorplan.model);
   const stageView = useDashboardStore((s) => s.stageView);
   const setStageView = useDashboardStore((s) => s.setStageView);
+  const stageFontScale = useDashboardStore((s) => s.stageFontScale);
+  const setStageFontScale = useDashboardStore((s) => s.setStageFontScale);
+  const stageIconScale = useDashboardStore((s) => s.stageIconScale);
+  const setStageIconScale = useDashboardStore((s) => s.setStageIconScale);
   const overlays = useDashboardStore((s) => s.overlays);
   const toggleOverlay = useDashboardStore((s) => s.toggleOverlay);
+  const stageFontScaleMin = 50;
+  const stageFontScaleMax = 400;
+  const stageIconScaleMin = 50;
+  const stageIconScaleMax = 400;
+  const zoomMinScale = 50;
+  const zoomMaxScale = 300;
 
   const floor = useMemo(() => {
     if (!floorplanModel) return undefined;
@@ -29,6 +39,8 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
 
   const clampedScale = clampScale(stageView.scale);
   const zoomPercent = Math.round(clampedScale * 100);
+  const fontPercent = Math.round(stageFontScale * 100);
+  const iconPercent = Math.round(stageIconScale * 100);
 
   const isActuallyOpen = isOpen ?? false;
   const rootClassName = `map-controls${!isActuallyOpen ? ' is-hidden' : ''}`;
@@ -38,7 +50,9 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
 
     const visibleW = baseViewBox.w / clampedScale;
     const visibleH = baseViewBox.h / clampedScale;
-    setStageView({ x: stageView.x + dx * visibleW, y: stageView.y + dy * visibleH });
+    // Match the SVG "grab" pan behavior (see FloorplanSvg panByPixels).
+    // Positive dx/dy here should move the content in that direction.
+    setStageView({ x: stageView.x - dx * visibleW, y: stageView.y - dy * visibleH });
   };
 
   const handleZoomPercent = (nextPercent: number) => {
@@ -57,49 +71,20 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
     setStageView({ x: nextX, y: nextY, scale: nextScale });
   };
 
-  const scaleText = clampedScale.toFixed(3);
-  const percentText = `(${zoomPercent}%)`;
-  const xText = Number.isFinite(stageView.x) ? stageView.x.toFixed(2) : '0';
-  const yText = Number.isFinite(stageView.y) ? stageView.y.toFixed(2) : '0';
+  const handleFontPercent = (nextPercent: number) => {
+    const clamped = Math.max(stageFontScaleMin, Math.min(stageFontScaleMax, nextPercent));
+    setStageFontScale(clamped / 100);
+  };
+
+  const handleIconPercent = (nextPercent: number) => {
+    const clamped = Math.max(stageIconScaleMin, Math.min(stageIconScaleMax, nextPercent));
+    setStageIconScale(clamped / 100);
+  };
 
   return (
     <div className={rootClassName} id="map-controls" aria-label="Map controls">
       <div className="map-controls__top">
-        <div className="map-controls__camera" aria-label="Launch view values">
-          <div className="map-controls__camera-line">
-            <span className="map-controls__label">Scale</span>
-            <span className="map-controls__value" id="map-launch-scale">
-              {scaleText}
-            </span>
-            <span className="map-controls__value" id="map-launch-percent" aria-hidden="true">
-              {percentText}
-            </span>
-          </div>
-          <div className="map-controls__camera-line">
-            <span className="map-controls__label">X</span>
-            <span className="map-controls__value" id="map-launch-x">
-              {xText}
-            </span>
-            <span className="map-controls__label">Y</span>
-            <span className="map-controls__value" id="map-launch-y">
-              {yText}
-            </span>
-          </div>
-        </div>
-        <button
-          className="map-controls__close"
-          type="button"
-          id="map-controls-close"
-          aria-label="Hide map controls"
-          onClick={() => {
-            onClose?.();
-          }}
-        >
-          ✕
-        </button>
-      </div>
-      <div className="map-controls__row">
-        <div className="map-controls__stack" aria-label="Pan up/down">
+        <div className="map-controls__pan" aria-label="Pan controls">
           <button
             className="map-controls__btn"
             type="button"
@@ -118,8 +103,38 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
           >
             ↓
           </button>
+          <button
+            className="map-controls__btn"
+            type="button"
+            id="map-pan-left"
+            aria-label="Pan left"
+            onClick={() => panBy(-0.1, 0)}
+          >
+            ←
+          </button>
+          <button
+            className="map-controls__btn"
+            type="button"
+            id="map-pan-right"
+            aria-label="Pan right"
+            onClick={() => panBy(0.1, 0)}
+          >
+            →
+          </button>
         </div>
-
+        <button
+          className="map-controls__close"
+          type="button"
+          id="map-controls-close"
+          aria-label="Hide map controls"
+          onClick={() => {
+            onClose?.();
+          }}
+        >
+          ✕
+        </button>
+      </div>
+      <div className="map-controls__sliders" aria-label="Zoom and font controls">
         <div className="map-controls__zoom">
           <div className="map-controls__zoom-head">
             <label className="map-controls__label" htmlFor="map-zoom">
@@ -133,8 +148,8 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
             id="map-zoom"
             className="map-controls__slider"
             type="range"
-            min="50"
-            max="300"
+            min={zoomMinScale}
+            max={zoomMaxScale}
             value={zoomPercent}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               handleZoomPercent(Number(e.target.value));
@@ -144,25 +159,52 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
           />
         </div>
 
-        <div className="map-controls__stack" aria-label="Pan right/left">
-          <button
-            className="map-controls__btn"
-            type="button"
-            id="map-pan-right"
-            aria-label="Pan right"
-            onClick={() => panBy(0.1, 0)}
-          >
-            →
-          </button>
-          <button
-            className="map-controls__btn"
-            type="button"
-            id="map-pan-left"
-            aria-label="Pan left"
-            onClick={() => panBy(-0.1, 0)}
-          >
-            ←
-          </button>
+        <div className="map-controls__zoom">
+          <div className="map-controls__zoom-head">
+            <label className="map-controls__label" htmlFor="map-font-scale">
+              Font size
+            </label>
+            <div className="map-controls__value" id="map-font-scale-value" aria-hidden="true">
+              {`${fontPercent}%`}
+            </div>
+          </div>
+          <input
+            id="map-font-scale"
+            className="map-controls__slider"
+            type="range"
+            min={stageFontScaleMin}
+            max={stageFontScaleMax}
+            value={fontPercent}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              handleFontPercent(Number(e.target.value));
+            }}
+            step="1"
+            aria-label="Font size"
+          />
+        </div>
+
+        <div className="map-controls__zoom">
+          <div className="map-controls__zoom-head">
+            <label className="map-controls__label" htmlFor="map-icon-scale">
+              Markers / icons
+            </label>
+            <div className="map-controls__value" id="map-icon-scale-value" aria-hidden="true">
+              {`${iconPercent}%`}
+            </div>
+          </div>
+          <input
+            id="map-icon-scale"
+            className="map-controls__slider"
+            type="range"
+            min={stageIconScaleMin}
+            max={stageIconScaleMax}
+            value={iconPercent}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              handleIconPercent(Number(e.target.value));
+            }}
+            step="1"
+            aria-label="Markers / icons"
+          />
         </div>
       </div>
 

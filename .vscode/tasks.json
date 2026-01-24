@@ -212,6 +212,26 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
+		},
+		{
+			"label": "Parse LHCI latest report",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"scripts/lhci-summary.mjs"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Parse LHCI latest report (post-split)",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"scripts/lhci-summary.mjs"
+			],
+			"isBackground": false,
+			"problemMatcher": []
 		}
 	]
 }

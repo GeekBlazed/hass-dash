@@ -1,21 +1,79 @@
+import type { ErrorObject, ValidateFunction } from 'ajv';
 import { injectable } from 'inversify';
 import type { FloorplanModel } from '../features/model/floorplan';
 import { normalizeFloorplan } from '../features/model/floorplan';
 import { parseYaml } from '../features/parsing/parseYaml';
 import type { IFloorplanDataSource } from '../interfaces/IFloorplanDataSource';
 
+const FLOORPLAN_YAML_URL = '/data/floorplan.yaml';
+const FLOORPLAN_SCHEMA_URL = '/schemas/floorplan.schema.json';
+
+let floorplanValidatorPromise: Promise<ValidateFunction<FloorplanModel>> | undefined;
+
+const formatAjvErrors = (errors: ErrorObject[] | null | undefined): string => {
+  if (!errors?.length) return 'Unknown schema validation error.';
+
+  return errors
+    .slice(0, 10)
+    .map((e) => {
+      const path = e.instancePath && e.instancePath.length ? e.instancePath : '/';
+      const msg = e.message ?? 'invalid';
+      return `${path} ${msg}`;
+    })
+    .join('; ');
+};
+
+const getFloorplanValidator = async (): Promise<ValidateFunction<FloorplanModel>> => {
+  if (!floorplanValidatorPromise) {
+    floorplanValidatorPromise = (async () => {
+      const response = await fetch(FLOORPLAN_SCHEMA_URL);
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load ${FLOORPLAN_SCHEMA_URL} (HTTP ${response.status}) for schema validation`
+        );
+      }
+
+      const schema = (await response.json()) as object;
+
+      const { default: Ajv2020 } = await import('ajv/dist/2020');
+
+      const ajv = new Ajv2020({
+        allErrors: true,
+      });
+
+      return ajv.compile<FloorplanModel>(schema);
+    })();
+  }
+
+  return floorplanValidatorPromise;
+};
+
 @injectable()
 export class PublicFloorplanYamlDataSource implements IFloorplanDataSource {
   async getFloorplan(): Promise<FloorplanModel> {
-    const response = await fetch('/data/floorplan.yaml');
+    const response = await fetch(FLOORPLAN_YAML_URL);
 
     if (!response.ok) {
-      throw new Error(`Failed to load /data/floorplan.yaml (HTTP ${response.status})`);
+      throw new Error(`Failed to load ${FLOORPLAN_YAML_URL} (HTTP ${response.status})`);
     }
 
     const text = await response.text();
-    const doc = parseYaml(text);
+    const doc = await parseYaml(text);
 
-    return normalizeFloorplan(doc);
+    const model = normalizeFloorplan(doc);
+
+    // AJV is intentionally dev/test-only. In production, this is hot-path work that
+    // increases JS payload and parse/exec cost, while the bundled floorplan schema is
+    // expected to be stable.
+    const shouldValidateSchema = import.meta.env.DEV || import.meta.env.MODE === 'test';
+    if (shouldValidateSchema) {
+      const validate = await getFloorplanValidator();
+      if (!validate(model)) {
+        const details = formatAjvErrors(validate.errors);
+        throw new Error(`Floorplan schema validation failed for ${FLOORPLAN_YAML_URL}: ${details}`);
+      }
+    }
+
+    return model;
   }
 }

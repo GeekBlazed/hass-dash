@@ -2,6 +2,7 @@ import { useDashboardStore } from '../../stores/useDashboardStore';
 import { FloorplanCanvas } from './stage/FloorplanCanvas';
 import { MapControls } from './stage/MapControls';
 import { MapControlsToggle } from './stage/MapControlsToggle';
+import { StageDevReadout } from './stage/StageDevReadout';
 
 export function DashboardStage({ onRetryFloorplan }: { onRetryFloorplan: () => void }) {
   const isMapControlsOpen = useDashboardStore((s) => s.isMapControlsOpen);
@@ -11,6 +12,7 @@ export function DashboardStage({ onRetryFloorplan }: { onRetryFloorplan: () => v
     <main className="stage" aria-label="Floorplan">
       <div className="floorplan" aria-label="Interactive floorplan">
         <FloorplanCanvas onRetry={onRetryFloorplan} />
+        <StageDevReadout />
         <MapControlsToggle
           isOpen={isMapControlsOpen}
           onOpen={() => {

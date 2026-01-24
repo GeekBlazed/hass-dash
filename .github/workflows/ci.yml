@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  test:
-    name: Test and Build
+  ci:
+    name: Lint, Typecheck, Test (Coverage), Build
     runs-on: ubuntu-latest
 
     steps:
@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "pnpm"
 
       - name: Install dependencies
@@ -34,7 +34,10 @@ jobs:
         run: pnpm type-check
 
       - name: Run tests with coverage
-        run: pnpm test:run --coverage
+        run: pnpm test:coverage
+        env:
+          # Generate both HTML (artifact) and LCOV (Codecov).
+          VITEST_COVERAGE_REPORTERS: text-summary,lcovonly,html
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
@@ -45,8 +48,27 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+      - name: Upload HTML coverage report (artifact)
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: coverage-html
+          path: coverage/
+          if-no-files-found: warn
+
       - name: Build
         run: pnpm build
+
+      - name: Lighthouse CI (Performance + CWV)
+        run: pnpm lighthouse
+
+      - name: Upload Lighthouse reports (artifact)
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: lighthouseci
+          path: lighthouseci/
+          if-no-files-found: warn
 
       - name: Check build size
         run: |

@@ -1,10 +1,9 @@
-import { parse } from 'yaml';
-
 /**
  * Parse a YAML string into an unknown value.
  *
  * Throws on invalid YAML.
  */
-export function parseYaml(text: string): unknown {
+export async function parseYaml(text: string): Promise<unknown> {
+  const { parse } = await import('yaml');
   return parse(text);
 }

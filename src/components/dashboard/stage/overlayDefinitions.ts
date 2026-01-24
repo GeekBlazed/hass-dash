@@ -1,26 +1,37 @@
+import { lazy } from 'react';
+
 import type { IOverlay } from '../../../interfaces/IOverlay';
-import { HaAreaClimateOverlayBridge } from '../HaAreaClimateOverlayBridge';
-import { HaRoomLightingOverlayBridge } from './HaRoomLightingOverlayBridge';
-import { TrackedDeviceMarkersBridge } from './TrackedDeviceMarkersBridge';
+
+const LazyTrackedDeviceMarkersBridge = lazy(() =>
+  import('./TrackedDeviceMarkersBridge').then((m) => ({ default: m.TrackedDeviceMarkersBridge }))
+);
+
+const LazyHaAreaClimateOverlayBridge = lazy(() =>
+  import('../HaAreaClimateOverlayBridge').then((m) => ({ default: m.HaAreaClimateOverlayBridge }))
+);
+
+const LazyHaRoomLightingOverlayBridge = lazy(() =>
+  import('./HaRoomLightingOverlayBridge').then((m) => ({ default: m.HaRoomLightingOverlayBridge }))
+);
 
 export const OVERLAYS: ReadonlyArray<IOverlay> = [
   {
     id: 'tracking',
     label: 'Tracking',
     renderer: 'svg',
-    Component: TrackedDeviceMarkersBridge,
+    Component: LazyTrackedDeviceMarkersBridge,
   },
   {
     id: 'climate',
     label: 'Climate',
     renderer: 'svg',
-    Component: HaAreaClimateOverlayBridge,
+    Component: LazyHaAreaClimateOverlayBridge,
   },
   {
     id: 'lighting',
     label: 'Lighting',
     renderer: 'svg',
-    Component: HaRoomLightingOverlayBridge,
+    Component: LazyHaRoomLightingOverlayBridge,
   },
 ];
 
