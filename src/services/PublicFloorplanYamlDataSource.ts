@@ -8,13 +8,15 @@ import type { IFloorplanDataSource } from '../interfaces/IFloorplanDataSource';
 const FLOORPLAN_YAML_URL = '/data/floorplan.yaml';
 const FLOORPLAN_SCHEMA_URL = '/schemas/floorplan.schema.json';
 
+const MAX_FORMATTED_ERRORS = 10;
+
 let floorplanValidatorPromise: Promise<ValidateFunction<FloorplanModel>> | undefined;
 
 const formatAjvErrors = (errors: ErrorObject[] | null | undefined): string => {
   if (!errors?.length) return 'Unknown schema validation error.';
 
   return errors
-    .slice(0, 10)
+    .slice(0, MAX_FORMATTED_ERRORS)
     .map((e) => {
       const path = e.instancePath && e.instancePath.length ? e.instancePath : '/';
       const msg = e.message ?? 'invalid';
