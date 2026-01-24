@@ -4,6 +4,8 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const MAX_COPY_RETRIES = 10;
+
 function isRetriableFsError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const code = (error as { code?: unknown }).code;
@@ -73,7 +75,7 @@ function robustCopyPublicDirPlugin() {
 
           if (dirent.isFile()) {
             await fs.mkdir(path.dirname(destPath), { recursive: true });
-            await copyFileWithRetries(srcPath, destPath, 10);
+            await copyFileWithRetries(srcPath, destPath, MAX_COPY_RETRIES);
           }
         }
       }

@@ -1,7 +1,8 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import React from 'react';
 
-const DIALOG_Z_INDEX = 2147483000;
+// High, but within a reasonable range to keep dialogs above most UI without using near-max int values.
+const DIALOG_Z_INDEX = 10000;
 
 /**
  * Dialog Root - Main container for dialog state

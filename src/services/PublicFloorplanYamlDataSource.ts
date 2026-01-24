@@ -58,7 +58,13 @@ export class PublicFloorplanYamlDataSource implements IFloorplanDataSource {
     }
 
     const text = await response.text();
-    const doc = await parseYaml(text);
+    let doc: unknown;
+    try {
+      doc = await parseYaml(text);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to parse YAML from ${FLOORPLAN_YAML_URL}: ${message}`);
+    }
 
     const model = normalizeFloorplan(doc);
 
