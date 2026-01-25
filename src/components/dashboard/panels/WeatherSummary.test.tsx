@@ -56,7 +56,9 @@ describe('WeatherSummary', () => {
   it('renders placeholders when no matching entities exist', () => {
     render(<WeatherSummary />);
     expect(screen.getByLabelText(/weather summary/i)).toBeInTheDocument();
-    expect(screen.getByText(/Humidity:/i)).toBeInTheDocument();
+    expect(screen.getByText(/--°F/)).toBeInTheDocument();
+    expect(screen.getByTestId('humidity-icon')).toBeInTheDocument();
+    expect(screen.getByText(/--%/)).toBeInTheDocument();
   });
 
   it('renders temperature and humidity from entities labeled Weather', async () => {
@@ -83,8 +85,9 @@ describe('WeatherSummary', () => {
 
     render(<WeatherSummary />);
 
-    expect(await screen.findByText('72°F')).toBeInTheDocument();
-    expect(await screen.findByText(/Humidity:\s*55%/i)).toBeInTheDocument();
+    expect(await screen.findByText(/72°F/)).toBeInTheDocument();
+    expect(await screen.findByTestId('humidity-icon')).toBeInTheDocument();
+    expect(await screen.findByText(/55%/)).toBeInTheDocument();
   });
 
   it('falls back to matching label/friendly_name when label registry is empty', async () => {
@@ -107,8 +110,9 @@ describe('WeatherSummary', () => {
 
     render(<WeatherSummary />);
 
-    expect(await screen.findByText('21°F')).toBeInTheDocument();
-    expect(await screen.findByText(/Humidity:\s*55%/i)).toBeInTheDocument();
+    expect(await screen.findByText(/21°F/)).toBeInTheDocument();
+    expect(await screen.findByTestId('humidity-icon')).toBeInTheDocument();
+    expect(await screen.findByText(/55%/)).toBeInTheDocument();
   });
 
   it('shows placeholders for invalid humidity values (out of 0..100 range)', async () => {
@@ -135,8 +139,9 @@ describe('WeatherSummary', () => {
 
     render(<WeatherSummary />);
 
-    expect(await screen.findByText('72°F')).toBeInTheDocument();
-    expect(await screen.findByText(/Humidity:\s*--%/i)).toBeInTheDocument();
+    expect(await screen.findByText(/72°F/)).toBeInTheDocument();
+    expect(await screen.findByTestId('humidity-icon')).toBeInTheDocument();
+    expect(await screen.findByText(/--%/)).toBeInTheDocument();
   });
 
   it('defaults to °F when unit is missing/blank and state is non-numeric', () => {
@@ -149,7 +154,7 @@ describe('WeatherSummary', () => {
     );
 
     render(<WeatherSummary />);
-    expect(screen.getByText('--°F')).toBeInTheDocument();
+    expect(screen.getByText(/--°F/)).toBeInTheDocument();
   });
 
   it('skips missing/invalid labeled entity ids until it finds a valid match', async () => {
@@ -190,7 +195,7 @@ describe('WeatherSummary', () => {
 
     render(<WeatherSummary />);
 
-    expect(await screen.findByText('72°F')).toBeInTheDocument();
+    expect(await screen.findByText(/72°F/)).toBeInTheDocument();
   });
 
   it('retries label resolution after a transient failure once entity store updates', async () => {
@@ -224,7 +229,7 @@ describe('WeatherSummary', () => {
       })
     );
 
-    expect(await screen.findByText('72°F')).toBeInTheDocument();
+    expect(await screen.findByText(/72°F/)).toBeInTheDocument();
     expect(
       getEntityIdsByLabelNameMock.mock.calls.filter(([label]) => label === 'Weather')
     ).toHaveLength(2);

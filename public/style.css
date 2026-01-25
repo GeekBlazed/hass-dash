@@ -744,6 +744,19 @@ button.qa {
   letter-spacing: 0.2px;
 }
 
+.weather .temp .humidity {
+  font-size: 0.6666667em;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.weather .temp .humidity .humidity-icon,
+.weather .temp .humidity .humidity-icon svg {
+  width: 1em;
+  height: 1em;
+}
+
 .weather .desc {
   font-size: 13px;
   color: var(--text-secondary);
@@ -756,7 +769,8 @@ button.qa {
   letter-spacing: 0.2px;
 }
 
-.weather svg {
+.weather .weather-icon,
+.weather .weather-icon svg {
   width: 44px;
   height: 44px;
   opacity: 0.92;

@@ -140,8 +140,33 @@ export function FloorplanSvg() {
     });
     ro.observe(svg);
 
+    const labelsLayer = svg.querySelector('#labels-layer');
+    const mo = labelsLayer
+      ? new MutationObserver((mutations) => {
+          const hasClimateMutation = mutations.some((m) => {
+            const nodes = [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)];
+            return nodes.some((node) => {
+              if (!(node instanceof Element)) return false;
+              return (
+                node.classList.contains('room-climate') ||
+                (typeof node.querySelector === 'function' && !!node.querySelector('.room-climate'))
+              );
+            });
+          });
+
+          if (hasClimateMutation) {
+            applySizes();
+          }
+        })
+      : null;
+
+    if (labelsLayer && mo) {
+      mo.observe(labelsLayer, { subtree: true, childList: true });
+    }
+
     return () => {
       ro.disconnect();
+      mo?.disconnect();
     };
   }, [computedViewBox, stageFontScale]);
 

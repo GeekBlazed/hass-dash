@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -43,8 +43,10 @@ describe('App', () => {
   it('renders weather display', async () => {
     await renderAndSettle(<App />);
 
-    // Weather block should include humidity line
-    expect(screen.getByText(/Humidity:/i)).toBeInTheDocument();
+    const weatherSummary = screen.getByLabelText(/weather summary/i);
+    expect(weatherSummary).toBeInTheDocument();
+    expect(within(weatherSummary).getByTestId('humidity-icon')).toBeInTheDocument();
+    expect(within(weatherSummary).getByText(/--%/)).toBeInTheDocument();
   });
 
   it('has proper semantic structure', async () => {

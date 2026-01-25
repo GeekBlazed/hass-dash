@@ -279,19 +279,35 @@ export function WeatherSummary() {
   return (
     <div className="weather" aria-label="Weather summary">
       {iconName ? (
-        <Icon icon={iconName} aria-hidden="true" data-testid="weather-icon" />
+        <Icon
+          icon={iconName}
+          aria-hidden="true"
+          data-testid="weather-icon"
+          className="weather-icon"
+        />
       ) : (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M6 14.5a4.5 4.5 0 0 1 4.43-4.5A5.5 5.5 0 0 1 21 12.5a4.5 4.5 0 0 1-4.5 4.5H7.5A3.5 3.5 0 0 1 6 14.5zm4.5 4.5h2l-1 3h-2l1-3zm4 0h2l-1 3h-2l1-3z"
-          />
-        </svg>
+        <Icon
+          icon="mdi:weather-partly-cloudy"
+          aria-hidden="true"
+          data-testid="weather-icon"
+          className="weather-icon"
+        />
       )}
       <div>
-        <div className="temp">{temperatureText}</div>
+        <div className="temp">
+          {temperatureText}
+          {' / '}
+          <span className="humidity">
+            <Icon
+              icon="mdi:water-percent"
+              aria-hidden="true"
+              data-testid="humidity-icon"
+              className="humidity-icon"
+            />
+            {humidityText}
+          </span>
+        </div>
         <div className="desc">{descriptionText}</div>
-        <div className="meta">Humidity: {humidityText}</div>
       </div>
     </div>
   );

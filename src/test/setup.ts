@@ -1,4 +1,21 @@
+import { createElement } from 'react';
 import { afterEach, beforeEach, vi } from 'vitest';
+
+// Iconify's runtime rendering isn't stable/meaningful in jsdom and it can swallow
+// custom props like data-testid. Mock it globally so tests can reliably assert
+// on icons by test id and icon name.
+vi.mock('@iconify/react', () => {
+  return {
+    Icon: (props: { icon: string } & Record<string, unknown>) => {
+      const testId = typeof props['data-testid'] === 'string' ? props['data-testid'] : undefined;
+      return createElement('svg', {
+        'data-testid': testId,
+        'data-icon': props.icon,
+        'aria-hidden': props['aria-hidden'] ?? true,
+      });
+    },
+  };
+});
 
 // Vitest DOM environments (jsdom/happy-dom) don't reliably provide IndexedDB.
 // We use fake-indexeddb so persisted state + offline queues can be tested.

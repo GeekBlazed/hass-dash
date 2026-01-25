@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -38,8 +38,10 @@ describe('Dashboard', () => {
   it('should render the sidebar brand and weather summary', async () => {
     await renderAndSettle(<Dashboard />);
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByLabelText(/weather summary/i)).toBeInTheDocument();
-    expect(screen.getByText(/Humidity:/i)).toBeInTheDocument();
+    const weatherSummary = screen.getByLabelText(/weather summary/i);
+    expect(weatherSummary).toBeInTheDocument();
+    expect(within(weatherSummary).getByTestId('humidity-icon')).toBeInTheDocument();
+    expect(within(weatherSummary).getByText(/--%/)).toBeInTheDocument();
   });
 
   it('should render quick action buttons', async () => {
