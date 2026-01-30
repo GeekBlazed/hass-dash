@@ -449,6 +449,7 @@ const computeAreaClimateText = (
 
 export function HaAreaClimateOverlayBridge() {
   const isOverlayVisible = useDashboardStore((s) => s.overlays.climate);
+  const roomZoom = useDashboardStore((s) => s.roomZoom);
   const entitiesById = useEntityStore((s) => s.entitiesById);
   const householdEntityIds = useEntityStore((s) => s.householdEntityIds);
   const householdEntityIdsByAreaId = useHouseholdAreaEntityIndexStore(
@@ -465,8 +466,29 @@ export function HaAreaClimateOverlayBridge() {
 
   useEffect(() => {
     const apply = () => {
+      const activeRoomId = roomZoom.mode === 'none' ? null : roomZoom.roomId;
       const groups = getLabelGroups();
       for (const { roomId, group, label } of groups) {
+        if (activeRoomId && roomId !== activeRoomId) {
+          const existing = group.querySelector<SVGTextElement>(
+            `text.room-climate[data-room-id="${roomId}"]`
+          );
+          if (isSvgTextElement(existing)) {
+            existing.remove();
+          }
+          continue;
+        }
+
+        if (!activeRoomId && roomZoom.mode !== 'none') {
+          const existing = group.querySelector<SVGTextElement>(
+            `text.room-climate[data-room-id="${roomId}"]`
+          );
+          if (isSvgTextElement(existing)) {
+            existing.remove();
+          }
+          continue;
+        }
+
         const roomLabel = label.textContent?.trim() ?? '';
         const value = computeAreaClimateText(
           roomId,
@@ -520,6 +542,8 @@ export function HaAreaClimateOverlayBridge() {
     householdEntityIdsByAreaId,
     isOverlayVisible,
     mapping,
+    roomZoom.mode,
+    roomZoom.roomId,
   ]);
 
   return null;

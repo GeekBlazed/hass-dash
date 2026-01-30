@@ -14,6 +14,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
   const floorplanModel = useDashboardStore((s) => s.floorplan.model);
   const stageView = useDashboardStore((s) => s.stageView);
   const setStageView = useDashboardStore((s) => s.setStageView);
+  const isRoomZoomLocked = useDashboardStore((s) => s.roomZoom.mode !== 'none');
   const stageFontScale = useDashboardStore((s) => s.stageFontScale);
   const setStageFontScale = useDashboardStore((s) => s.setStageFontScale);
   const stageIconScale = useDashboardStore((s) => s.stageIconScale);
@@ -46,6 +47,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
   const rootClassName = `map-controls${!isActuallyOpen ? ' is-hidden' : ''}`;
 
   const panBy = (dx: number, dy: number) => {
+    if (isRoomZoomLocked) return;
     if (!baseViewBox) return;
 
     const visibleW = baseViewBox.w / clampedScale;
@@ -56,6 +58,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
   };
 
   const handleZoomPercent = (nextPercent: number) => {
+    if (isRoomZoomLocked) return;
     if (!baseViewBox) return;
 
     const nextScale = clampScale(nextPercent / 100);
@@ -90,6 +93,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
             type="button"
             id="map-pan-up"
             aria-label="Pan up"
+            disabled={isRoomZoomLocked}
             onClick={() => panBy(0, -0.1)}
           >
             ↑
@@ -99,6 +103,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
             type="button"
             id="map-pan-down"
             aria-label="Pan down"
+            disabled={isRoomZoomLocked}
             onClick={() => panBy(0, 0.1)}
           >
             ↓
@@ -108,6 +113,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
             type="button"
             id="map-pan-left"
             aria-label="Pan left"
+            disabled={isRoomZoomLocked}
             onClick={() => panBy(-0.1, 0)}
           >
             ←
@@ -117,6 +123,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
             type="button"
             id="map-pan-right"
             aria-label="Pan right"
+            disabled={isRoomZoomLocked}
             onClick={() => panBy(0.1, 0)}
           >
             →
@@ -151,6 +158,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
             min={zoomMinScale}
             max={zoomMaxScale}
             value={zoomPercent}
+            disabled={isRoomZoomLocked}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               handleZoomPercent(Number(e.target.value));
             }}

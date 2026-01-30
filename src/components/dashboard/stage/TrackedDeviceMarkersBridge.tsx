@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import type { FloorplanModel, FloorplanPoint2D } from '../../../features/model/floorplan';
+import { pointInPolygon } from '../../../features/roomZoom/pointInPolygon';
 import {
   getTrackingDebugOverlayMode,
   type TrackingDebugOverlayMode,
@@ -624,9 +626,26 @@ const getNextStaleCheckDelayMs = (
   return Math.max(0, nextCheckAtMs - nowMs);
 };
 
+const getRoomPolygonById = (
+  model: FloorplanModel | null,
+  roomId: string
+): FloorplanPoint2D[] | null => {
+  if (!model) return null;
+
+  for (const floor of model.floors) {
+    for (const room of floor.rooms) {
+      if (room.id === roomId) return room.points;
+    }
+  }
+
+  return null;
+};
+
 export function TrackedDeviceMarkersBridge() {
   const isOverlayVisible = useDashboardStore((s) => s.overlays.tracking);
   const stageIconScale = useDashboardStore((s) => s.stageIconScale);
+  const roomZoom = useDashboardStore((s) => s.roomZoom);
+  const floorplanModel = useDashboardStore((s) => s.floorplan?.model ?? null);
   const locationsByEntityId = useDeviceLocationStore((s) => s.locationsByEntityId);
   const metadataByEntityId = useDeviceTrackerMetadataStore((s) => s.metadataByEntityId);
   const [staleTick, setStaleTick] = useState(0);
@@ -672,11 +691,31 @@ export function TrackedDeviceMarkersBridge() {
       staleTimeoutMs
     );
 
+    const activeRoomId = roomZoom.mode === 'none' ? null : roomZoom.roomId;
+    const roomFilteredLocationsByEntityId = (() => {
+      if (!activeRoomId) {
+        return roomZoom.mode === 'none' ? filteredLocationsByEntityId : {};
+      }
+
+      const polygon = getRoomPolygonById(floorplanModel, activeRoomId);
+      if (!polygon) return {};
+
+      const filtered: Record<string, DeviceLocation> = {};
+      for (const [entityId, location] of Object.entries(filteredLocationsByEntityId)) {
+        const x = location.position.x;
+        const y = location.position.y;
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        if (!pointInPolygon([x, y], polygon)) continue;
+        filtered[entityId] = location;
+      }
+      return filtered;
+    })();
+
     // Initial sync
     syncMarkers(
       layer,
       true,
-      filteredLocationsByEntityId,
+      roomFilteredLocationsByEntityId,
       metadataByEntityId,
       showDebugOverlay,
       debugMode,
@@ -691,7 +730,7 @@ export function TrackedDeviceMarkersBridge() {
       syncMarkers(
         layer,
         true,
-        filteredLocationsByEntityId,
+        roomFilteredLocationsByEntityId,
         metadataByEntityId,
         showDebugOverlay,
         debugMode,
@@ -704,7 +743,7 @@ export function TrackedDeviceMarkersBridge() {
     observer.observe(layer, { childList: true });
 
     const nextDelayMs = getNextStaleCheckDelayMs(
-      filteredLocationsByEntityId,
+      roomFilteredLocationsByEntityId,
       nowMs,
       staleWarningMs,
       staleTimeoutMs
@@ -733,6 +772,9 @@ export function TrackedDeviceMarkersBridge() {
     staleWarningMs,
     staleTimeoutMs,
     staleTick,
+    roomZoom.mode,
+    roomZoom.roomId,
+    floorplanModel,
   ]);
 
   return null;

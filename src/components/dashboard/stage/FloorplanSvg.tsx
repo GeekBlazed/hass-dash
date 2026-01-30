@@ -20,11 +20,50 @@ const centroid = (points: Array<[number, number]>): [number, number] => {
   return [sx / points.length, sy / points.length];
 };
 
-export function FloorplanSvg() {
+export interface FloorplanSvgProps {
+  idPrefix?: string;
+  viewMode?: 'camera' | 'base';
+  interactive?: boolean;
+  roomScope?: 'all' | 'active';
+  renderRoomLabels?: boolean;
+  renderNodes?: boolean;
+  enableRoomZoom?: boolean;
+}
+
+const computeBounds = (
+  points: Array<[number, number]>
+): { minX: number; minY: number; maxX: number; maxY: number } => {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const [x, y] of points) {
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+  return { minX, minY, maxX, maxY };
+};
+
+export function FloorplanSvg({
+  idPrefix,
+  viewMode = 'camera',
+  interactive = true,
+  roomScope = 'all',
+  renderRoomLabels = true,
+  renderNodes = true,
+  enableRoomZoom = true,
+}: FloorplanSvgProps = {}) {
   const floorplanModel = useDashboardStore((s) => s.floorplan.model);
   const stageView = useDashboardStore((s) => s.stageView);
   const setStageView = useDashboardStore((s) => s.setStageView);
   const stageFontScale = useDashboardStore((s) => s.stageFontScale);
+
+  const roomZoom = useDashboardStore((s) => s.roomZoom);
+  const setRoomZoomStageView = useDashboardStore((s) => s.setRoomZoomStageView);
+  const activeRoomId = roomZoom.roomId;
+  const enterRoomZoom = useDashboardStore((s) => s.enterRoomZoom);
 
   const floor = useMemo(() => {
     if (!floorplanModel) return undefined;
@@ -37,23 +76,30 @@ export function FloorplanSvg() {
   }, [floor]);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const stageViewRef = useRef(stageView);
+
+  const roomZoomStageView = roomZoom.stageView;
+  const isRoomZoomActive = roomZoom.mode !== 'none' && roomZoomStageView !== null;
+
+  const effectiveStageView = isRoomZoomActive ? roomZoomStageView! : stageView;
+  const setEffectiveStageView = isRoomZoomActive ? setRoomZoomStageView : setStageView;
+
+  const stageViewRef = useRef(effectiveStageView);
   const baseViewBoxRef = useRef<ViewBox | null>(null);
   const suppressRoomClickRef = useRef(false);
 
   useEffect(() => {
-    stageViewRef.current = stageView;
-  }, [stageView]);
+    stageViewRef.current = effectiveStageView;
+  }, [effectiveStageView]);
 
   useEffect(() => {
     baseViewBoxRef.current = baseViewBox;
   }, [baseViewBox]);
 
-  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [unitsPerPx, setUnitsPerPx] = useState<number | null>(null);
   const didInitStageRef = useRef(false);
 
   useEffect(() => {
+    if (roomZoom.mode !== 'none') return;
     if (!floor || !baseViewBox) return;
     if (didInitStageRef.current) return;
 
@@ -78,22 +124,26 @@ export function FloorplanSvg() {
 
     setStageView({ x, y, scale: initialScale });
     didInitStageRef.current = true;
-  }, [baseViewBox, floor, setStageView, stageView.scale, stageView.x, stageView.y]);
+  }, [baseViewBox, floor, roomZoom.mode, setStageView, stageView.scale, stageView.x, stageView.y]);
 
   const computedViewBox = useMemo(() => {
     if (!baseViewBox) return null;
-    const scale = clampScale(stageView.scale);
+    if (viewMode === 'base') return baseViewBox;
+
+    const scale = clampScale(effectiveStageView.scale);
     return {
-      x: stageView.x,
-      y: stageView.y,
+      x: effectiveStageView.x,
+      y: effectiveStageView.y,
       w: baseViewBox.w / scale,
       h: baseViewBox.h / scale,
     };
-  }, [baseViewBox, stageView.scale, stageView.x, stageView.y]);
+  }, [baseViewBox, effectiveStageView.scale, effectiveStageView.x, effectiveStageView.y, viewMode]);
 
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
+    if (!interactive) return;
+    if (viewMode === 'base') return;
     if (!computedViewBox) return;
 
     const applySizes = () => {
@@ -140,7 +190,8 @@ export function FloorplanSvg() {
     });
     ro.observe(svg);
 
-    const labelsLayer = svg.querySelector('#labels-layer');
+    const prefix = idPrefix ? `${idPrefix}-` : '';
+    const labelsLayer = svg.querySelector(`#${prefix}labels-layer`);
     const mo = labelsLayer
       ? new MutationObserver((mutations) => {
           const hasClimateMutation = mutations.some((m) => {
@@ -173,6 +224,12 @@ export function FloorplanSvg() {
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
+
+    // Room zoom view is a locked camera: no panning/zooming.
+    // Also don't attach pan/zoom handlers for the base-view mini-map.
+    if (!interactive) return;
+    if (viewMode === 'base') return;
+    if (roomZoom.mode !== 'none') return;
 
     const pointers = new Map<number, { x: number; y: number; type: string }>();
     let mouseDragging = false;
@@ -233,7 +290,7 @@ export function FloorplanSvg() {
       const clamped = clampScale(nextScale);
       const next = viewBoxForScaleAround(vb, clamped, focalSvg);
       if (!next) return;
-      setStageView({ x: next.x, y: next.y, scale: clamped });
+      setEffectiveStageView({ x: next.x, y: next.y, scale: clamped });
     };
 
     const panByPixels = (dxPx: number, dyPx: number) => {
@@ -243,7 +300,7 @@ export function FloorplanSvg() {
       if (!vb) return;
       const dx = (dxPx * vb.w) / rect.width;
       const dy = (dyPx * vb.h) / rect.height;
-      setStageView({ x: vb.x - dx, y: vb.y - dy, scale: stageViewRef.current.scale });
+      setEffectiveStageView({ x: vb.x - dx, y: vb.y - dy, scale: stageViewRef.current.scale });
     };
 
     const onWheel = (e: WheelEvent) => {
@@ -347,7 +404,7 @@ export function FloorplanSvg() {
           vb1.y -= (dyPx * vb1.h) / rect.height;
         }
 
-        setStageView({ x: vb1.x, y: vb1.y, scale: nextScale });
+        setEffectiveStageView({ x: vb1.x, y: vb1.y, scale: nextScale });
         e.preventDefault();
       }
     };
@@ -395,7 +452,7 @@ export function FloorplanSvg() {
       svg.removeEventListener('pointerup', endPointer);
       svg.removeEventListener('pointercancel', endPointer);
     };
-  }, [setStageView]);
+  }, [interactive, roomZoom.mode, setEffectiveStageView, viewMode]);
 
   const flipY = useMemo(() => {
     if (!baseViewBox) return null;
@@ -404,12 +461,15 @@ export function FloorplanSvg() {
 
   const roomsForRender = useMemo(() => {
     if (!floor || !flipY) return [];
-    return floor.rooms.map((room) => ({
+    const sourceRooms =
+      roomScope === 'active' ? floor.rooms.filter((room) => room.id === activeRoomId) : floor.rooms;
+
+    return sourceRooms.map((room) => ({
       id: room.id,
       name: room.name,
       points: room.points.map(([x, y]) => [x, flipY(y)] as [number, number]),
     }));
-  }, [flipY, floor]);
+  }, [activeRoomId, flipY, floor, roomScope]);
 
   const nodesForRender = useMemo(() => {
     if (!floorplanModel || !flipY) return [];
@@ -425,15 +485,23 @@ export function FloorplanSvg() {
   const svgViewBox = computedViewBox ? viewBoxToString(computedViewBox) : '0 0 10 10';
   const baseViewBoxAttr = baseViewBox ? viewBoxToString(baseViewBox) : undefined;
 
+  const prefix = idPrefix ? `${idPrefix}-` : '';
+  const svgId = `${prefix}floorplan-svg`;
+  const wallsLayerId = `${prefix}walls-layer`;
+  const labelsLayerId = `${prefix}labels-layer`;
+  const lightsLayerId = `${prefix}lights-layer`;
+  const nodesLayerId = `${prefix}nodes-layer`;
+  const devicesLayerId = `${prefix}devices-layer`;
+
   return (
     <svg
-      id="floorplan-svg"
+      id={svgId}
       ref={svgRef}
       viewBox={svgViewBox}
       data-base-viewbox={baseViewBoxAttr}
       role="img"
       aria-label="Home floorplan (from YAML)"
-      style={{ touchAction: 'none' }}
+      style={{ touchAction: 'none', pointerEvents: interactive ? 'auto' : 'none' }}
     >
       <defs>
         <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
@@ -502,87 +570,137 @@ export function FloorplanSvg() {
           />
         </symbol>
       </defs>
-      <g id="walls-layer">
+      <g id={wallsLayerId}>
         {roomsForRender.map((room) => {
           const pts = room.points.map(([x, y]) => `${x},${y}`).join(' ');
           const isActive = activeRoomId === room.id;
+
+          const computeRoomZoomStageView = () => {
+            if (!baseViewBox) return null;
+            const { minX, minY, maxX, maxY } = computeBounds(room.points);
+            const roomW = Math.max(0.001, maxX - minX);
+            const roomH = Math.max(0.001, maxY - minY);
+            const pad = Math.max(roomW, roomH) * 0.12;
+
+            let desiredW = roomW + pad * 2;
+            let desiredH = roomH + pad * 2;
+
+            const rect = svgRef.current?.getBoundingClientRect();
+            const targetAspect =
+              rect && rect.width > 0 && rect.height > 0
+                ? rect.width / rect.height
+                : baseViewBox.w / baseViewBox.h;
+            const desiredAspect = desiredW / desiredH;
+            if (desiredAspect > targetAspect) {
+              desiredH = desiredW / targetAspect;
+            } else {
+              desiredW = desiredH * targetAspect;
+            }
+
+            const cx = (minX + maxX) / 2;
+            const cy = (minY + maxY) / 2;
+            const desiredX = cx - desiredW / 2;
+            const desiredY = cy - desiredH / 2;
+            const scale = clampScale(baseViewBox.w / desiredW);
+            return { x: desiredX, y: desiredY, scale };
+          };
 
           return (
             <g
               key={room.id}
               className={`room${isActive ? 'is-active' : ''}`}
               data-room-id={room.id}
-              tabIndex={0}
-              role="button"
-              aria-label={room.name}
-              onClick={(e) => {
-                if (suppressRoomClickRef.current) {
-                  suppressRoomClickRef.current = false;
-                  return;
-                }
-                e.preventDefault();
-                setActiveRoomId(room.id);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setActiveRoomId(room.id);
-                }
-              }}
+              tabIndex={interactive ? 0 : -1}
+              role={interactive ? 'button' : undefined}
+              aria-label={interactive ? room.name : undefined}
+              onClick={
+                interactive
+                  ? (e) => {
+                      if (!enableRoomZoom) return;
+                      if (roomZoom.mode !== 'none') return;
+                      if (suppressRoomClickRef.current) {
+                        suppressRoomClickRef.current = false;
+                        return;
+                      }
+                      e.preventDefault();
+                      const nextStage = computeRoomZoomStageView();
+                      if (!nextStage) return;
+                      enterRoomZoom(room.id, nextStage);
+                    }
+                  : undefined
+              }
+              onKeyDown={
+                interactive
+                  ? (e) => {
+                      if (!enableRoomZoom) return;
+                      if (roomZoom.mode !== 'none') return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const nextStage = computeRoomZoomStageView();
+                        if (!nextStage) return;
+                        enterRoomZoom(room.id, nextStage);
+                      }
+                    }
+                  : undefined
+              }
             >
               <polygon points={pts} className="room-shape" />
             </g>
           );
         })}
       </g>
-      <g id="labels-layer">
-        {roomsForRender.map((room) => {
-          const [cx, cy] = centroid(room.points);
-          const isActive = activeRoomId === room.id;
+      <g id={labelsLayerId}>
+        {renderRoomLabels
+          ? roomsForRender.map((room) => {
+              const [cx, cy] = centroid(room.points);
+              const isActive = activeRoomId === room.id;
 
-          return (
-            <g
-              key={room.id}
-              className={`room-label-group${isActive ? 'is-active' : ''}`}
-              data-room-id={room.id}
-            >
-              <text
-                x={cx}
-                y={cy}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="room-label"
-              >
-                {room.name}
-              </text>
-            </g>
-          );
-        })}
+              return (
+                <g
+                  key={room.id}
+                  className={`room-label-group${isActive ? 'is-active' : ''}`}
+                  data-room-id={room.id}
+                >
+                  <text
+                    x={cx}
+                    y={cy}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="room-label"
+                  >
+                    {room.name}
+                  </text>
+                </g>
+              );
+            })
+          : null}
       </g>
-      <g id="lights-layer"></g>
-      <g id="nodes-layer">
-        {nodesForRender.map((node) => (
-          <g key={node.id} className="node" data-node-id={node.id}>
-            <circle
-              className="node-dot"
-              cx={node.x}
-              cy={node.y}
-              r={unitsPerPx ? 4 * unitsPerPx : 0.12}
-            />
-            <text
-              x={node.x}
-              y={node.y}
-              textAnchor="start"
-              dominantBaseline="middle"
-              dx={unitsPerPx ? 6 * unitsPerPx : 0.2}
-              className="node-label"
-            >
-              {node.name}
-            </text>
-          </g>
-        ))}
+      <g id={lightsLayerId}></g>
+      <g id={nodesLayerId}>
+        {renderNodes
+          ? nodesForRender.map((node) => (
+              <g key={node.id} className="node" data-node-id={node.id}>
+                <circle
+                  className="node-dot"
+                  cx={node.x}
+                  cy={node.y}
+                  r={unitsPerPx ? 4 * unitsPerPx : 0.12}
+                />
+                <text
+                  x={node.x}
+                  y={node.y}
+                  textAnchor="start"
+                  dominantBaseline="middle"
+                  dx={unitsPerPx ? 6 * unitsPerPx : 0.2}
+                  className="node-label"
+                >
+                  {node.name}
+                </text>
+              </g>
+            ))
+          : null}
       </g>
-      <g id="devices-layer"></g>
+      <g id={devicesLayerId}></g>
     </svg>
   );
 }

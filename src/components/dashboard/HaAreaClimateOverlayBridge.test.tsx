@@ -52,6 +52,11 @@ describe('HaAreaClimateOverlayBridge', () => {
         climate: true,
         lighting: false,
       },
+      roomZoom: {
+        mode: 'none',
+        roomId: null,
+        stageView: null,
+      },
     });
     useEntityStore.getState().clear();
     useHouseholdAreaEntityIndexStore.getState().clear();
@@ -85,6 +90,46 @@ describe('HaAreaClimateOverlayBridge', () => {
 
     expect(el).not.toBeNull();
     expect(el?.textContent).toBe('72°F • 40%');
+  });
+
+  it('filters room climate labels to the selected room during room zoom', () => {
+    useDashboardStore.setState({
+      roomZoom: {
+        mode: 'room',
+        roomId: 'kitchen',
+        stageView: null,
+      },
+    });
+
+    document.body.innerHTML = `
+      <section id="climate-panel" class="tile climate-panel"></section>
+      <svg id="floorplan-svg" viewBox="0 0 10 10">
+        <g id="labels-layer">
+          <g class="room-label-group" data-room-id="kitchen">
+            <text class="room-label" x="5" y="5">Kitchen</text>
+          </g>
+          <g class="room-label-group" data-room-id="living">
+            <text class="room-label" x="7" y="7">Living</text>
+          </g>
+        </g>
+      </svg>
+    `;
+
+    useEntityStore.getState().upsert(makeSensor('sensor.kitchen_temperature', 72.4, '°F'));
+    useEntityStore.getState().upsert(makeSensor('sensor.living_temperature', 68.9, '°F'));
+
+    render(<HaAreaClimateOverlayBridge />);
+
+    const kitchenLabel = document.querySelector(
+      '#labels-layer text.room-climate[data-room-id="kitchen"]'
+    ) as SVGTextElement | null;
+    const livingLabel = document.querySelector(
+      '#labels-layer text.room-climate[data-room-id="living"]'
+    ) as SVGTextElement | null;
+
+    expect(kitchenLabel).not.toBeNull();
+    expect(kitchenLabel?.textContent).toBe('72°F');
+    expect(livingLabel).toBeNull();
   });
 
   it('can fall back to a best-matching temperature sensor name', () => {

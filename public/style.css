@@ -725,6 +725,49 @@ button.qa {
   min-height: 0;
 }
 
+.clock {
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: 0.2px;
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: 44px auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(18, 18, 18, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+.clock .clock-icon {
+  width: 44px;
+  height: 44px;
+  opacity: 0.92;
+}
+
+.clock .clock-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.clock .clock-divider {
+  display: inline-block;
+  width: 0.6ch;
+  text-align: center;
+}
+
+.clock .clock-divider--off {
+  opacity: 0;
+}
+
+.clock .clock-timezone {
+  margin-top: 2px;
+  font-size: 0.5em;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+}
+
 .weather {
   pointer-events: auto;
   display: grid;
@@ -738,6 +781,79 @@ button.qa {
   backdrop-filter: blur(10px);
 }
 
+.weather.weather--accordion {
+  display: block;
+  padding: 0;
+}
+
+.weather__header {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 44px auto 28px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.weather__chevron {
+  width: 24px;
+  height: 24px;
+  opacity: 0.75;
+  transition: transform 150ms ease;
+}
+
+.weather__chevron--open {
+  transform: rotate(180deg);
+}
+
+.weather__details {
+  padding: 12px 12px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.weather-details__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.weather-details__item {
+  padding: 10px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(18, 18, 18, 0.2);
+}
+
+.weather-details__label {
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.2px;
+}
+
+.weather-details__value {
+  margin-top: 4px;
+  color: rgba(234, 231, 223, 0.92);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-details__empty {
+  padding: 10px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(18, 18, 18, 0.2);
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.2px;
+}
+
 .weather .temp {
   font-size: 34px;
   line-height: 1;
@@ -745,7 +861,7 @@ button.qa {
 }
 
 .weather .temp .humidity {
-  font-size: 0.6666667em;
+  font-size: 0.5em;
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
@@ -857,16 +973,92 @@ button.qa {
   cursor: not-allowed;
 }
 
-.floorplan svg {
+.floorplan > svg,
+.floorplan .room-zoom > svg {
   width: 100%;
   height: 100%;
   display: block;
   touch-action: none;
-  cursor: grab;
+  cursor: grab; /* Keep the original cursor style */
 }
 
-.floorplan svg.is-panning {
-  cursor: grabbing;
+.floorplan > svg.is-panning,
+.floorplan .room-zoom > svg.is-panning {
+  cursor: grabbing; /* Keep the original cursor style */
+}
+
+.room-zoom {
+  position: absolute;
+  inset: 0;
+  opacity: 1;
+  transform: scale(1);
+  transform-origin: center;
+  transition:
+    opacity 3000ms ease,
+    transform 3000ms ease;
+}
+
+.room-zoom > svg,
+.room-zoom > svg.is-panning {
+  cursor: default; /* Set cursor to default when camera input is locked */
+}
+
+.room-zoom.room-zoom--entering {
+  opacity: 0;
+  transform: scale(0.985);
+}
+
+.room-zoom.room-zoom--exiting {
+  opacity: 0;
+  transform: scale(0.985);
+}
+
+.room-zoom__minimap {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 45;
+  width: 220px;
+  height: 160px;
+  padding: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(9, 9, 9, 0.32);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 14px 46px rgba(0, 0, 0, 0.42);
+  cursor: pointer;
+}
+
+.room-zoom__minimap:hover {
+  border-color: rgba(255, 201, 125, 0.32);
+}
+
+.room-zoom__minimap:focus-visible {
+  outline: 2px solid rgba(255, 201, 125, 0.55);
+  outline-offset: 2px;
+}
+
+.room-zoom__minimap-inner {
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+}
+
+.room-zoom__minimap-inner svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Minimap should read like a true scale model (thin walls). */
+.room-zoom__minimap-inner .room-shape {
+  vector-effect: none;
+}
+
+@media (max-width: 767px) {
+  .room-zoom__minimap {
+    display: none;
+  }
 }
 
 .stage-dev-readout {

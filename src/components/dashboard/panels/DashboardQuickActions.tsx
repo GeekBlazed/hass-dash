@@ -1,3 +1,4 @@
+import { Icon } from '@iconify/react';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 
 export function DashboardQuickActions() {
@@ -39,9 +40,12 @@ export function DashboardQuickActions() {
         aria-expanded={activePanel === 'lighting'}
         onClick={() => togglePanel('lighting')}
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <use href="/icons/quick-actions.svg#qa-lighting" />
-        </svg>
+        <Icon
+          icon="mdi:lightbulb-group"
+          aria-hidden="true"
+          data-testid="lighting-icon"
+          className="lighting-icon"
+        />
         <div className="label">Lighting</div>
       </button>
       <button
@@ -53,9 +57,12 @@ export function DashboardQuickActions() {
         aria-expanded={activePanel === 'climate'}
         onClick={() => togglePanel('climate')}
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <use href="/icons/quick-actions.svg#qa-climate" />
-        </svg>
+        <Icon
+          icon="mdi:home-climate"
+          aria-hidden="true"
+          data-testid="climate-icon"
+          className="climate-icon"
+        />
         <div className="label">Climate</div>
       </button>
       <button
@@ -67,21 +74,30 @@ export function DashboardQuickActions() {
         aria-expanded={activePanel === 'media'}
         onClick={() => togglePanel('media')}
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <use href="/icons/quick-actions.svg#qa-media" />
-        </svg>
+        <Icon
+          icon="mdi:multimedia"
+          aria-hidden="true"
+          data-testid="media-icon"
+          className="media-icon"
+        />
         <div className="label">Media</div>
       </button>
       <button className="qa" type="button" aria-label="Security" aria-disabled="true" disabled>
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <use href="/icons/quick-actions.svg#qa-security" />
-        </svg>
+        <Icon
+          icon="mdi:security-home"
+          aria-hidden="true"
+          data-testid="security-icon"
+          className="security-icon"
+        />
         <div className="label">Security</div>
       </button>
       <a className="qa" href="#top" aria-label="Cameras">
-        <svg viewBox="0 0 401.931 401.931" aria-hidden="true">
-          <use href="/icons/quick-actions.svg#qa-cameras" />
-        </svg>
+        <Icon
+          icon="mdi:cctv"
+          aria-hidden="true"
+          data-testid="cameras-icon"
+          className="cameras-icon"
+        />
         <div className="label">Cameras</div>
       </a>
       <button
@@ -93,9 +109,12 @@ export function DashboardQuickActions() {
         aria-expanded={activePanel === 'agenda'}
         onClick={() => togglePanel('agenda')}
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <use href="/icons/quick-actions.svg#qa-agenda" />
-        </svg>
+        <Icon
+          icon="mdi:calendar-check-outline"
+          aria-hidden="true"
+          data-testid="agenda-icon"
+          className="agenda-icon"
+        />
         <div className="label">Agenda</div>
       </button>
     </div>

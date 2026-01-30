@@ -22,11 +22,100 @@ describe('TrackedDeviceMarkersBridge', () => {
         climate: false,
         lighting: false,
       },
+      // Avoid cross-suite leakage: FloorplanSvg computes a base viewBox from the
+      // floorplan model when loaded, which changes the Y-flip math in the marker
+      // bridge. These tests expect the default fallback viewBox (0 0 10 10).
+      floorplan: {
+        state: 'idle',
+        model: null,
+        errorMessage: null,
+      },
+      stageView: { x: 0, y: 0, scale: 1 },
+      roomZoom: {
+        mode: 'none',
+        roomId: null,
+        stageView: null,
+      },
     });
 
     useDeviceLocationStore.persist.clearStorage();
     useDeviceLocationStore.setState({ locationsByEntityId: {} });
     useDeviceTrackerMetadataStore.getState().clear();
+  });
+
+  it('filters tracking markers to the selected room during room zoom', async () => {
+    useDashboardStore.getState().setFloorplanLoaded({
+      defaultFloorId: 'ground',
+      floors: [
+        {
+          id: 'ground',
+          name: 'Ground',
+          rooms: [
+            {
+              id: 'kitchen',
+              name: 'Kitchen',
+              points: [
+                [0, 0],
+                [2, 0],
+                [2, 2],
+                [0, 2],
+              ],
+            },
+            {
+              id: 'living',
+              name: 'Living',
+              points: [
+                [3, 0],
+                [5, 0],
+                [5, 2],
+                [3, 2],
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    act(() => {
+      useDashboardStore.getState().enterRoomZoom('kitchen', { x: 0, y: 0, scale: 1 });
+      useDashboardStore.getState().finishEnterRoomZoom();
+    });
+
+    render(
+      <>
+        <FloorplanSvg />
+        <TrackedDeviceMarkersBridge />
+      </>
+    );
+
+    act(() => {
+      useDeviceLocationStore.getState().upsert('device_tracker.in_kitchen', {
+        position: { x: 1, y: 1 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: Date.now(),
+      });
+      useDeviceLocationStore.getState().upsert('device_tracker.in_living', {
+        position: { x: 4, y: 1 },
+        confidence: 80,
+        lastSeen: undefined,
+        receivedAt: Date.now(),
+      });
+    });
+
+    const layer = document.getElementById('devices-layer');
+
+    await waitFor(() => {
+      const kitchenMarker = layer?.querySelector(
+        'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.in_kitchen"]'
+      );
+      expect(kitchenMarker).toBeTruthy();
+    });
+
+    const livingMarker = layer?.querySelector(
+      'g[data-hass-dash-tracking="true"][data-entity-id="device_tracker.in_living"]'
+    );
+    expect(livingMarker).toBeFalsy();
   });
 
   it('prefers HA name/alias for marker label when available', async () => {

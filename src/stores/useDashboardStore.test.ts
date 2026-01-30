@@ -3,8 +3,18 @@ import { useDashboardStore } from './useDashboardStore';
 
 const createInitialDashboardState = () => ({
   activePanel: 'climate' as const,
+  overlays: { tracking: true, climate: true, lighting: false } as const,
   isMapControlsOpen: false,
   stageView: { x: 0, y: 0, scale: 1 },
+  stageFontScale: 1,
+  stageIconScale: 1,
+  roomZoom: {
+    mode: 'none' as const,
+    roomId: null,
+    stageView: null,
+    previousStageView: null,
+    targetStageView: null,
+  },
   floorplan: { state: 'idle' as const, model: null, errorMessage: null },
 });
 
@@ -69,6 +79,68 @@ describe('useDashboardStore', () => {
 
     expect(useDashboardStore.getState().stageFontScale).toBe(1.25);
     expect(useDashboardStore.getState().stageIconScale).toBe(0.75);
+  });
+
+  it('defaults room zoom to none', () => {
+    expect(useDashboardStore.getState().roomZoom).toEqual({
+      mode: 'none',
+      roomId: null,
+      stageView: null,
+      previousStageView: null,
+      targetStageView: null,
+    });
+  });
+
+  it('can enter and exit room zoom', () => {
+    const state = useDashboardStore.getState();
+
+    // Simulate a pre-zoom camera that is not the default.
+    state.setStageView({ x: 10, y: 20, scale: 1.5 });
+
+    state.enterRoomZoom('kitchen', { x: 1, y: 2, scale: 3 });
+    expect(useDashboardStore.getState().roomZoom).toEqual({
+      mode: 'entering',
+      roomId: 'kitchen',
+      stageView: { x: 10, y: 20, scale: 1.5 },
+      previousStageView: { x: 10, y: 20, scale: 1.5 },
+      targetStageView: { x: 1, y: 2, scale: 3 },
+    });
+
+    state.finishEnterRoomZoom();
+    expect(useDashboardStore.getState().roomZoom).toEqual({
+      mode: 'room',
+      roomId: 'kitchen',
+      stageView: { x: 1, y: 2, scale: 3 },
+      previousStageView: { x: 10, y: 20, scale: 1.5 },
+      targetStageView: null,
+    });
+
+    state.startExitRoomZoom();
+    expect(useDashboardStore.getState().roomZoom).toEqual({
+      mode: 'exiting',
+      roomId: 'kitchen',
+      stageView: { x: 1, y: 2, scale: 3 },
+      previousStageView: { x: 10, y: 20, scale: 1.5 },
+      targetStageView: { x: 10, y: 20, scale: 1.5 },
+    });
+
+    state.finishExitRoomZoom();
+    expect(useDashboardStore.getState().roomZoom).toEqual({
+      mode: 'none',
+      roomId: null,
+      stageView: null,
+      previousStageView: null,
+      targetStageView: null,
+    });
+  });
+
+  it('does not allow room switching while zoomed', () => {
+    const state = useDashboardStore.getState();
+
+    state.enterRoomZoom('kitchen', { x: 1, y: 2, scale: 3 });
+    state.enterRoomZoom('office', { x: 9, y: 8, scale: 7 });
+
+    expect(useDashboardStore.getState().roomZoom.roomId).toBe('kitchen');
   });
 
   it('can set floorplan loading state', () => {

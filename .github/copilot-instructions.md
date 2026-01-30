@@ -1,4 +1,60 @@
-# GitHub Copilot Instructions - hass-dash
+# Copilot Instructions (hass-dash)
+
+## Big Picture
+
+- React 19 + Vite 7 + TypeScript (strict) + Tailwind 4 PWA that integrates with Home Assistant.
+- Architecture is interface-first + DI-wired (InversifyJS) to keep services swappable and testable.
+- Client state uses Zustand stores under `src/stores/*` (some persisted for offline/LKG).
+
+## Key Files / Folders
+
+- Boot + PWA: `src/main.tsx`, `src/pwa/*`
+- Dashboard UI: `src/components/dashboard/*`
+- Service contracts: `src/interfaces/*`
+- Service implementations: `src/services/*`
+- DI identifiers + bindings: `src/core/types.ts`, `src/core/di-container.ts`
+
+## DI Conventions (repo standard)
+
+- Add services in this order:
+  1. Interface in `src/interfaces/IFoo.ts`
+  2. Symbol in `src/core/types.ts` (`TYPES.IFoo`)
+  3. Implementation in `src/services/Foo.ts` with `@injectable()`
+  4. Bind in `src/core/di-container.ts` using `.inSingletonScope()`
+- In React, prefer `src/hooks/useService.ts` over ad-hoc `container.get()`.
+
+## Feature Flags
+
+- Flags are env-backed: `VITE_FEATURE_*` and `VITE_OVERLAY_*`.
+- Dev/non-production supports runtime overrides stored in `sessionStorage` (see `src/services/FeatureFlagService.ts`).
+- Consume via `src/hooks/useFeatureFlag.ts` (`useFeatureFlag`, `useFeatureFlags`), not via `import.meta.env` directly.
+
+## Home Assistant + Entity State
+
+- HA connectivity is implemented as DI services under `src/services/*`.
+- Entity state is cached in `src/stores/useEntityStore.ts` and persisted to IndexedDB with a cap (LKG reload behavior).
+- WebSocket streams are chatty: don’t set React state on every message (see `src/components/DebugPanel.tsx`).
+
+## Workflows (source of truth: package.json)
+
+- Requirements: Node `>=22`, pnpm `9.x`.
+- Build: `pnpm build` (runs `tsc -b` then `vite build`).
+- Tests: `pnpm test` uses a custom batched Vitest runner (`scripts/vitest-batched.mjs`) to reduce OOM risk.
+  - Include slow/otherwise skipped tests: `pnpm test:all`.
+  - Tune locally: `VITEST_HEAP_MB`, `VITEST_BATCH_SIZE`.
+
+## Repo-Specific Notes
+
+- `reflect-metadata` must be imported before decorated classes (see `src/main.tsx`).
+- No path aliases are configured; use relative imports.
+- Legacy prototype/tracking docs live in `docs/archive/*`.
+- `public/scripts.js` should be treated as archival (avoid new work there).
+
+## Other Docs (keep this file short)
+
+- Contribution/workflow expectations: `CONTRIBUTING.md`
+- Web standards, accessibility, security, performance: `DEVELOPMENT-STANDARDS.md`
+- Roadmap/iterations: `docs/IMPLEMENTATION-PLAN.md`# GitHub Copilot Instructions - hass-dash
 
 ## Project Overview
 

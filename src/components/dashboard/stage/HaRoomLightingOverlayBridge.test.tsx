@@ -99,7 +99,88 @@ describe('HaRoomLightingOverlayBridge', () => {
         climate: true,
         lighting: true,
       },
+      roomZoom: {
+        mode: 'none',
+        roomId: null,
+        stageView: null,
+      },
     });
+  });
+
+  it('filters room light toggles to the selected room during room zoom', async () => {
+    useDashboardStore.getState().setFloorplanLoaded({
+      defaultFloorId: 'ground',
+      floors: [
+        {
+          id: 'ground',
+          name: 'Ground',
+          rooms: [
+            {
+              id: 'kitchen',
+              name: 'Kitchen',
+              points: [
+                [0, 0],
+                [2, 0],
+                [2, 2],
+                [0, 2],
+              ],
+            },
+            {
+              id: 'living',
+              name: 'Living',
+              points: [
+                [3, 0],
+                [5, 0],
+                [5, 2],
+                [3, 2],
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    useDashboardStore.setState({
+      roomZoom: {
+        mode: 'room',
+        roomId: 'kitchen',
+        stageView: null,
+      },
+    });
+
+    document.body.innerHTML = `
+      <svg id="floorplan-svg" viewBox="0 0 10 10">
+        <g id="labels-layer">
+          <g class="room-label-group" data-room-id="kitchen">
+            <text class="room-label" x="1" y="1">Kitchen</text>
+          </g>
+          <g class="room-label-group" data-room-id="living">
+            <text class="room-label" x="4" y="1">Living</text>
+          </g>
+        </g>
+        <g id="lights-layer"></g>
+      </svg>
+    `;
+
+    useEntityStore
+      .getState()
+      .setHouseholdEntityIds(new Set(['light.kitchen_ceiling', 'light.living_ceiling']));
+    useEntityStore.getState().upsert(makeLight('light.kitchen_ceiling', 'off'));
+    useEntityStore.getState().upsert(makeLight('light.living_ceiling', 'off'));
+
+    render(<HaRoomLightingOverlayBridge />);
+
+    await waitFor(() => {
+      const kitchenToggle = document.querySelector(
+        '#lights-layer .light-toggle[data-room-id="kitchen"]'
+      );
+      expect(kitchenToggle).toBeTruthy();
+    });
+
+    const livingToggle = document.querySelector(
+      '#lights-layer .light-toggle[data-room-id="living"]'
+    );
+    expect(livingToggle).toBeNull();
   });
 
   it('removes non-managed toggles from the lights layer on mount', () => {

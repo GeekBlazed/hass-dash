@@ -104,6 +104,12 @@ feature/floor-plan-base → PR → merge → auto-deploy
 
 ## Iteration Plan: From Zero to Hero
 
+## Feature Requests (Active)
+
+- ROOM-ZOOM
+  - Requirements: [docs/feature-requests/ROOM-ZOOM.md](feature-requests/ROOM-ZOOM.md)
+  - Implementation: [docs/feature-requests/ROOM-ZOOM-IMPLEMENTATION.md](feature-requests/ROOM-ZOOM-IMPLEMENTATION.md)
+
 Each iteration is a **single PR** that can be merged and deployed immediately.
 
 **Checklist legend:**

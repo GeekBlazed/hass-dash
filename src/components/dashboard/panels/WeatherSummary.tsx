@@ -148,6 +148,10 @@ export function WeatherSummary() {
   const [weatherEntityIds, setWeatherEntityIds] = useState<ReadonlySet<string> | null>(null);
   const [weatherDescriptionEntityIds, setWeatherDescriptionEntityIds] =
     useState<ReadonlySet<string> | null>(null);
+  const [weatherDetailsEntityIds, setWeatherDetailsEntityIds] =
+    useState<ReadonlySet<string> | null>(null);
+
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     // If we already resolved the label ids (including an empty set), don't refetch.
@@ -215,7 +219,46 @@ export function WeatherSummary() {
     // so this is a good time to retry label resolution.
   }, [entityLabelService, lastUpdatedAt, weatherDescriptionEntityIds]);
 
-  const { temperatureText, humidityText } = useMemo(() => {
+  useEffect(() => {
+    // If we already resolved the label ids (including an empty set), don't refetch.
+    if (weatherDetailsEntityIds !== null) return;
+
+    let isCancelled = false;
+
+    const run = async () => {
+      try {
+        const [hassDashIds, weatherIds] = await Promise.all([
+          entityLabelService.getEntityIdsByLabelName('hass-dash'),
+          entityLabelService.getEntityIdsByLabelName('Weather'),
+        ]);
+
+        if (isCancelled) return;
+
+        const intersection = new Set<string>();
+        for (const id of hassDashIds) {
+          if (weatherIds.has(id)) {
+            intersection.add(id);
+          }
+        }
+
+        setWeatherDetailsEntityIds(intersection);
+      } catch {
+        if (isCancelled) return;
+        // Keep as null so we can retry later once HA is connected.
+        setWeatherDetailsEntityIds(null);
+      }
+    };
+
+    void run();
+
+    return () => {
+      isCancelled = true;
+    };
+    // When the entity store starts receiving updates, HA is very likely connected,
+    // so this is a good time to retry label resolution.
+  }, [entityLabelService, lastUpdatedAt, weatherDetailsEntityIds]);
+
+  const { temperatureText, humidityText, temperatureEntityId, humidityEntityId } = useMemo(() => {
     const labeledIds = weatherEntityIds;
 
     const temperatureEntity =
@@ -240,8 +283,95 @@ export function WeatherSummary() {
     return {
       temperatureText: formatTemperature(temperature, unit),
       humidityText: formatHumidity(humidity),
+      temperatureEntityId: temperatureEntity?.entity_id ?? '',
+      humidityEntityId: humidityEntity?.entity_id ?? '',
     };
   }, [entitiesById, weatherEntityIds]);
+
+  const weatherDetails = useMemo(() => {
+    const ids = weatherDetailsEntityIds;
+    if (!ids || ids.size === 0) return [] as Array<{ id: string; label: string; value: string }>;
+
+    const excluded = new Set<string>();
+    if (temperatureEntityId) excluded.add(temperatureEntityId);
+    if (humidityEntityId) excluded.add(humidityEntityId);
+    for (const id of weatherDescriptionEntityIds ?? []) {
+      excluded.add(id);
+    }
+
+    const readFriendlyName = (entity: HaEntityState | undefined): string => {
+      const attrs = entity?.attributes as Record<string, unknown> | undefined;
+      const name = attrs?.friendly_name;
+      return typeof name === 'string' ? name.trim() : '';
+    };
+
+    const formatDerivedName = (entityId: string): string => {
+      const [, objectId = entityId] = entityId.split('.', 2);
+      const spaced = objectId.replace(/[_-]+/g, ' ').trim();
+      if (!spaced) return entityId;
+      return spaced.replace(/\b\w/g, (ch) => ch.toUpperCase());
+    };
+
+    const readUnitOptional = (entity: HaEntityState | undefined): string => {
+      const attrs = entity?.attributes as Record<string, unknown> | undefined;
+      const unit = attrs?.unit_of_measurement;
+      return typeof unit === 'string' ? unit.trim() : '';
+    };
+
+    const formatGenericNumber = (value: number): string => {
+      if (Number.isInteger(value)) return String(value);
+      return value.toFixed(1).replace(/\.0$/, '');
+    };
+
+    const formatEntityState = (entity: HaEntityState | undefined): string => {
+      if (!entity) return '—';
+
+      const raw = typeof entity.state === 'string' ? entity.state.trim() : '';
+      if (!raw || raw.toLowerCase() === 'unknown' || raw.toLowerCase() === 'unavailable') {
+        return '—';
+      }
+
+      if (entity.entity_id.startsWith('weather.')) {
+        const formatted = formatWeatherDescription(raw);
+        return formatted || '—';
+      }
+
+      const unit = readUnitOptional(entity);
+      const numeric = Number.parseFloat(raw);
+      if (Number.isFinite(numeric)) {
+        const n = formatGenericNumber(numeric);
+        if (!unit) return n;
+        if (unit === '%' || unit.includes('°')) return `${n}${unit}`;
+        return `${n} ${unit}`;
+      }
+
+      return raw;
+    };
+
+    const rows: Array<{ id: string; label: string; value: string }> = [];
+    for (const id of Array.from(ids).sort()) {
+      if (excluded.has(id)) continue;
+
+      const entity = entitiesById[id];
+      if (!entity) continue;
+
+      const friendly = readFriendlyName(entity);
+      const label = friendly || formatDerivedName(id);
+      const value = formatEntityState(entity);
+      if (value === '—') continue;
+
+      rows.push({ id, label, value });
+    }
+
+    rows.sort((a, b) => a.label.localeCompare(b.label));
+    return rows;
+  }, [
+    entitiesById,
+    humidityEntityId,
+    temperatureEntityId,
+    weatherDescriptionEntityIds,
+    weatherDetailsEntityIds,
+  ]);
 
   const descriptionText = useMemo(() => {
     const ids = weatherDescriptionEntityIds;
@@ -276,38 +406,78 @@ export function WeatherSummary() {
     return '';
   }, [entitiesById, weatherDescriptionEntityIds]);
 
+  const detailsId = 'weather-details';
+
   return (
-    <div className="weather" aria-label="Weather summary">
-      {iconName ? (
-        <Icon
-          icon={iconName}
-          aria-hidden="true"
-          data-testid="weather-icon"
-          className="weather-icon"
-        />
-      ) : (
-        <Icon
-          icon="mdi:weather-partly-cloudy"
-          aria-hidden="true"
-          data-testid="weather-icon"
-          className="weather-icon"
-        />
-      )}
-      <div>
-        <div className="temp">
-          {temperatureText}
-          {' / '}
-          <span className="humidity">
-            <Icon
-              icon="mdi:water-percent"
-              aria-hidden="true"
-              data-testid="humidity-icon"
-              className="humidity-icon"
-            />
-            {humidityText}
-          </span>
+    <div className="weather weather--accordion" aria-label="Weather summary">
+      <button
+        type="button"
+        className="weather__header"
+        aria-label="Toggle weather details"
+        aria-expanded={isExpanded}
+        aria-controls={detailsId}
+        onClick={() => setIsExpanded((prev) => !prev)}
+      >
+        {iconName ? (
+          <Icon
+            icon={iconName}
+            aria-hidden="true"
+            data-testid="weather-icon"
+            className="weather-icon"
+          />
+        ) : (
+          <Icon
+            icon="mdi:weather-partly-cloudy"
+            aria-hidden="true"
+            data-testid="weather-icon"
+            className="weather-icon"
+          />
+        )}
+        <div>
+          <div className="temp">
+            {temperatureText}
+            {' / '}
+            <span className="humidity">
+              <Icon
+                icon="mdi:water-percent"
+                aria-hidden="true"
+                data-testid="humidity-icon"
+                className="humidity-icon"
+              />
+              {humidityText}
+            </span>
+          </div>
+          <div className="desc">{descriptionText}</div>
         </div>
-        <div className="desc">{descriptionText}</div>
+
+        <Icon
+          icon="mdi:chevron-down"
+          aria-hidden="true"
+          className={isExpanded ? 'weather__chevron weather__chevron--open' : 'weather__chevron'}
+        />
+      </button>
+
+      <div
+        id={detailsId}
+        role="region"
+        aria-label="Weather details"
+        className="weather__details"
+        hidden={!isExpanded}
+      >
+        {weatherDetails.length > 0 ? (
+          <dl className="weather-details__grid">
+            {weatherDetails.map((row) => (
+              <div key={row.id} className="weather-details__item" data-entity-id={row.id}>
+                <dt className="weather-details__label">{row.label}</dt>
+                <dd className="weather-details__value">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <div className="weather-details__empty" data-managed-by="react">
+            No additional Weather sensors found.
+          </div>
+        )}
       </div>
     </div>
   );

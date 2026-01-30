@@ -68,6 +68,21 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// jsdom does not reliably implement ResizeObserver; parts of the dashboard use it
+// for sizing calculations.
+if (typeof (globalThis as unknown as { ResizeObserver?: unknown }).ResizeObserver === 'undefined') {
+  type ResizeObserverCallback = (entries: Array<ResizeObserverEntry>) => void;
+
+  class MockResizeObserver {
+    constructor(_cb: ResizeObserverCallback) {}
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+
+  (globalThis as unknown as { ResizeObserver?: unknown }).ResizeObserver = MockResizeObserver;
+}
+
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem' | 'clear' | 'key' | 'length'>;
 
 const createMemoryStorage = (): StorageLike => {

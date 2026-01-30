@@ -7,6 +7,18 @@ export type DashboardPanel = 'agenda' | 'climate' | 'lighting' | 'media' | null;
 
 export type DashboardOverlay = 'tracking' | 'climate' | 'lighting';
 
+export const ROOM_ZOOM_TRANSITION_MS = 3000;
+
+export type RoomZoomMode = 'none' | 'entering' | 'room' | 'exiting';
+
+export interface RoomZoomState {
+  mode: RoomZoomMode;
+  roomId: string | null;
+  stageView: StageView | null;
+  previousStageView: StageView | null;
+  targetStageView: StageView | null;
+}
+
 export interface StageView {
   x: number;
   y: number;
@@ -35,6 +47,13 @@ interface DashboardState {
 
   stageIconScale: number;
   setStageIconScale: (scale: number) => void;
+
+  roomZoom: RoomZoomState;
+  enterRoomZoom: (roomId: string, stageView: StageView) => void;
+  setRoomZoomStageView: (view: Partial<StageView>) => void;
+  finishEnterRoomZoom: () => void;
+  startExitRoomZoom: () => void;
+  finishExitRoomZoom: () => void;
 
   floorplan: {
     state: FloorplanLoadState;
@@ -69,6 +88,14 @@ const DEFAULT_STAGE_VIEW: StageView = {
 
 const DEFAULT_STAGE_FONT_SCALE = 1;
 const DEFAULT_STAGE_ICON_SCALE = 1;
+
+const DEFAULT_ROOM_ZOOM: RoomZoomState = {
+  mode: 'none',
+  roomId: null,
+  stageView: null,
+  previousStageView: null,
+  targetStageView: null,
+};
 
 const DEFAULT_FLOORPLAN: DashboardState['floorplan'] = {
   state: 'idle',
@@ -126,6 +153,66 @@ export const useDashboardStore = create<DashboardState>()(
         stageIconScale: DEFAULT_STAGE_ICON_SCALE,
         setStageIconScale: (scale) => {
           set({ stageIconScale: scale });
+        },
+
+        roomZoom: DEFAULT_ROOM_ZOOM,
+        enterRoomZoom: (roomId, stageView) => {
+          set((state) => {
+            if (state.roomZoom.mode !== 'none') return state;
+            return {
+              roomZoom: {
+                mode: 'entering',
+                roomId,
+                // Start animating from the current map camera.
+                stageView: state.stageView,
+                previousStageView: state.stageView,
+                targetStageView: stageView,
+              },
+            };
+          });
+        },
+        setRoomZoomStageView: (view) => {
+          set((state) => {
+            if (state.roomZoom.mode === 'none') return state;
+            if (!state.roomZoom.stageView) return state;
+            return {
+              roomZoom: {
+                ...state.roomZoom,
+                stageView: { ...state.roomZoom.stageView, ...view },
+              },
+            };
+          });
+        },
+        finishEnterRoomZoom: () => {
+          set((state) => {
+            if (state.roomZoom.mode !== 'entering') return state;
+            return {
+              roomZoom: {
+                ...state.roomZoom,
+                mode: 'room',
+                stageView: state.roomZoom.targetStageView ?? state.roomZoom.stageView,
+                targetStageView: null,
+              },
+            };
+          });
+        },
+
+        startExitRoomZoom: () => {
+          set((state) => {
+            if (state.roomZoom.mode === 'none') return state;
+            if (state.roomZoom.mode === 'exiting') return state;
+            return {
+              roomZoom: {
+                ...state.roomZoom,
+                mode: 'exiting',
+                targetStageView: state.roomZoom.previousStageView,
+              },
+            };
+          });
+        },
+
+        finishExitRoomZoom: () => {
+          set({ roomZoom: DEFAULT_ROOM_ZOOM });
         },
 
         floorplan: DEFAULT_FLOORPLAN,
