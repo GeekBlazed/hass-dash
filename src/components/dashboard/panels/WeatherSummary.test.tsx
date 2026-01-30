@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEntityStore } from '../../../stores/useEntityStore';
@@ -56,7 +56,54 @@ describe('WeatherSummary', () => {
   it('renders placeholders when no matching entities exist', () => {
     render(<WeatherSummary />);
     expect(screen.getByLabelText(/weather summary/i)).toBeInTheDocument();
-    expect(screen.getByText(/Humidity:/i)).toBeInTheDocument();
+    expect(screen.getByText(/--°F/)).toBeInTheDocument();
+    expect(screen.getByTestId('humidity-icon')).toBeInTheDocument();
+    expect(screen.getByText(/--%/)).toBeInTheDocument();
+  });
+
+  it('is collapsed by default and expands to show additional Weather entities', async () => {
+    getEntityIdsByLabelNameMock.mockImplementation((labelName: string) => {
+      if (labelName === 'Weather') {
+        // Used both for the main summary sensors and for additional details.
+        return Promise.resolve(new Set(['sensor.weather_temperature', 'sensor.weather_pressure']));
+      }
+      if (labelName === 'hass-dash') {
+        return Promise.resolve(new Set(['sensor.weather_pressure']));
+      }
+      if (labelName === 'Weather Description') {
+        return Promise.resolve(new Set());
+      }
+      return Promise.resolve(new Set());
+    });
+
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.weather_temperature', '72.4', {
+        device_class: 'temperature',
+        unit_of_measurement: '°F',
+        friendly_name: 'Outdoor Temperature',
+      })
+    );
+
+    useEntityStore.getState().upsert(
+      makeEntity('sensor.weather_pressure', '1013.2', {
+        unit_of_measurement: 'hPa',
+        friendly_name: 'Pressure',
+      })
+    );
+
+    render(<WeatherSummary />);
+
+    // Collapsed: details region is hidden.
+    const region = screen.getByRole('region', { hidden: true });
+    expect(region).toHaveAttribute('aria-label', 'Weather details');
+    expect(region).toHaveAttribute('hidden');
+
+    // Expand.
+    fireEvent.click(screen.getByRole('button', { name: /toggle weather details/i }));
+
+    expect(region).not.toHaveAttribute('hidden');
+    expect(await screen.findByText('Pressure')).toBeInTheDocument();
+    expect(await screen.findByText('1013.2 hPa')).toBeInTheDocument();
   });
 
   it('renders temperature and humidity from entities labeled Weather', async () => {
@@ -83,8 +130,9 @@ describe('WeatherSummary', () => {
 
     render(<WeatherSummary />);
 
-    expect(await screen.findByText('72°F')).toBeInTheDocument();
-    expect(await screen.findByText(/Humidity:\s*55%/i)).toBeInTheDocument();
+    expect(await screen.findByText(/72°F/)).toBeInTheDocument();
+    expect(await screen.findByTestId('humidity-icon')).toBeInTheDocument();
+    expect(await screen.findByText(/55%/)).toBeInTheDocument();
   });
 
   it('falls back to matching label/friendly_name when label registry is empty', async () => {
@@ -107,8 +155,9 @@ describe('WeatherSummary', () => {
 
     render(<WeatherSummary />);
 
-    expect(await screen.findByText('21°F')).toBeInTheDocument();
-    expect(await screen.findByText(/Humidity:\s*55%/i)).toBeInTheDocument();
+    expect(await screen.findByText(/21°F/)).toBeInTheDocument();
+    expect(await screen.findByTestId('humidity-icon')).toBeInTheDocument();
+    expect(await screen.findByText(/55%/)).toBeInTheDocument();
   });
 
   it('shows placeholders for invalid humidity values (out of 0..100 range)', async () => {
@@ -135,8 +184,9 @@ describe('WeatherSummary', () => {
 
     render(<WeatherSummary />);
 
-    expect(await screen.findByText('72°F')).toBeInTheDocument();
-    expect(await screen.findByText(/Humidity:\s*--%/i)).toBeInTheDocument();
+    expect(await screen.findByText(/72°F/)).toBeInTheDocument();
+    expect(await screen.findByTestId('humidity-icon')).toBeInTheDocument();
+    expect(await screen.findByText(/--%/)).toBeInTheDocument();
   });
 
   it('defaults to °F when unit is missing/blank and state is non-numeric', () => {
@@ -149,7 +199,7 @@ describe('WeatherSummary', () => {
     );
 
     render(<WeatherSummary />);
-    expect(screen.getByText('--°F')).toBeInTheDocument();
+    expect(screen.getByText(/--°F/)).toBeInTheDocument();
   });
 
   it('skips missing/invalid labeled entity ids until it finds a valid match', async () => {
@@ -190,7 +240,7 @@ describe('WeatherSummary', () => {
 
     render(<WeatherSummary />);
 
-    expect(await screen.findByText('72°F')).toBeInTheDocument();
+    expect(await screen.findByText(/72°F/)).toBeInTheDocument();
   });
 
   it('retries label resolution after a transient failure once entity store updates', async () => {
@@ -203,10 +253,11 @@ describe('WeatherSummary', () => {
 
     render(<WeatherSummary />);
 
-    // First attempt (failure)
+    // First attempt (failure). We resolve the `Weather` label for both the main summary
+    // and the expandable details section.
     expect(
       getEntityIdsByLabelNameMock.mock.calls.filter(([label]) => label === 'Weather')
-    ).toHaveLength(1);
+    ).toHaveLength(2);
 
     // Update the mock to succeed on retry.
     getEntityIdsByLabelNameMock.mockImplementation((labelName: string) => {
@@ -224,10 +275,10 @@ describe('WeatherSummary', () => {
       })
     );
 
-    expect(await screen.findByText('72°F')).toBeInTheDocument();
+    expect(await screen.findByText(/72°F/)).toBeInTheDocument();
     expect(
       getEntityIdsByLabelNameMock.mock.calls.filter(([label]) => label === 'Weather')
-    ).toHaveLength(2);
+    ).toHaveLength(4);
   });
 
   it('populates the description from an entity labeled hass-dash + Weather Description', async () => {

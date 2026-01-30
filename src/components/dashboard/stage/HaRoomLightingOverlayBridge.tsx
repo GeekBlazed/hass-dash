@@ -317,6 +317,7 @@ export function HaRoomLightingOverlayBridge() {
   const floorplanModel = useDashboardStore((s) => s.floorplan?.model ?? null);
   const isOverlayVisible = useDashboardStore((s) => s.overlays.lighting);
   const stageIconScale = useDashboardStore((s) => s.stageIconScale);
+  const roomZoom = useDashboardStore((s) => s.roomZoom);
 
   const entitiesById = useEntityStore((s) => s.entitiesById);
   const householdEntityIds = useEntityStore((s) => s.householdEntityIds);
@@ -820,13 +821,20 @@ export function HaRoomLightingOverlayBridge() {
 
     const roomIds = findRoomsInDom(document);
     const labelAnchors = readRoomLabelAnchors(document);
-    const groups = computeRoomLightGroups(
+    const allGroups = computeRoomLightGroups(
       roomIds,
       roomIndex,
       labelAnchors,
       entitiesById,
       householdEntityIds
     );
+
+    const activeRoomId = roomZoom.mode === 'none' ? null : roomZoom.roomId;
+    const groups = activeRoomId
+      ? allGroups.filter((g) => g.room.id === activeRoomId)
+      : roomZoom.mode !== 'none'
+        ? []
+        : allGroups;
     const visible = isOverlayVisible;
 
     if (debugEvents) {
@@ -997,6 +1005,8 @@ export function HaRoomLightingOverlayBridge() {
     isOverlayVisible,
     stageIconScale,
     optimisticSetState,
+    roomZoom.mode,
+    roomZoom.roomId,
   ]);
 
   return (

@@ -1,9 +1,11 @@
-import { Suspense, lazy, useMemo } from 'react';
+import { Suspense, lazy, useEffect, useMemo } from 'react';
 
+import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { FloorplanEmptyOverlay } from './FloorplanEmptyOverlay';
 import { FloorplanSvg } from './FloorplanSvg';
 import { OverlayManager } from './OverlayManager';
+import { RoomZoomCanvas } from './RoomZoomCanvas';
 
 const KonvaFloorplanCanvas = lazy(() => import('./KonvaFloorplanCanvas'));
 
@@ -15,6 +17,17 @@ const shouldUseKonva = (): boolean => {
 
 export function FloorplanCanvas({ onRetry }: { onRetry: () => void }) {
   const floorplan = useDashboardStore((s) => s.floorplan);
+  const roomZoomMode = useDashboardStore((s) => s.roomZoom.mode);
+  const finishExitRoomZoom = useDashboardStore((s) => s.finishExitRoomZoom);
+
+  const { isEnabled: isRoomZoomEnabled } = useFeatureFlag('ROOM_ZOOM');
+
+  useEffect(() => {
+    // If the feature is turned off at runtime (dev overrides), ensure we exit cleanly.
+    if (isRoomZoomEnabled) return;
+    if (roomZoomMode === 'none') return;
+    finishExitRoomZoom();
+  }, [finishExitRoomZoom, isRoomZoomEnabled, roomZoomMode]);
 
   const useKonva = useMemo(() => shouldUseKonva(), []);
 
@@ -30,7 +43,11 @@ export function FloorplanCanvas({ onRetry }: { onRetry: () => void }) {
         </Suspense>
       ) : (
         <>
-          <FloorplanSvg />
+          {isRoomZoomEnabled && roomZoomMode !== 'none' ? (
+            <RoomZoomCanvas />
+          ) : (
+            <FloorplanSvg enableRoomZoom={isRoomZoomEnabled} />
+          )}
           <OverlayManager renderer="svg" />
         </>
       )}

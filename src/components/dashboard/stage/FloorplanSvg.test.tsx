@@ -22,6 +22,13 @@ describe('FloorplanSvg', () => {
       activePanel: 'climate',
       isMapControlsOpen: false,
       stageView: { x: 0, y: 0, scale: 1 },
+      roomZoom: {
+        mode: 'none',
+        roomId: null,
+        stageView: null,
+        previousStageView: null,
+        targetStageView: null,
+      },
       floorplan: { state: 'idle', model: null, errorMessage: null },
     });
 
@@ -242,6 +249,60 @@ describe('FloorplanSvg', () => {
     rectSpy.mockRestore();
   });
 
+  it('does not allow wheel zoom while in room zoom mode (locked camera)', async () => {
+    const model: FloorplanModel = {
+      defaultFloorId: 'ground',
+      floors: [
+        {
+          id: 'ground',
+          name: 'Ground',
+          bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },
+          initialView: { scale: 2, x: 0, y: 0 },
+          rooms: [
+            {
+              id: 'kitchen',
+              name: 'Kitchen',
+              points: [
+                [0, 0],
+                [2, 0],
+                [2, 2],
+                [0, 2],
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    useDashboardStore.getState().setFloorplanLoaded(model);
+    useDashboardStore.setState({
+      stageView: { x: 123, y: 456, scale: 1.5 },
+      roomZoom: { mode: 'room', roomId: 'kitchen', stageView: { x: 1, y: 2, scale: 2 } },
+    });
+
+    render(<FloorplanSvg />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const svg = document.getElementById('floorplan-svg') as unknown as SVGSVGElement;
+    expect(svg).toBeTruthy();
+
+    const beforeStageView = useDashboardStore.getState().stageView;
+    const beforeRoomStageView = useDashboardStore.getState().roomZoom.stageView;
+
+    fireEvent.wheel(svg, { deltaY: -100, clientX: 50, clientY: 50 });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(useDashboardStore.getState().stageView).toEqual(beforeStageView);
+    expect(useDashboardStore.getState().roomZoom.stageView).toEqual(beforeRoomStageView);
+  });
+
   it('suppresses the first room click immediately after a drag', async () => {
     vi.useFakeTimers();
 
@@ -386,6 +447,51 @@ describe('FloorplanSvg', () => {
     // Activate again via space (covers alternate key path).
     fireEvent.keyDown(roomButton, { key: ' ' });
     expect(roomButton.getAttribute('class') ?? '').toContain('is-active');
+  });
+
+  it('does not enter room zoom when enableRoomZoom is false', async () => {
+    const model: FloorplanModel = {
+      defaultFloorId: 'ground',
+      floors: [
+        {
+          id: 'ground',
+          name: 'Ground',
+          bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },
+          rooms: [
+            {
+              id: 'kitchen',
+              name: 'Kitchen',
+              points: [
+                [0, 0],
+                [2, 0],
+                [2, 2],
+                [0, 2],
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    useDashboardStore.getState().setFloorplanLoaded(model);
+    render(<FloorplanSvg enableRoomZoom={false} />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const roomButton = screen.getByRole('button', { name: 'Kitchen' });
+
+    fireEvent.click(roomButton);
+    expect(roomButton.getAttribute('class') ?? '').not.toContain('is-active');
+    expect(useDashboardStore.getState().roomZoom.mode).toBe('none');
+    expect(useDashboardStore.getState().roomZoom.roomId).toBeNull();
+
+    fireEvent.keyDown(roomButton, { key: 'Enter' });
+    expect(roomButton.getAttribute('class') ?? '').not.toContain('is-active');
+    expect(useDashboardStore.getState().roomZoom.mode).toBe('none');
+    expect(useDashboardStore.getState().roomZoom.roomId).toBeNull();
   });
 
   it('ignores pointer handling when interacting with .light-toggle elements', async () => {

@@ -1,3 +1,5 @@
+import { Icon } from '@iconify/react';
+
 export function MediaPanel({ isHidden = true }: { isHidden?: boolean }) {
   return (
     <section
@@ -8,12 +10,12 @@ export function MediaPanel({ isHidden = true }: { isHidden?: boolean }) {
       <div className="media-window__header" aria-label="Media window header">
         <div className="media-window__title">
           <span className="media-window__pill">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                fill="rgba(234,231,223,0.85)"
-                d="M12 3c5 0 9 4 9 9s-4 9-9 9-9-4-9-9 4-9 9-9zm-1 5v8l7-4-7-4z"
-              />
-            </svg>
+            <Icon
+              icon="mdi:multimedia"
+              aria-hidden="true"
+              data-testid="media-icon"
+              className="media-icon"
+            />
             Spotify
           </span>
         </div>

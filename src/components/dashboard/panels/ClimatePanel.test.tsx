@@ -22,7 +22,9 @@ const mockedState = vi.hoisted(() => {
 vi.mock('../../../stores/useEntityStore', () => {
   return {
     useEntityStore: ((selector: (s: { entitiesById: Record<string, HaEntityState> }) => unknown) =>
-      selector({ entitiesById: mockedState.entitiesById })) as unknown as Mock,
+      selector({
+        entitiesById: mockedState.entitiesById,
+      })) as unknown as Mock,
   };
 });
 
