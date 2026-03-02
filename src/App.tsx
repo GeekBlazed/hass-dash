@@ -3,6 +3,7 @@ import { Dashboard } from './components/dashboard';
 import { DebugPanel } from './components/DebugPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LhciLightingModalHarness } from './components/lhci/LhciLightingModalHarness';
+import { PwaUpdateBanner } from './components/pwa/PwaUpdateBanner';
 import { useDevToolsStore } from './stores/useDevToolsStore';
 import { useEntityStore } from './stores/useEntityStore';
 
@@ -71,6 +72,7 @@ function App() {
     <ErrorBoundary>
       <Dashboard />
       <LhciLightingModalHarness />
+      <PwaUpdateBanner />
       {isDevelopment && showDebugPanel && (
         <div className="fixed z-50" style={{ right: '8px', top: '8px' }}>
           <DebugPanel />
