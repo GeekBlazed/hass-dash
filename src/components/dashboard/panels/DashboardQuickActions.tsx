@@ -91,7 +91,15 @@ export function DashboardQuickActions() {
         />
         <div className="label">Security</div>
       </button>
-      <a className="qa" href="#top" aria-label="Cameras">
+      <button
+        className="qa"
+        type="button"
+        id="cameras-toggle"
+        aria-label="Cameras"
+        aria-controls="cameras-panel"
+        aria-expanded={activePanel === 'cameras'}
+        onClick={() => togglePanel('cameras')}
+      >
         <Icon
           icon="mdi:cctv"
           aria-hidden="true"
@@ -99,7 +107,7 @@ export function DashboardQuickActions() {
           className="cameras-icon"
         />
         <div className="label">Cameras</div>
-      </a>
+      </button>
       <button
         className="qa"
         type="button"
