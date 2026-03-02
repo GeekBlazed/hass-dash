@@ -10,6 +10,24 @@ function ensureNodeOptionsHasHeapLimit(nodeOptions, heapMb) {
   return `${prefix}--max-old-space-size=${heapMb}`;
 }
 
+function normalizeCoverageReporters(rawReporters) {
+  const raw = typeof rawReporters === 'string' ? rawReporters : '';
+
+  const normalized = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  // If the environment already specifies reporters, respect it, but ensure we still
+  // produce a file-backed report by default.
+  const hasFileReporter = normalized.includes('html') || normalized.includes('lcovonly');
+  const next = normalized.length === 0 ? ['text-summary', 'html'] : normalized;
+  if (!hasFileReporter) next.push('html');
+  if (!next.includes('text-summary')) next.unshift('text-summary');
+
+  return Array.from(new Set(next)).join(',');
+}
+
 // Coverage instrumentation + report generation can be memory-heavy.
 // Vitest runs tests in forked Node workers; we need the heap limit to apply
 // to those children too. NODE_OPTIONS is inherited by the forked workers.
@@ -45,29 +63,19 @@ if (!process.env.VITEST_COVERAGE_PROVIDER) {
 }
 
 // Ensure we actually emit a browsable report.
-{
-  const raw =
-    typeof process.env.VITEST_COVERAGE_REPORTERS === 'string'
-      ? process.env.VITEST_COVERAGE_REPORTERS
-      : '';
-
-  const normalized = raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-
-  // If the environment already specifies reporters, respect it, but ensure we still
-  // produce a file-backed report by default.
-  const hasFileReporter = normalized.includes('html') || normalized.includes('lcovonly');
-  const next = normalized.length === 0 ? ['text-summary', 'html'] : normalized;
-  if (!hasFileReporter) next.push('html');
-  if (!next.includes('text-summary')) next.unshift('text-summary');
-
-  process.env.VITEST_COVERAGE_REPORTERS = Array.from(new Set(next)).join(',');
-}
+process.env.VITEST_COVERAGE_REPORTERS = normalizeCoverageReporters(
+  process.env.VITEST_COVERAGE_REPORTERS
+);
 
 const vitestEntry = 'node_modules/vitest/vitest.mjs';
 const passthroughArgs = process.argv.slice(2);
+const hasPoolArg = passthroughArgs.some((arg) => arg === '--pool' || arg.startsWith('--pool='));
+
+// Default away from worker threads unless explicitly overridden.
+if (!hasPoolArg && !process.env.VITEST_POOL) {
+  process.env.VITEST_POOL = 'forks';
+}
+
 const args = [vitestEntry, 'run', '--coverage', ...passthroughArgs];
 
 const child = spawn(process.execPath, args, {

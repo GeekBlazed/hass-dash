@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { FloorplanModel } from '../../../features/model/floorplan';
 import { ROOM_ZOOM_TRANSITION_MS, useDashboardStore } from '../../../stores/useDashboardStore';
@@ -49,6 +49,10 @@ describe('RoomZoomCanvas', () => {
     }
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders a mini-map and exits room zoom on click', async () => {
     vi.useFakeTimers();
 
@@ -92,7 +96,5 @@ describe('RoomZoomCanvas', () => {
     });
 
     expect(useDashboardStore.getState().roomZoom.mode).toBe('none');
-
-    vi.useRealTimers();
   });
 });

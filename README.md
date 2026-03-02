@@ -94,6 +94,7 @@ For reliable offline launch testing, install from a production preview build ins
 
 1. Open exactly:
    - `http://localhost:5173`
+   - Service workers are scoped to the origin they're registered from, so accessing via IP or a different port will not use the cached assets.
 
 1. Remove any previously installed localhost app and unregister old service workers for that origin.
 1. Install the app from that page and launch it once while online to warm caches.

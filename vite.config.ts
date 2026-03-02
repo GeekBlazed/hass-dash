@@ -6,9 +6,41 @@ import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const MAX_COPY_RETRIES = 10;
-const packageJsonRaw = readFileSync(new URL('./package.json', import.meta.url), 'utf-8');
-const packageJson = JSON.parse(packageJsonRaw) as { version?: string };
-const appVersion = packageJson.version?.trim() || '0.1.0';
+
+function resolveAppVersion(): string {
+  // Intentionally synchronous: this runs during Vite config module evaluation,
+  // and we need an immediate value for top-level constants (e.g. cache names/defines)
+  // without making the exported config async.
+  try {
+    const packageJsonRaw = readFileSync(new URL('./package.json', import.meta.url), 'utf-8');
+    const packageJson = JSON.parse(packageJsonRaw) as { version?: unknown };
+    const version = typeof packageJson.version === 'string' ? packageJson.version.trim() : '';
+    return version || '0.1.0';
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to read version from package.json for Vite config: ${reason}`);
+  }
+}
+
+const appVersion = resolveAppVersion();
+
+const deriveBaseUrlFromWebSocketUrl = (webSocketUrl: string): string | undefined => {
+  try {
+    const url = new URL(webSocketUrl.trim());
+
+    if (url.protocol === 'ws:') url.protocol = 'http:';
+    else if (url.protocol === 'wss:') url.protocol = 'https:';
+    else return undefined;
+
+    url.pathname = '/';
+    url.search = '';
+    url.hash = '';
+
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+};
 
 function isRetriableFsError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
@@ -94,25 +126,6 @@ export default defineConfig(({ mode }) => {
   const devHmrHost = env.VITE_DEV_HMR_HOST;
   const devServiceWorkerEnabled = env.VITE_PWA_DEV_SW === 'true';
 
-  const deriveBaseUrlFromWebSocketUrl = (webSocketUrl: string): string | undefined => {
-    try {
-      const url = new URL(webSocketUrl.trim());
-
-      // Map ws/wss -> http/https.
-      if (url.protocol === 'ws:') url.protocol = 'http:';
-      else if (url.protocol === 'wss:') url.protocol = 'https:';
-      else return undefined;
-
-      url.pathname = '/';
-      url.search = '';
-      url.hash = '';
-
-      return url.toString();
-    } catch {
-      return undefined;
-    }
-  };
-
   const haBaseUrl = (() => {
     const baseUrl = env.VITE_HA_BASE_URL?.trim();
     if (baseUrl) return baseUrl;
@@ -185,11 +198,13 @@ export default defineConfig(({ mode }) => {
             if (normalizedId.includes('/konva/') || normalizedId.includes('/react-konva/')) {
               return 'konva-vendor';
             }
+            // Keep DI libs in vendor to avoid circular chunk references
+            // (vendor <-> di-vendor) observed in production builds.
             if (
               normalizedId.includes('/inversify/') ||
               normalizedId.includes('/reflect-metadata/')
             ) {
-              return 'di-vendor';
+              return 'vendor';
             }
             if (normalizedId.includes('/ajv/') || normalizedId.includes('/yaml/'))
               return 'data-vendor';

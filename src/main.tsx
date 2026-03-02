@@ -11,5 +11,8 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 
-// Register immediately so installed PWAs become SW-controlled reliably.
-registerServiceWorker();
+// Defer SW registration slightly to keep it off the initial render critical path
+// while still registering early for PWA reliability.
+setTimeout(() => {
+  registerServiceWorker();
+}, 0);
