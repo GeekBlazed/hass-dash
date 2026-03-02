@@ -90,16 +90,14 @@ If you install from the Vite dev server and then stop it, you may see requests l
 For reliable offline launch testing, install from a production preview build instead:
 
 1. Run:
+   - `pnpm pwa:offline-test`
 
-- `pnpm pwa:offline-test`
+1. Open exactly:
+   - `http://localhost:5173`
 
-2. Open exactly:
-
-- `http://localhost:5173`
-
-3. Remove any previously installed localhost app and unregister old service workers for that origin.
-4. Install the app from that page and launch it once while online to warm caches.
-5. Stop the preview server and launch the installed app again.
+1. Remove any previously installed localhost app and unregister old service workers for that origin.
+1. Install the app from that page and launch it once while online to warm caches.
+1. Stop the preview server and launch the installed app again.
 
 Notes:
 
