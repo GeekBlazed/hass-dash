@@ -1,5 +1,8 @@
+import { updatePromptStore } from './updatePromptStore';
+
 export function registerServiceWorker(): void {
-  if (!import.meta.env.PROD) return;
+  const devServiceWorkerEnabled = import.meta.env.DEV && import.meta.env.VITE_PWA_DEV_SW === 'true';
+  if (!import.meta.env.PROD && !devServiceWorkerEnabled) return;
 
   // Lighthouse CI (and similar synthetic runs) can become flaky if a brand-new
   // service worker install triggers reload/update behavior on a fresh origin.
@@ -14,8 +17,16 @@ export function registerServiceWorker(): void {
   void (async () => {
     const { registerSW } = await import('virtual:pwa-register');
 
-    registerSW({
+    let updateServiceWorker: ((reloadPage?: boolean | undefined) => Promise<void>) | undefined;
+
+    updateServiceWorker = registerSW({
       immediate: true,
+      onNeedRefresh() {
+        const applyUpdate = updateServiceWorker;
+        if (!applyUpdate) return;
+
+        updatePromptStore.show(() => applyUpdate(true));
+      },
     });
   })();
 }

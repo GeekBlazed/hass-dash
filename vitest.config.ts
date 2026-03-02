@@ -2,9 +2,10 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 function getPool(): 'threads' | 'forks' {
-  // Default to threads for stability and lower memory usage.
-  // Forked processes have repeatedly hit OOM in this repo, even without coverage.
-  return process.env.VITEST_POOL === 'forks' ? 'forks' : 'threads';
+  // Default to forks: we've seen worker-thread pool OOMs in jsdom-heavy runs
+  // (`[vitest-pool]: Worker threads emitted error` + ERR_WORKER_OUT_OF_MEMORY).
+  // Allow explicit override for local experimentation.
+  return process.env.VITEST_POOL === 'threads' ? 'threads' : 'forks';
 }
 
 function getCoverageProvider(): 'v8' | 'istanbul' {
@@ -26,7 +27,12 @@ function getCoverageReporters(): Array<'text-summary' | 'lcovonly' | 'html'> {
     if (items.length > 0) return items;
   }
 
-  // Lcov generation can be surprisingly memory hungry on Windows.
+  // Prefer a file-producing reporter by default so `pnpm test:coverage` actually
+  // creates a report directory. On non-Windows platforms we emit `lcovonly` by
+  // default so CI and local tools can consume coverage artifacts.
+  // On Windows, we intentionally avoid HTML/lcov by default due to historical
+  // memory/OOM issues; if this is acceptable on a given machine, override with:
+  //   VITEST_COVERAGE_REPORTERS=text-summary,lcovonly or text-summary,html
   if (process.platform === 'win32') return ['text-summary'];
   return ['text-summary', 'lcovonly'];
 }
@@ -34,11 +40,9 @@ function getCoverageReporters(): Array<'text-summary' | 'lcovonly' | 'html'> {
 function getTestExclude(): string[] | undefined {
   const skipOomTests = process.env.VITEST_SKIP_OOM_TESTS === 'true';
 
-  // This test currently OOMs during module import on Windows (even without coverage).
-  // On non-Windows platforms, we always run it to maintain consistent coverage.
-  // On Windows, allow opt-in skipping (via VITEST_SKIP_OOM_TESTS) to keep
-  // `pnpm test:coverage` usable while we work on lowering its memory usage.
-  if (skipOomTests && process.platform === 'win32') {
+  // This test can be pathological (OOM/hang) in some environments.
+  // Allow runners to opt-in skipping via VITEST_SKIP_OOM_TESTS.
+  if (skipOomTests) {
     return ['src/components/dashboard/DeviceLocationTrackingController.test.tsx'];
   }
 
@@ -105,6 +109,15 @@ export default defineConfig({
       // `text` is very verbose (full per-file table). `text-summary` keeps CLI output readable.
       // Keep report generation lightweight to avoid OOM during coverage runs.
       reporter: getCoverageReporters(),
+      // Be explicit about where reports land (Vitest defaults can vary across providers).
+      reportsDirectory: 'coverage',
+      // while workers are still starting up. Keeping the directory stable avoids that,
+      // but it also means `coverage/.tmp/` is not automatically cleaned and stale files
+      // will accumulate over time. Developers should periodically clear this directory
+      // (for example, via `rm -rf coverage/.tmp/` or a dedicated cleanup script in package.json).
+      // On Windows, we occasionally see ENOENT during writes when the directory is cleaned
+      // while workers are still starting up. Keeping the directory stable avoids that.
+      clean: process.platform !== 'win32',
       // Coverage report generation can be surprisingly memory hungry when it processes many files.
       // Keep this low to avoid OOM in v8 provider result processing on Windows.
       processingConcurrency: 1,

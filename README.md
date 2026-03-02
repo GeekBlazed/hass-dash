@@ -83,6 +83,72 @@ npm install -g pnpm
 
    Open your browser to [http://localhost:5173](http://localhost:5173)
 
+### PWA Offline Troubleshooting (Localhost)
+
+If you install from the Vite dev server and then stop it, you may see requests like `/@vite/client` and `/src/main.tsx` fail offline. That is expected: the dev HTML references Vite module URLs that are not a production precache target.
+
+For reliable offline launch testing, install from a production preview build instead:
+
+1. Run:
+   - `pnpm pwa:offline-test`
+
+1. Open exactly:
+   - `http://localhost:5173`
+   - Service workers are scoped to the origin they're registered from, so accessing via IP or a different port will not use the cached assets.
+
+1. Remove any previously installed localhost app and unregister old service workers for that origin.
+1. Install the app from that page and launch it once while online to warm caches.
+1. Stop the preview server and launch the installed app again.
+
+Notes:
+
+- `VITE_PWA_DEV_SW=true` is useful for service-worker behavior debugging during `pnpm dev`, but it is not a full replacement for preview/prod offline validation.
+- If you still get `ERR_CONNECTION_REFUSED`, the app shortcut is likely pointing to a different localhost origin/port than the one you installed from.
+- Production deployments already use the service worker and versioned precache by default.
+
+### Testing From Another Machine (LAN / WSL2)
+
+By default, the dev server is configured to listen on all interfaces (equivalent to `vite --host 0.0.0.0`).
+
+1. Find the IP of the machine running Vite and browse to:
+   - `http://<IP>:5173`
+
+2. If you are running in **WSL2** and other machines cannot reach the dev server, this is usually Windows networking (WSL is listening, but Windows is not forwarding LAN traffic into WSL).
+
+   In an **elevated PowerShell** (Run as Administrator) on Windows:
+   - Allow inbound traffic to the dev port:
+
+     ```powershell
+     netsh advfirewall firewall add rule name="hass-dash (Vite dev 5173)" dir=in action=allow protocol=TCP localport=5173
+     ```
+
+   - Forward Windows port `5173` to the current WSL IP (replace `<WSL_IP>`):
+
+     ```powershell
+     netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=5173 connectaddress=<WSL_IP> connectport=5173
+     ```
+
+     To get the WSL IP from inside WSL:
+
+     ```bash
+     hostname -I | awk '{print $1}'
+     ```
+
+   - Browse from another machine using your **Windows LAN IP**:
+     - `http://<WINDOWS_LAN_IP>:5173`
+
+3. If the page loads but hot-reload (HMR) is flaky when accessed via LAN, set this in your local `.env`:
+   - `VITE_DEV_HMR_HOST=<WINDOWS_LAN_IP>`
+
+Notes:
+
+- WSL IPs can change after restart; if they do, delete and re-add the portproxy rule.
+- Remove the portproxy rule:
+
+  ```powershell
+  netsh interface portproxy delete v4tov4 listenaddress=0.0.0.0 listenport=5173
+  ```
+
 ### Available Commands
 
 ```bash
@@ -90,6 +156,7 @@ npm install -g pnpm
 pnpm dev              # Start development server with hot reload
 pnpm build           # Build for production
 pnpm preview         # Preview production build
+pnpm pwa:offline-test # Build + preview for offline PWA install testing
 
 # Code Quality
 pnpm lint            # Run ESLint

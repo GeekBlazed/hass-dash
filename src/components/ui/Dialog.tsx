@@ -2,7 +2,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import React from 'react';
 
 // Keep dialogs above essentially all other UI.
-const DIALOG_Z_INDEX = 2147483000;
+const DIALOG_Z_INDEX = 100000;
 
 /**
  * Dialog Root - Main container for dialog state
@@ -33,7 +33,7 @@ export const DialogOverlay = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    className={`data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out pointer-events-auto fixed inset-0 bg-black/40 backdrop-blur-sm dark:bg-black/40 ${className}`}
+    className={`data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out pointer-events-auto fixed inset-0 bg-black/80 backdrop-blur-sm dark:bg-black/80 ${className}`}
     style={{ zIndex: DIALOG_Z_INDEX, ...props.style }}
     {...props}
   />
@@ -46,45 +46,94 @@ DialogOverlay.displayName = 'DialogOverlay';
 type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
   overlayClassName?: string;
   showCloseButton?: boolean;
+  variant?: 'default' | 'fullscreen';
+  /**
+   * Only used when variant is `fullscreen`.
+   * Controls the margin from the viewport edge (in pixels).
+   */
+  insetPx?: number;
 };
 
 export const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className = '', overlayClassName = '', showCloseButton = true, children, ...props }, ref) => (
-  <DialogPortal>
-    <div
-      className={`data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out pointer-events-auto fixed inset-0 flex items-center justify-center overflow-hidden bg-black/40 p-4 backdrop-blur-sm dark:bg-black/40 ${overlayClassName}`}
-      style={{ zIndex: DIALOG_Z_INDEX }}
-    >
-      <DialogPrimitive.Content
-        ref={ref}
-        className={`data-[state=open]:animate-slide-in data-[state=closed]:animate-slide-out relative w-full max-w-lg gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-lg duration-200 sm:rounded-lg dark:border-gray-700 dark:bg-gray-800 ${className}`}
-        style={{ zIndex: DIALOG_Z_INDEX + 10, ...props.style }}
-        {...props}
-      >
-        {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            className="focus:ring-primary absolute top-4 right-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none dark:ring-offset-gray-800"
-            aria-label="Close dialog"
+>(
+  (
+    {
+      className = '',
+      overlayClassName = '',
+      showCloseButton = true,
+      variant = 'default',
+      insetPx,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const isFullscreen = variant === 'fullscreen';
+    const inset = insetPx ?? 40;
+
+    const wrapperPaddingClass = isFullscreen ? `p-4` : 'p-4';
+    const contentClass = isFullscreen
+      ? 'h-full w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg duration-200 dark:border-gray-700 dark:bg-gray-800 m-40'
+      : 'h-full w-full max-w-lg gap-4 rounded-lg border border-gray-200 bg-white p-6 shadow-lg duration-200 sm:rounded-lg dark:border-gray-700 dark:bg-gray-800 m-40';
+
+    const wrapperStyle: React.CSSProperties = {
+      zIndex: DIALOG_Z_INDEX,
+      ...(isFullscreen
+        ? {
+            padding: `${inset}px`,
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: '#000000eb',
+          }
+        : {}),
+    };
+
+    return (
+      <DialogPortal>
+        <div
+          className={`data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out pointer-events-auto absolute inset-0 top-0 left-0 flex items-center justify-center overflow-hidden bg-black/80 ${wrapperPaddingClass} backdrop-blur-sm dark:bg-black/80 ${overlayClassName}`}
+          style={wrapperStyle}
+        >
+          <DialogPrimitive.Content
+            ref={ref}
+            className={`data-[state=open]:animate-slide-in data-[state=closed]:animate-slide-out ${contentClass} ${className}`}
+            style={{
+              zIndex: DIALOG_Z_INDEX + 10,
+              ...props.style,
+              margin: isFullscreen ? `${inset}px` : 'auto',
+              borderRadius: 12,
+            }}
+            {...props}
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </DialogPrimitive.Close>
-        )}
-      </DialogPrimitive.Content>
-    </div>
-  </DialogPortal>
-));
+            {children}
+            {showCloseButton && (
+              <DialogPrimitive.Close
+                className="focus:ring-primary absolute top-4 right-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none dark:ring-offset-gray-800"
+                aria-label="Close dialog"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </DialogPrimitive.Close>
+            )}
+          </DialogPrimitive.Content>
+        </div>
+      </DialogPortal>
+    );
+  }
+);
 DialogContent.displayName = 'DialogContent';
 
 /**

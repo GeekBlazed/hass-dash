@@ -153,7 +153,7 @@
   "github.copilot.editor.enableAutoCompletions": true,
   
   // Workbench Configuration
-  "workbench.colorTheme": "Default Dark+",
+  "workbench.colorTheme": "GitHub Dark Default",
   "workbench.iconTheme": "vs-seti",
   "workbench.editor.enablePreview": false,
   

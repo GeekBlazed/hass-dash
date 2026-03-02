@@ -14,8 +14,23 @@ const heapMbRaw = process.env.VITEST_HEAP_MB;
 const heapMb = Number.isFinite(Number(heapMbRaw)) ? Number(heapMbRaw) : 8192;
 process.env.NODE_OPTIONS = ensureNodeOptionsHasHeapLimit(process.env.NODE_OPTIONS, heapMb);
 
+const passthroughArgs = process.argv.slice(2);
+const hasPoolArg = passthroughArgs.some((arg) => arg === '--pool' || arg.startsWith('--pool='));
+const includeSlow = passthroughArgs.includes('--include-slow');
+
+// Default away from worker threads unless explicitly overridden.
+if (!hasPoolArg && !process.env.VITEST_POOL) {
+  process.env.VITEST_POOL = 'forks';
+}
+
+// Mirror the default behavior from batched/coverage runners.
+// This keeps `pnpm test:run` from stalling on known pathological tests.
+if (!includeSlow && !process.env.VITEST_SKIP_OOM_TESTS) {
+  process.env.VITEST_SKIP_OOM_TESTS = 'true';
+}
+
 const vitestEntry = 'node_modules/vitest/vitest.mjs';
-const args = [vitestEntry, ...process.argv.slice(2)];
+const args = [vitestEntry, ...passthroughArgs];
 
 const child = spawn(process.execPath, args, {
   stdio: 'inherit',

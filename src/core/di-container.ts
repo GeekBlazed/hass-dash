@@ -1,5 +1,6 @@
 import { Container } from 'inversify';
 import 'reflect-metadata';
+import type { ICameraService } from '../interfaces/ICameraService';
 import type { IConfigService } from '../interfaces/IConfigService';
 import type { IDeviceTrackerMetadataService } from '../interfaces/IDeviceTrackerMetadataService';
 import type { IEntityLabelService } from '../interfaces/IEntityLabelService';
@@ -16,6 +17,7 @@ import type { ILightService } from '../interfaces/ILightService';
 import type { IWebSocketService } from '../interfaces/IWebSocketService';
 import { ConfigService } from '../services/ConfigService';
 import { FeatureFlagService } from '../services/FeatureFlagService';
+import { HomeAssistantCameraService } from '../services/HomeAssistantCameraService';
 import { HomeAssistantConnectionConfigService } from '../services/HomeAssistantConnectionConfigService';
 import { HomeAssistantDeviceTrackerMetadataService } from '../services/HomeAssistantDeviceTrackerMetadataService';
 import { HomeAssistantEntityLabelService } from '../services/HomeAssistantEntityLabelService';
@@ -52,6 +54,11 @@ const container = new Container();
 // Bind services to their interfaces
 // All bindings use singleton scope to ensure single instances throughout the app
 container.bind<IConfigService>(TYPES.IConfigService).to(ConfigService).inSingletonScope();
+
+container
+  .bind<ICameraService>(TYPES.ICameraService)
+  .to(HomeAssistantCameraService)
+  .inSingletonScope();
 
 container
   .bind<IFeatureFlagService>(TYPES.IFeatureFlagService)

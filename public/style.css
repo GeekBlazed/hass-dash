@@ -292,6 +292,108 @@ button.qa {
   min-height: 0;
 }
 
+.cameras-panel {
+  position: relative;
+  width: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.cameras-panel__empty {
+  padding: 10px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(18, 18, 18, 0.2);
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.2px;
+}
+
+.cameras-panel #cameras-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cameras-panel .cameras-item {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(18, 18, 18, 0.2);
+  margin-bottom: 10px;
+}
+
+.cameras-panel .cameras-item:last-child {
+  margin-bottom: 0;
+}
+
+.cameras-panel .cameras-name {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.25;
+  letter-spacing: 0.2px;
+}
+
+.cameras-panel .cameras-meta {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+  letter-spacing: 0.2px;
+}
+
+.cameras-panel .cameras-item__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cameras-panel .cameras-item__details {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 18px;
+  position: relative;
+}
+
+.cameras-panel .cameras-item__details::after {
+  content: '›';
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(185, 182, 175, 0.55);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.cameras-panel .cameras-item__details:hover::after {
+  color: rgba(255, 201, 125, 0.75);
+}
+
+.cameras-panel .cameras-item__details:focus-visible {
+  outline: 2px solid rgba(255, 201, 125, 0.55);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
 .lighting-panel__empty {
   padding: 10px 8px;
   border-radius: 14px;
@@ -302,6 +404,7 @@ button.qa {
   letter-spacing: 0.2px;
 }
 
+.cameras-panel #cameras-list,
 .lighting-panel #lighting-list {
   flex: 1;
   min-height: 0;
@@ -535,6 +638,110 @@ button.qa {
   color: var(--text-muted);
   font-size: 12px;
   letter-spacing: 0.2px;
+}
+
+.camera-details {
+  position: relative;
+  width: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.camera-details__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 4px 12px;
+  margin: -6px -6px 0;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(18, 18, 18, 0.18);
+}
+
+.camera-details__back,
+.camera-details__refresh {
+  appearance: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 18, 0.3);
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.camera-details__back:hover,
+.camera-details__refresh:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 201, 125, 0.28);
+  background: rgba(18, 18, 18, 0.42);
+}
+
+.camera-details__back:active,
+.camera-details__refresh:active {
+  transform: translateY(0);
+}
+
+.camera-details__back:focus-visible,
+.camera-details__refresh:focus-visible {
+  outline: 2px solid rgba(255, 201, 125, 0.55);
+  outline-offset: 2px;
+}
+
+.camera-details__refresh:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.camera-details__title {
+  color: var(--text-primary);
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  line-height: 1.25;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.camera-details__preview {
+  display: grid;
+  place-items: center;
+  padding: 10px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(18, 18, 18, 0.2);
+  min-height: 180px;
+}
+
+.camera-details__image {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 9, 9, 0.38);
+}
+
+.camera-details__loading,
+.camera-details__empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.2px;
+}
+
+.camera-details__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .climate-panel {
@@ -1509,6 +1716,7 @@ button.qa {
   overflow: hidden;
 }
 
+.tile.cameras-panel,
 .tile.lighting-panel {
   display: flex;
   flex-direction: column;

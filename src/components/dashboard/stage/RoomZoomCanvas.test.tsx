@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { FloorplanModel } from '../../../features/model/floorplan';
-import { useDashboardStore } from '../../../stores/useDashboardStore';
+import { ROOM_ZOOM_TRANSITION_MS, useDashboardStore } from '../../../stores/useDashboardStore';
 import { RoomZoomCanvas } from './RoomZoomCanvas';
 
 type ResizeObserverCallback = (entries: Array<ResizeObserverEntry>) => void;
@@ -49,7 +49,13 @@ describe('RoomZoomCanvas', () => {
     }
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders a mini-map and exits room zoom on click', async () => {
+    vi.useFakeTimers();
+
     const model: FloorplanModel = {
       defaultFloorId: 'ground',
       floors: [
@@ -86,7 +92,7 @@ describe('RoomZoomCanvas', () => {
     fireEvent.click(exitButton);
 
     await act(async () => {
-      await Promise.resolve();
+      vi.advanceTimersByTime(ROOM_ZOOM_TRANSITION_MS);
     });
 
     expect(useDashboardStore.getState().roomZoom.mode).toBe('none');

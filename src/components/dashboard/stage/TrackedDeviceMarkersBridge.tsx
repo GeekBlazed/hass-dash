@@ -264,8 +264,11 @@ const upsertAvatar = (
 
   if (avatarUrl) {
     prefetchAvatarUrl(avatarUrl);
-    image.setAttribute('href', avatarUrl);
-    image.setAttribute('xlink:href', avatarUrl);
+    const currentHref = image.getAttribute('href') ?? image.getAttribute('xlink:href') ?? '';
+    if (currentHref !== avatarUrl) {
+      image.setAttribute('href', avatarUrl);
+      image.setAttribute('xlink:href', avatarUrl);
+    }
     image.removeAttribute('display');
 
     text.setAttribute('display', 'none');
@@ -274,8 +277,8 @@ const upsertAvatar = (
   }
 
   // No avatar: hide the image and show initials.
-  image.removeAttribute('href');
-  image.removeAttribute('xlink:href');
+  if (image.hasAttribute('href')) image.removeAttribute('href');
+  if (image.hasAttribute('xlink:href')) image.removeAttribute('xlink:href');
   image.setAttribute('display', 'none');
 
   const desired = (initials ?? '').trim().toUpperCase();

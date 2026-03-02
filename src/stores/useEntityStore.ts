@@ -30,10 +30,20 @@ interface EntityStateStore {
   lastUpdatedAt: number | null;
 
   /**
-   * Entity ids labeled "Household" in the Home Assistant entity registry.
+   * Entity ids labeled "hass-dash" in the Home Assistant entity registry.
+   *
+   * Note: historically this was named `householdEntityIds`. Keep that property
+   * for now (back-compat) but prefer `hassDashEntityIds` for new code.
    *
    * Stored as a Record for easy lookups and to avoid persisting potentially
    * large/volatile registry metadata.
+   */
+  hassDashEntityIds: Record<string, true>;
+
+  /**
+   * Back-compat alias for `hassDashEntityIds`.
+   *
+   * TODO: migrate callers and remove.
    */
   householdEntityIds: Record<string, true>;
 
@@ -41,6 +51,7 @@ interface EntityStateStore {
   upsert: (state: HaEntityState) => void;
   upsertMany: (states: ReadonlyArray<HaEntityState>) => void;
   optimisticSetState: (entityId: string, nextState: string) => void;
+  setHassDashEntityIds: (entityIds: Iterable<string>) => void;
   setHouseholdEntityIds: (entityIds: Iterable<string>) => void;
   clear: () => void;
 }
@@ -51,6 +62,7 @@ export const useEntityStore = create<EntityStateStore>()(
       (set) => ({
         entitiesById: {},
         lastUpdatedAt: null,
+        hassDashEntityIds: {},
         householdEntityIds: {},
 
         setAll: (states) => {
@@ -101,14 +113,27 @@ export const useEntityStore = create<EntityStateStore>()(
           );
         },
 
+        setHassDashEntityIds: (entityIds) => {
+          const lookup = Object.fromEntries(
+            Array.from(entityIds, (id) => [id, true as const])
+          ) as Record<string, true>;
+          set({ hassDashEntityIds: lookup, householdEntityIds: lookup });
+        },
+
         setHouseholdEntityIds: (entityIds) => {
-          set({
-            householdEntityIds: Object.fromEntries(Array.from(entityIds, (id) => [id, true])),
-          });
+          const lookup = Object.fromEntries(
+            Array.from(entityIds, (id) => [id, true as const])
+          ) as Record<string, true>;
+          set({ hassDashEntityIds: lookup, householdEntityIds: lookup });
         },
 
         clear: () => {
-          set({ entitiesById: {}, lastUpdatedAt: null, householdEntityIds: {} });
+          set({
+            entitiesById: {},
+            lastUpdatedAt: null,
+            hassDashEntityIds: {},
+            householdEntityIds: {},
+          });
         },
       }),
       {

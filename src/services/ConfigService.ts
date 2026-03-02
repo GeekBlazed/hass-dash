@@ -1,5 +1,6 @@
 import { injectable } from 'inversify';
 import type { IConfigService } from '../interfaces/IConfigService';
+import { getAppVersion } from '../pwa/appVersion';
 
 /**
  * Configuration Service Implementation
@@ -14,7 +15,7 @@ export class ConfigService implements IConfigService {
    * Defaults to '0.1.0' if not set
    */
   getAppVersion(): string {
-    return import.meta.env.VITE_APP_VERSION || '0.1.0';
+    return getAppVersion();
   }
 
   /**

@@ -5,6 +5,7 @@ import { useEntityStore } from './useEntityStore';
 const createInitialEntityState = () => ({
   entitiesById: {},
   lastUpdatedAt: null,
+  hassDashEntityIds: {},
   householdEntityIds: {},
 });
 
@@ -119,11 +120,14 @@ describe('useEntityStore', () => {
     useEntityStore.getState().clear();
     expect(useEntityStore.getState().entitiesById).toEqual({});
     expect(useEntityStore.getState().lastUpdatedAt).toBeNull();
+    expect(useEntityStore.getState().hassDashEntityIds).toEqual({});
     expect(useEntityStore.getState().householdEntityIds).toEqual({});
   });
 
   it('setHouseholdEntityIds() updates a non-persisted lookup set', async () => {
     useEntityStore.getState().setHouseholdEntityIds(['sensor.a', 'sensor.b']);
+    expect(useEntityStore.getState().hassDashEntityIds['sensor.a']).toBe(true);
+    expect(useEntityStore.getState().hassDashEntityIds['sensor.b']).toBe(true);
     expect(useEntityStore.getState().householdEntityIds['sensor.a']).toBe(true);
     expect(useEntityStore.getState().householdEntityIds['sensor.b']).toBe(true);
 
@@ -139,11 +143,22 @@ describe('useEntityStore', () => {
 
     const parsed =
       typeof raw === 'string'
-        ? (JSON.parse(raw) as { state?: { householdEntityIds?: unknown } })
-        : (raw as { state?: { householdEntityIds?: unknown } });
+        ? (JSON.parse(raw) as {
+            state?: { householdEntityIds?: unknown; hassDashEntityIds?: unknown };
+          })
+        : (raw as { state?: { householdEntityIds?: unknown; hassDashEntityIds?: unknown } });
 
     // Guardrail: registry-derived metadata should not be persisted.
     expect(parsed.state?.householdEntityIds).toBeUndefined();
+    expect(parsed.state?.hassDashEntityIds).toBeUndefined();
+  });
+
+  it('setHassDashEntityIds() updates a non-persisted lookup set', async () => {
+    useEntityStore.getState().setHassDashEntityIds(['sensor.a', 'sensor.b']);
+    expect(useEntityStore.getState().hassDashEntityIds['sensor.a']).toBe(true);
+    expect(useEntityStore.getState().hassDashEntityIds['sensor.b']).toBe(true);
+    expect(useEntityStore.getState().householdEntityIds['sensor.a']).toBe(true);
+    expect(useEntityStore.getState().householdEntityIds['sensor.b']).toBe(true);
   });
 
   it('persists entitiesById and lastUpdatedAt', async () => {
@@ -220,6 +235,7 @@ describe('useEntityStore', () => {
     const partialize = options.partialize as unknown as (state: {
       entitiesById: Record<string, HaEntityState>;
       lastUpdatedAt: number | null;
+      hassDashEntityIds?: Record<string, true>;
       householdEntityIds?: Record<string, true>;
     }) => { entitiesById: Record<string, HaEntityState>; lastUpdatedAt: number | null };
 

@@ -219,6 +219,7 @@ describe('HomeAssistantEntityStoreController', () => {
       { entity_id: 'device_tracker.phone_1', state: 'home', attributes: {} },
       { entity_id: 'person.alice', state: 'home', attributes: {} },
       { entity_id: 'light.kitchen', state: 'on', attributes: {} },
+      { entity_id: 'camera.front_porch', state: 'idle', attributes: {} },
     ]);
 
     const subscribeToStateChanges = vi.fn().mockResolvedValue({
@@ -236,6 +237,7 @@ describe('HomeAssistantEntityStoreController', () => {
           'light.kitchen',
           'device_tracker.phone_1',
           'person.alice',
+          'camera.front_porch',
         ]);
       }
       return new Set();
@@ -277,6 +279,7 @@ describe('HomeAssistantEntityStoreController', () => {
         expect.objectContaining({ entity_id: 'light.kitchen' }),
         expect.objectContaining({ entity_id: 'device_tracker.phone_1' }),
         expect.objectContaining({ entity_id: 'person.alice' }),
+        expect.objectContaining({ entity_id: 'camera.front_porch' }),
       ])
     );
 
@@ -292,6 +295,7 @@ describe('HomeAssistantEntityStoreController', () => {
         'light.kitchen',
         'device_tracker.phone_1',
         'person.alice',
+        'camera.front_porch',
       ])
     );
     expect(passedEntityIds).not.toEqual(expect.arrayContaining(['sensor.radar_spam']));

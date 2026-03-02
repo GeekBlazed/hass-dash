@@ -131,6 +131,14 @@ export class QueuedHomeAssistantClient implements IHomeAssistantClient {
     }
   }
 
+  sendCommand(command: Record<string, unknown>): Promise<unknown> {
+    if (!this.raw.sendCommand) {
+      return Promise.reject(new Error('sendCommand is not supported by this client'));
+    }
+
+    return this.raw.sendCommand(command);
+  }
+
   getEntityRegistry(): Promise<unknown[]> {
     if (!this.raw.getEntityRegistry) {
       return Promise.reject(new Error('getEntityRegistry is not supported by this client'));
