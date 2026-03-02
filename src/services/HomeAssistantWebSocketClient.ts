@@ -443,7 +443,7 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     }
   }
 
-  private async sendCommand(command: Record<string, unknown>): Promise<unknown> {
+  async sendCommand(command: Record<string, unknown>): Promise<unknown> {
     const id = this.allocateId();
     return this.sendRawCommand(id, { id, ...command });
   }

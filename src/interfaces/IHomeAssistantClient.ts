@@ -55,6 +55,15 @@ export interface IHomeAssistantClient {
   callService(params: HaCallServiceParams): Promise<HaCallServiceResult>;
 
   /**
+   * Optional: Generic Home Assistant WebSocket command escape hatch.
+   *
+   * Prefer higher-level methods (getStates, callService, registries, etc.) where possible.
+   * This exists for commands that don't yet have a dedicated method on this interface
+   * (e.g. `camera/stream`).
+   */
+  sendCommand?(command: Record<string, unknown>): Promise<unknown>;
+
+  /**
    * Optional: Fetch entity registry entries via the Home Assistant WebSocket API.
    *
    * Not all client implementations need to support this, but it's preferred for

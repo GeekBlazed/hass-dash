@@ -20,6 +20,8 @@ export const TYPES = {
 
   ILightService: Symbol.for('ILightService'),
 
+  ICameraService: Symbol.for('ICameraService'),
+
   IHttpClient: Symbol.for('IHttpClient'),
   IWebSocketService: Symbol.for('IWebSocketService'),
   IEntityService: Symbol.for('IEntityService'),
