@@ -45,11 +45,25 @@ if (!process.env.VITEST_COVERAGE_PROVIDER) {
 }
 
 // Ensure we actually emit a browsable report.
-if (
-  typeof process.env.VITEST_COVERAGE_REPORTERS !== 'string' ||
-  process.env.VITEST_COVERAGE_REPORTERS.trim() === ''
-) {
-  process.env.VITEST_COVERAGE_REPORTERS = 'text-summary,html';
+{
+  const raw =
+    typeof process.env.VITEST_COVERAGE_REPORTERS === 'string'
+      ? process.env.VITEST_COVERAGE_REPORTERS
+      : '';
+
+  const normalized = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  // If the environment already specifies reporters, respect it, but ensure we still
+  // produce a file-backed report by default.
+  const hasFileReporter = normalized.includes('html') || normalized.includes('lcovonly');
+  const next = normalized.length === 0 ? ['text-summary', 'html'] : normalized;
+  if (!hasFileReporter) next.push('html');
+  if (!next.includes('text-summary')) next.unshift('text-summary');
+
+  process.env.VITEST_COVERAGE_REPORTERS = Array.from(new Set(next)).join(',');
 }
 
 const vitestEntry = 'node_modules/vitest/vitest.mjs';

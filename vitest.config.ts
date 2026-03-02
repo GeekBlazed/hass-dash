@@ -26,8 +26,11 @@ function getCoverageReporters(): Array<'text-summary' | 'lcovonly' | 'html'> {
     if (items.length > 0) return items;
   }
 
-  // Lcov generation can be surprisingly memory hungry on Windows.
-  if (process.platform === 'win32') return ['text-summary'];
+  // Prefer a file-producing reporter by default so `pnpm test:coverage` actually
+  // creates a report directory. HTML is the most immediately useful locally.
+  // If this ever proves too heavy on a given machine, override with:
+  //   VITEST_COVERAGE_REPORTERS=text-summary
+  if (process.platform === 'win32') return ['text-summary', 'html'];
   return ['text-summary', 'lcovonly'];
 }
 
@@ -105,6 +108,12 @@ export default defineConfig({
       // `text` is very verbose (full per-file table). `text-summary` keeps CLI output readable.
       // Keep report generation lightweight to avoid OOM during coverage runs.
       reporter: getCoverageReporters(),
+      // Be explicit about where reports land (Vitest defaults can vary across providers).
+      reportsDirectory: 'coverage',
+      // Vitest's v8 provider writes per-worker temp files under `coverage/.tmp/`.
+      // On Windows, we occasionally see ENOENT during writes when the directory is cleaned
+      // while workers are still starting up. Keeping the directory stable avoids that.
+      clean: process.platform !== 'win32',
       // Coverage report generation can be surprisingly memory hungry when it processes many files.
       // Keep this low to avoid OOM in v8 provider result processing on Windows.
       processingConcurrency: 1,
