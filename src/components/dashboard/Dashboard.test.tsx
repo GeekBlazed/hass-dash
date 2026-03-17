@@ -154,26 +154,33 @@ describe('Dashboard', () => {
     expect(camerasPanel).toHaveClass('is-hidden');
 
     await user.click(lightingButton);
+    const lightingPanelAfterLightingClick = container.querySelector('#lighting-panel');
+    const climatePanelAfterLightingClick = container.querySelector('#climate-panel');
     expect(lightingButton).toHaveAttribute('aria-expanded', 'true');
     expect(climateButton).toHaveAttribute('aria-expanded', 'false');
-    expect(lightingPanel).not.toHaveClass('is-hidden');
-    expect(climatePanel).toHaveClass('is-hidden');
+    expect(lightingPanelAfterLightingClick).not.toHaveClass('is-hidden');
+    expect(climatePanelAfterLightingClick).toHaveClass('is-hidden');
 
     await user.click(agendaButton);
+    const agendaPanelAfterAgendaClick = container.querySelector('#agenda');
+    const lightingPanelAfterAgendaClick = container.querySelector('#lighting-panel');
     expect(agendaButton).toHaveAttribute('aria-expanded', 'true');
     expect(lightingButton).toHaveAttribute('aria-expanded', 'false');
-    expect(agendaPanel).not.toHaveClass('is-hidden');
-    expect(lightingPanel).toHaveClass('is-hidden');
+    expect(agendaPanelAfterAgendaClick).not.toHaveClass('is-hidden');
+    expect(lightingPanelAfterAgendaClick).toHaveClass('is-hidden');
 
     await user.click(camerasButton);
+    const camerasPanelAfterCamerasClick = container.querySelector('#cameras-panel');
+    const agendaPanelAfterCamerasClick = container.querySelector('#agenda');
     expect(camerasButton).toHaveAttribute('aria-expanded', 'true');
     expect(agendaButton).toHaveAttribute('aria-expanded', 'false');
-    expect(camerasPanel).not.toHaveClass('is-hidden');
-    expect(agendaPanel).toHaveClass('is-hidden');
+    expect(camerasPanelAfterCamerasClick).not.toHaveClass('is-hidden');
+    expect(agendaPanelAfterCamerasClick).toHaveClass('is-hidden');
 
     await user.click(camerasButton);
+    const camerasPanelAfterClose = container.querySelector('#cameras-panel');
     expect(camerasButton).toHaveAttribute('aria-expanded', 'false');
-    expect(camerasPanel).toHaveClass('is-hidden');
+    expect(camerasPanelAfterClose).toHaveClass('is-hidden');
   });
 
   it('should include the lighting empty state copy', async () => {
@@ -182,6 +189,6 @@ describe('Dashboard', () => {
 
     await user.click(screen.getByRole('button', { name: /^lighting$/i }));
 
-    expect(screen.getByText('There are no lights on.')).toBeInTheDocument();
+    expect(await screen.findByText('There are no lights on.')).toBeInTheDocument();
   });
 });
