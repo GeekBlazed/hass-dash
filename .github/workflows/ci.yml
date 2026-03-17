@@ -10,6 +10,9 @@ jobs:
   ci:
     name: Lint, Typecheck, Test (Coverage), Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -40,13 +43,12 @@ jobs:
           VITEST_COVERAGE_REPORTERS: text-summary,lcovonly,html
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4
-        if: ${{ always() && secrets.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v5
+        if: always()
         with:
-          file: ./coverage/lcov.info
+          use_oidc: true
+          files: ./coverage/lcov.info
           fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload HTML coverage report (artifact)
         uses: actions/upload-artifact@v4
