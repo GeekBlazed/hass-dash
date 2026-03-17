@@ -5,7 +5,10 @@ import { normalizeFloorplan } from '../features/model/floorplan';
 import { parseYaml } from '../features/parsing/parseYaml';
 import type { IFloorplanDataSource } from '../interfaces/IFloorplanDataSource';
 
-const FLOORPLAN_YAML_URL = '/data/floorplan.yaml';
+// In production, the build emits a pre-converted floorplan.json so the browser
+// can use the native JSON parser instead of downloading the yaml library chunk.
+// In development, use the YAML source file directly for easier editing.
+const FLOORPLAN_URL = import.meta.env.DEV ? '/data/floorplan.yaml' : '/data/floorplan.json';
 const FLOORPLAN_SCHEMA_URL = '/schemas/floorplan.schema.json';
 
 const MAX_FORMATTED_ERRORS = 10;
@@ -52,19 +55,30 @@ const getFloorplanValidator = async (): Promise<ValidateFunction<FloorplanModel>
 @injectable()
 export class PublicFloorplanYamlDataSource implements IFloorplanDataSource {
   async getFloorplan(): Promise<FloorplanModel> {
-    const response = await fetch(FLOORPLAN_YAML_URL);
+    const response = await fetch(FLOORPLAN_URL);
 
     if (!response.ok) {
-      throw new Error(`Failed to load ${FLOORPLAN_YAML_URL} (HTTP ${response.status})`);
+      throw new Error(`Failed to load ${FLOORPLAN_URL} (HTTP ${response.status})`);
     }
 
-    const text = await response.text();
     let doc: unknown;
-    try {
-      doc = await parseYaml(text);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to parse YAML from ${FLOORPLAN_YAML_URL}: ${message}`);
+    if (import.meta.env.DEV) {
+      // Development: YAML source file — parse with the yaml library.
+      const text = await response.text();
+      try {
+        doc = await parseYaml(text);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to parse YAML from ${FLOORPLAN_URL}: ${message}`);
+      }
+    } else {
+      // Production: pre-built JSON — native JSON.parse, no extra chunk download.
+      try {
+        doc = (await response.json()) as unknown;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to parse JSON from ${FLOORPLAN_URL}: ${message}`);
+      }
     }
 
     const model = normalizeFloorplan(doc);
@@ -80,7 +94,7 @@ export class PublicFloorplanYamlDataSource implements IFloorplanDataSource {
       const validate = await getFloorplanValidator();
       if (!validate(model)) {
         const details = formatAjvErrors(validate.errors);
-        throw new Error(`Floorplan schema validation failed for ${FLOORPLAN_YAML_URL}: ${details}`);
+        throw new Error(`Floorplan schema validation failed for ${FLOORPLAN_URL}: ${details}`);
       }
     }
 
