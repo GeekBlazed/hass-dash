@@ -20,6 +20,7 @@ vi.mock('@iconify/react', () => {
 // Vitest DOM environments (jsdom/happy-dom) don't reliably provide IndexedDB.
 // We use fake-indexeddb so persisted state + offline queues can be tested.
 if (typeof indexedDB === 'undefined') {
+  // @ts-expect-error fake-indexeddb exports currently prevent TS from resolving bundled d.ts.
   await import('fake-indexeddb/auto');
 }
 
