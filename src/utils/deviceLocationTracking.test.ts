@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { deriveBaseUrlFromWebSocketUrl } from '../../../utils/deviceLocationTracking';
+import { deriveBaseUrlFromWebSocketUrl } from './deviceLocationTracking';
 
 describe('deriveBaseUrlFromWebSocketUrl', () => {
   it('returns normalized base URL for valid ws/wss URLs', () => {
