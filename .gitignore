@@ -36,5 +36,9 @@ lighthouseci/
 *.sw?
 
 **/*--IGNORE*
-public/data/
-public/data/**
+
+# public/data/ is mostly runtime/generated.
+# floorplan.demo.yaml is committed as the CI/test build input.
+# floorplan.yaml (private real layout) is intentionally gitignored.
+public/data/*
+!public/data/floorplan.demo.yaml
