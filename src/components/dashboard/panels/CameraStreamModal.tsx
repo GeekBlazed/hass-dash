@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { deriveBaseUrlFromWebSocketUrl } from '../../../utils/deviceLocationTracking';
 
 import { TYPES } from '../../../core/types';
 import { useService } from '../../../hooks/useService';
@@ -15,6 +16,20 @@ type CameraStreamModalProps = {
 };
 
 const STREAM_START_TIMEOUT_MS = 6000;
+const CAMERA_TITLE_FONT_SIZE_EM = 2;
+const CAMERA_TITLE_MARGIN_LEFT_PX = 20;
+const CAMERA_TITLE_MARGIN_TOP_PX = 10;
+const CAMERA_TITLE_SHADOW_X_PX = 4;
+const CAMERA_TITLE_SHADOW_Y_PX = 4;
+const CAMERA_TITLE_SHADOW_BLUR_PX = 10;
+const CAMERA_TITLE_TEXT_COLOR = 'black';
+
+const CAMERA_TITLE_STYLE: CSSProperties = {
+  fontSize: `${CAMERA_TITLE_FONT_SIZE_EM}em`,
+  marginLeft: CAMERA_TITLE_MARGIN_LEFT_PX,
+  marginTop: CAMERA_TITLE_MARGIN_TOP_PX,
+  textShadow: `${CAMERA_TITLE_SHADOW_X_PX}px ${CAMERA_TITLE_SHADOW_Y_PX}px ${CAMERA_TITLE_SHADOW_BLUR_PX}px ${CAMERA_TITLE_TEXT_COLOR}`,
+};
 
 function getDisplayName(entity: HaEntityState | undefined): string {
   if (!entity) return '';
@@ -32,24 +47,6 @@ function classifyStreamUrl(url: string): 'hls' | 'mjpeg' | 'unknown' {
   if (lower.includes('mjpeg') || lower.includes('.mjpg') || lower.includes('.mjpeg'))
     return 'mjpeg';
   return 'unknown';
-}
-
-function deriveBaseUrlFromWebSocketUrl(webSocketUrl: string): string | undefined {
-  try {
-    const url = new URL(webSocketUrl.trim());
-
-    if (url.protocol === 'ws:') url.protocol = 'http:';
-    else if (url.protocol === 'wss:') url.protocol = 'https:';
-    else return undefined;
-
-    url.pathname = '/';
-    url.search = '';
-    url.hash = '';
-
-    return url.toString();
-  } catch {
-    return undefined;
-  }
 }
 
 function getEntityPictureUrl(
@@ -226,12 +223,7 @@ export function CameraStreamModal({ entityId, open, onOpenChange }: CameraStream
         <div className="relative h-full w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
           <div
             className="pointer-events-none absolute top-0 left-0 z-20 rounded-md bg-black/50 px-2 py-1 leading-none font-medium text-white"
-            style={{
-              fontSize: '2em',
-              marginLeft: 20,
-              marginTop: 10,
-              textShadow: '4px 4px 10px black',
-            }}
+            style={CAMERA_TITLE_STYLE}
           >
             {cameraName || entityId}
           </div>
