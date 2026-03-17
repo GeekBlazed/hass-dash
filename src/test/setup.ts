@@ -74,7 +74,9 @@ if (typeof (globalThis as unknown as { ResizeObserver?: unknown }).ResizeObserve
   type ResizeObserverCallback = (entries: Array<ResizeObserverEntry>) => void;
 
   class MockResizeObserver {
-    constructor(_cb: ResizeObserverCallback) {}
+    constructor(cb: ResizeObserverCallback) {
+      void cb;
+    }
     observe(): void {}
     unobserve(): void {}
     disconnect(): void {}

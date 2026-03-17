@@ -1,23 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { TYPES } from '../../../core/types';
 import { useService } from '../../../hooks/useService';
 import type { ICameraService } from '../../../interfaces/ICameraService';
+import type { IHomeAssistantConnectionConfig } from '../../../interfaces/IHomeAssistantConnectionConfig';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityId, HaEntityState } from '../../../types/home-assistant';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '../../ui/Dialog';
+import { Dialog, DialogClose, DialogContent } from '../../ui/Dialog';
 
 type CameraStreamModalProps = {
   entityId: HaEntityId;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
+
+const STREAM_START_TIMEOUT_MS = 6000;
 
 function getDisplayName(entity: HaEntityState | undefined): string {
   if (!entity) return '';
@@ -30,16 +27,35 @@ function getDisplayName(entity: HaEntityState | undefined): string {
 function classifyStreamUrl(url: string): 'hls' | 'mjpeg' | 'unknown' {
   const lower = url.toLowerCase();
   if (lower.includes('.m3u8') || lower.includes('application/vnd.apple.mpegurl')) return 'hls';
+  // Home Assistant's MJPEG proxy stream endpoint.
+  if (lower.includes('/api/camera_proxy_stream/')) return 'mjpeg';
   if (lower.includes('mjpeg') || lower.includes('.mjpg') || lower.includes('.mjpeg'))
     return 'mjpeg';
   return 'unknown';
 }
 
-function blobToObjectUrl(blob: Blob): string {
-  return URL.createObjectURL(blob);
+function deriveBaseUrlFromWebSocketUrl(webSocketUrl: string): string | undefined {
+  try {
+    const url = new URL(webSocketUrl.trim());
+
+    if (url.protocol === 'ws:') url.protocol = 'http:';
+    else if (url.protocol === 'wss:') url.protocol = 'https:';
+    else return undefined;
+
+    url.pathname = '/';
+    url.search = '';
+    url.hash = '';
+
+    return url.toString();
+  } catch {
+    return undefined;
+  }
 }
 
-function getEntityPictureUrl(entity: HaEntityState | undefined): string | null {
+function getEntityPictureUrl(
+  entity: HaEntityState | undefined,
+  haBaseUrl: string | undefined
+): string | null {
   const attrs = entity?.attributes as Record<string, unknown> | undefined;
   const raw = typeof attrs?.entity_picture === 'string' ? attrs.entity_picture.trim() : '';
   if (!raw) return null;
@@ -54,9 +70,17 @@ function getEntityPictureUrl(entity: HaEntityState | undefined): string | null {
     return raw;
   }
 
-  // If it's a path (common: `/api/camera_proxy/...?...token=...`) keep it.
-  // In dev, this will go through Vite's `/api` proxy.
-  if (raw.startsWith('/')) return raw;
+  // If it's a path (common: `/api/camera_proxy/...?...token=...`), prefer an
+  // absolute HA URL so media loads directly (no CORS for <img>/<video> and no
+  // Vite proxy involvement).
+  if (raw.startsWith('/')) {
+    if (!haBaseUrl) return raw;
+    try {
+      return new URL(raw, haBaseUrl).toString();
+    } catch {
+      return raw;
+    }
+  }
 
   // Best-effort for odd relative values.
   try {
@@ -66,9 +90,21 @@ function getEntityPictureUrl(entity: HaEntityState | undefined): string | null {
   }
 }
 
-function addCacheBuster(url: string): string {
-  const separator = url.includes('?') ? '&' : '?';
-  return `${url}${separator}_t=${Date.now()}`;
+function deriveProxyStreamUrlFromEntityPicture(entityPictureUrl: string): string | null {
+  // If the camera entity_picture points at `/api/camera_proxy/<entity>?token=...`
+  // then the MJPEG stream is typically available at `/api/camera_proxy_stream/<entity>?token=...`.
+  try {
+    const url = new URL(entityPictureUrl);
+    if (!url.pathname.startsWith('/api/camera_proxy/')) return null;
+    url.pathname = url.pathname.replace('/api/camera_proxy/', '/api/camera_proxy_stream/');
+    return url.toString();
+  } catch {
+    // If it's a path-only value, do a simple transform.
+    if (entityPictureUrl.startsWith('/api/camera_proxy/')) {
+      return entityPictureUrl.replace('/api/camera_proxy/', '/api/camera_proxy_stream/');
+    }
+    return null;
+  }
 }
 
 function canPlayHlsNatively(): boolean {
@@ -80,30 +116,63 @@ function canPlayHlsNatively(): boolean {
 
 export function CameraStreamModal({ entityId, open, onOpenChange }: CameraStreamModalProps) {
   const cameraService = useService<ICameraService>(TYPES.ICameraService);
+  const connectionConfig = useService<IHomeAssistantConnectionConfig>(
+    TYPES.IHomeAssistantConnectionConfig
+  );
   const entitiesById = useEntityStore((s) => s.entitiesById);
 
   const entity = entitiesById[entityId];
   const cameraName = useMemo(() => getDisplayName(entity), [entity]);
-  const entityPictureUrl = useMemo(() => getEntityPictureUrl(entity), [entity]);
+
+  const haBaseUrl = useMemo(() => {
+    const cfg = connectionConfig.getConfig();
+    const base = cfg.baseUrl?.trim();
+    if (base) return base;
+
+    const ws = connectionConfig.getEffectiveWebSocketUrl();
+    return ws ? deriveBaseUrlFromWebSocketUrl(ws) : undefined;
+  }, [connectionConfig]);
+
+  const entityPictureUrl = useMemo(
+    () => getEntityPictureUrl(entity, haBaseUrl),
+    [entity, haBaseUrl]
+  );
+
+  const entityPictureStreamUrl = useMemo(() => {
+    if (!entityPictureUrl) return null;
+    return deriveProxyStreamUrlFromEntityPicture(entityPictureUrl);
+  }, [entityPictureUrl]);
 
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
-  const lastSnapshotUrlRef = useRef<string | null>(null);
+  const [streamStarted, setStreamStarted] = useState(false);
+  const [streamStartTimedOut, setStreamStartTimedOut] = useState(false);
 
   const streamKind = useMemo(() => {
     if (!streamUrl) return null;
     return classifyStreamUrl(streamUrl);
   }, [streamUrl]);
 
-  const shouldUseSnapshotFallback = useMemo(() => {
-    // If we can't obtain a stream URL, or if HA gives us HLS but the browser can't play it,
-    // fall back to periodically refreshed proxy snapshots.
-    if (!streamUrl) return true;
-    if (streamKind === 'hls' && !canPlayHlsNatively()) return true;
-    return false;
-  }, [streamUrl, streamKind]);
+  const canAttemptStream = useMemo(() => {
+    if (!streamUrl) return false;
+    if (streamKind === 'hls' && !canPlayHlsNatively()) return false;
+    return true;
+  }, [streamKind, streamUrl]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (!streamUrl) return;
+    if (!canAttemptStream) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setStreamStartTimedOut(true);
+    }, STREAM_START_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [canAttemptStream, open, streamUrl]);
 
   useEffect(() => {
     if (!open) return;
@@ -113,6 +182,16 @@ export function CameraStreamModal({ entityId, open, onOpenChange }: CameraStream
     async function load(): Promise<void> {
       setError(null);
       setStreamUrl(null);
+      setStreamStarted(false);
+      setStreamStartTimedOut(false);
+
+      // Prefer the MJPEG proxy stream used by the official Home Assistant dashboard.
+      // Avoid pre-probing: multipart streams can be slow to deliver the first frame,
+      // and probing can mis-detect them as "not multipart".
+      if (entityPictureStreamUrl) {
+        setStreamUrl(entityPictureStreamUrl);
+        return;
+      }
 
       if (!cameraService.getStreamUrl) {
         return;
@@ -133,56 +212,7 @@ export function CameraStreamModal({ entityId, open, onOpenChange }: CameraStream
     return () => {
       cancelled = true;
     };
-  }, [cameraService, entityId, open]);
-
-  useEffect(() => {
-    if (!open) return;
-    if (!shouldUseSnapshotFallback) return;
-
-    let cancelled = false;
-    let intervalId: number | null = null;
-
-    async function loadSnapshot(): Promise<void> {
-      // Preferred: use the entity-provided HA proxy URL (often includes a token).
-      // This avoids custom proxy URL construction and avoids requiring auth headers.
-      if (entityPictureUrl) {
-        setSnapshotUrl(addCacheBuster(entityPictureUrl));
-        return;
-      }
-
-      // Fallback: blob-fetch via the camera service.
-      try {
-        const blob = await cameraService.fetchProxyImage(entityId);
-        if (cancelled) return;
-
-        const nextUrl = blobToObjectUrl(blob);
-        const prev = lastSnapshotUrlRef.current;
-        lastSnapshotUrlRef.current = nextUrl;
-        setSnapshotUrl(nextUrl);
-
-        if (prev) URL.revokeObjectURL(prev);
-      } catch (e: unknown) {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : 'Failed to load camera snapshot');
-      }
-    }
-
-    void loadSnapshot();
-    intervalId = window.setInterval(() => {
-      void loadSnapshot();
-    }, 1500);
-
-    return () => {
-      cancelled = true;
-      if (intervalId !== null) window.clearInterval(intervalId);
-
-      // Only revoke object URLs when we created them from blobs.
-      const prev = lastSnapshotUrlRef.current;
-      lastSnapshotUrlRef.current = null;
-      setSnapshotUrl(null);
-      if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
-    };
-  }, [cameraService, entityId, entityPictureUrl, open, shouldUseSnapshotFallback]);
+  }, [cameraService, entityId, entityPictureStreamUrl, open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,56 +220,97 @@ export function CameraStreamModal({ entityId, open, onOpenChange }: CameraStream
         variant="fullscreen"
         insetPx={40}
         overlayClassName="bg-black/80"
-        className="p-4"
+        className="border-0 bg-transparent p-0 shadow-none"
+        showCloseButton={false}
       >
-        <div className="flex h-full flex-col">
+        <div className="relative h-full w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
           <div
-            className="flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-4 pr-14 dark:border-gray-700"
-            style={{ padding: '16px' }}
+            className="pointer-events-none absolute top-0 left-0 z-20 rounded-md bg-black/50 px-2 py-1 leading-none font-medium text-white"
+            style={{
+              fontSize: '2em',
+              marginLeft: 20,
+              marginTop: 10,
+              textShadow: '4px 4px 10px black',
+            }}
           >
-            <DialogHeader className="space-y-1 text-left">
-              <DialogTitle>{cameraName || entityId}</DialogTitle>
-              <DialogDescription>
-                {error ? error : 'Live view'}
-                {!error && shouldUseSnapshotFallback ? ' (snapshot fallback)' : ''}
-              </DialogDescription>
-            </DialogHeader>
+            {cameraName || entityId}
           </div>
 
-          <div className="flex flex-1 items-center justify-center overflow-hidden bg-black">
-            {!error && !shouldUseSnapshotFallback && streamUrl && streamKind === 'mjpeg' && (
-              <img
-                src={streamUrl}
-                alt={`Live stream from ${cameraName || entityId}`}
-                className="h-full w-full object-contain"
-              />
-            )}
+          <DialogClose asChild>
+            <button
+              type="button"
+              aria-label="Close"
+              className="absolute top-3 right-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-md bg-black/50 text-white opacity-90 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-white/70 focus:outline-none"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </DialogClose>
 
-            {!error && !shouldUseSnapshotFallback && streamUrl && streamKind !== 'mjpeg' && (
-              <video
-                src={streamUrl}
-                className="h-full w-full"
-                controls
-                autoPlay
-                playsInline
-                muted
-              />
-            )}
+          {!error && canAttemptStream && streamUrl && streamKind === 'mjpeg' && (
+            <img
+              src={streamUrl}
+              alt={`Live stream from ${cameraName || entityId}`}
+              className="absolute inset-0 h-full w-full object-cover"
+              onLoad={() => setStreamStarted(true)}
+              onError={() => {
+                setStreamStartTimedOut(true);
+                setError('Stream failed to start');
+              }}
+            />
+          )}
 
-            {!error && shouldUseSnapshotFallback && snapshotUrl && (
-              <img
-                src={snapshotUrl}
-                alt={`Live view from ${cameraName || entityId}`}
-                className="h-full w-full object-contain"
-              />
-            )}
+          {!error && canAttemptStream && streamUrl && streamKind !== 'mjpeg' && (
+            <video
+              src={streamUrl}
+              className="absolute inset-0 h-full w-full object-cover"
+              controls
+              autoPlay
+              playsInline
+              muted
+              onPlaying={() => setStreamStarted(true)}
+              onCanPlay={() => setStreamStarted(true)}
+              onStalled={() => {
+                setStreamStartTimedOut(true);
+                setError('Stream stalled');
+              }}
+              onError={() => {
+                setStreamStartTimedOut(true);
+                setError('Stream failed to start');
+              }}
+            />
+          )}
 
-            {!error && shouldUseSnapshotFallback && !snapshotUrl && (
-              <div className="px-6 text-sm text-white/80">Loading…</div>
-            )}
+          {!error && !!streamUrl && !canAttemptStream && (
+            <div className="absolute inset-0 flex items-center justify-center px-6 text-sm text-white/80">
+              Stream URL is not playable by this browser.
+            </div>
+          )}
 
-            {error && <div className="px-6 text-sm text-white/80">{error}</div>}
-          </div>
+          {!error && !streamUrl && (
+            <div className="absolute inset-0 flex items-center justify-center px-6 text-sm text-white/80">
+              Loading…
+            </div>
+          )}
+          {!error && !!streamUrl && !streamStarted && streamStartTimedOut && (
+            <div className="absolute inset-0 flex items-center justify-center px-6 text-sm text-white/80">
+              Stream is still connecting…
+            </div>
+          )}
+
+          {error && (
+            <div className="absolute inset-0 flex items-center justify-center px-6 text-sm text-white/80">
+              {error}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
