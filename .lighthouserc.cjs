@@ -15,6 +15,9 @@ module.exports = {
         '--disable-background-timer-throttling',
         '--disable-backgrounding-occluded-windows',
         '--disable-renderer-backgrounding',
+        // Keep Chrome launcher state/cache inside the workspace instead of temp roots.
+        '--user-data-dir=.lighthouseci/chrome-user-data',
+        '--disk-cache-dir=.lighthouseci/chrome-cache',
       ],
       settings: {
         // Use Desktop emulation so report screenshots reflect tablet/desktop layouts.

@@ -63,6 +63,10 @@ jobs:
 
       - name: Lighthouse CI (Performance + CWV)
         run: pnpm lighthouse
+        env:
+          # Keep lighthouse/chrome temp artifacts scoped to workspace paths.
+          TMPDIR: ${{ github.workspace }}/.lighthouseci/tmp
+          XDG_CACHE_HOME: ${{ github.workspace }}/.lighthouseci/cache
 
       - name: Upload Lighthouse reports (artifact)
         uses: actions/upload-artifact@v4
