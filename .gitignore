@@ -17,9 +17,7 @@ coverage
 # Lighthouse CI (generated reports / temp state)
 lighthouseci/
 .lighthouseci/
-# Guard against odd Windows-style temp path artifacts being created in repo root.
-C:\Users\*\AppData\Local\lighthouse.*
-C:\Users\*\AppData\Local\lighthouse.*/
+**\lighthouse.*
 
 # Environment variables
 .env
