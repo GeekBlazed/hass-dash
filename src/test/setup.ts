@@ -74,6 +74,7 @@ if (typeof (globalThis as unknown as { ResizeObserver?: unknown }).ResizeObserve
   type ResizeObserverCallback = (entries: Array<ResizeObserverEntry>) => void;
 
   class MockResizeObserver {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     constructor(_cb: ResizeObserverCallback) {}
     observe(): void {}
     unobserve(): void {}

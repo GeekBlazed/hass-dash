@@ -93,9 +93,8 @@ export function CameraDetailsPanel({
       const message = error instanceof Error ? error.message : String(error);
       setErrorMessage(message || 'Failed to load camera snapshot.');
     } finally {
-      if (!mountedRef.current) return;
-      if (requestId !== requestIdRef.current) return;
-      setIsLoading(false);
+      const shouldUpdate = mountedRef.current && requestId === requestIdRef.current;
+      if (shouldUpdate) setIsLoading(false);
     }
   }, [cameraService, entityId]);
 

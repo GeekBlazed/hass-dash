@@ -2,7 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { container } from '../../../core/di-container';
+import { TYPES } from '../../../core/types';
 import type { ICameraService } from '../../../interfaces/ICameraService';
+import type { IHomeAssistantConnectionConfig } from '../../../interfaces/IHomeAssistantConnectionConfig';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityState } from '../../../types/home-assistant';
 import { CamerasPanel } from './CamerasPanel';
@@ -119,7 +121,29 @@ describe('CamerasPanel', () => {
       fetchProxyImage,
     };
 
-    const getSpy = vi.spyOn(container, 'get').mockReturnValue(mockService);
+    const mockConnectionConfig: IHomeAssistantConnectionConfig = {
+      getConfig: () => ({
+        baseUrl: 'http://ha.example:8123',
+        webSocketUrl: 'ws://ha.example:8123/api/websocket',
+        accessToken: 'token',
+      }),
+      getEffectiveWebSocketUrl: () => 'ws://ha.example:8123/api/websocket',
+      getAccessToken: () => 'token',
+      validate: () => ({
+        isValid: true,
+        errors: [],
+        effectiveWebSocketUrl: 'ws://ha.example:8123/api/websocket',
+      }),
+      getOverrides: () => ({}),
+      setOverrides: () => {},
+      clearOverrides: () => {},
+    };
+
+    const getSpy = vi.spyOn(container, 'get').mockImplementation((serviceId: unknown) => {
+      if (serviceId === TYPES.ICameraService) return mockService;
+      if (serviceId === TYPES.IHomeAssistantConnectionConfig) return mockConnectionConfig;
+      throw new Error(`Unexpected service lookup in test: ${String(serviceId)}`);
+    });
 
     render(<CamerasPanel isHidden={false} />);
 

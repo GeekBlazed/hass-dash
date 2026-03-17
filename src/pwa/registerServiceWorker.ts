@@ -17,15 +17,10 @@ export function registerServiceWorker(): void {
   void (async () => {
     const { registerSW } = await import('virtual:pwa-register');
 
-    let updateServiceWorker: ((reloadPage?: boolean | undefined) => Promise<void>) | undefined;
-
-    updateServiceWorker = registerSW({
+    const updateServiceWorker = registerSW({
       immediate: true,
       onNeedRefresh() {
-        const applyUpdate = updateServiceWorker;
-        if (!applyUpdate) return;
-
-        updatePromptStore.show(() => applyUpdate(true));
+        updatePromptStore.show(() => updateServiceWorker(true));
       },
     });
   })();

@@ -74,13 +74,6 @@ export class HomeAssistantCameraService implements ICameraService {
     if (!streamUrl?.trim()) return null;
 
     const absolute = new URL(streamUrl, baseUrl);
-
-    // In dev, prefer same-origin paths so the Vite proxy can forward `/api/*`
-    // to Home Assistant without triggering browser CORS.
-    if (import.meta.env.DEV) {
-      return `${absolute.pathname}${absolute.search}${absolute.hash}`;
-    }
-
     return absolute.toString();
   }
 
