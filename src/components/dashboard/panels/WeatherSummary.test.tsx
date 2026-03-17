@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEntityStore } from '../../../stores/useEntityStore';
@@ -338,6 +338,8 @@ describe('WeatherSummary', () => {
     render(<WeatherSummary />);
 
     const icon = await screen.findByTestId('weather-icon');
-    expect(icon).toHaveAttribute('data-icon', 'mdi:weather-lightning-rainy');
+    await waitFor(() => {
+      expect(icon).toHaveAttribute('data-icon', 'mdi:weather-lightning-rainy');
+    });
   });
 });

@@ -79,6 +79,11 @@ function getCoverageThresholds():
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      'virtual:pwa-register': '/src/test/mocks/virtual-pwa-register.ts',
+    },
+  },
   test: {
     // Keep test discovery scoped to our repo.
     // (Vitest defaults exclude node_modules, but any custom exclude config risks

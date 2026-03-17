@@ -53,6 +53,13 @@
     <link rel="preload" href="/style.css" as="style" />
     <link href="/style.css" rel="stylesheet" media="print" onload="this.media = 'all'" />
     <noscript><link href="/style.css" rel="stylesheet" /></noscript>
+
+    <!--
+      Preload the floorplan data so the browser starts fetching it immediately,
+      in parallel with JS bundle execution. When React eventually calls
+      fetch('/data/floorplan.json'), the response is already in the network cache.
+    -->
+    <link rel="preload" href="/data/floorplan.json" as="fetch" crossorigin="anonymous" />
   </head>
   <body>
     <div id="root">

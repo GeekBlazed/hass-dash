@@ -2,6 +2,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+import { useEntityStore } from './stores/useEntityStore';
 
 async function renderAndSettle(ui: ReactElement): Promise<void> {
   render(ui);
@@ -15,11 +16,13 @@ describe('App', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/');
     window.sessionStorage.removeItem('hass-dash:devtools');
+    useEntityStore.getState().clear();
   });
 
   afterEach(() => {
     window.history.replaceState({}, '', '/');
     window.sessionStorage.removeItem('hass-dash:devtools');
+    useEntityStore.getState().clear();
     vi.unstubAllEnvs();
   });
 
@@ -79,5 +82,34 @@ describe('App', () => {
     window.history.replaceState({}, '', '/?debug');
     await renderAndSettle(<App />);
     expect(screen.getByRole('heading', { name: /dev tools/i })).toBeInTheDocument();
+  });
+
+  it('seeds LHCI demo light when requested and no light entities exist', async () => {
+    window.history.replaceState({}, '', '/?lhci=1&lhciSeedLights=1');
+
+    await renderAndSettle(<App />);
+
+    const entity = useEntityStore.getState().entitiesById['light.lhci_demo'];
+    expect(entity).toBeDefined();
+    expect(entity?.state).toBe('on');
+    expect(useEntityStore.getState().householdEntityIds['light.lhci_demo']).toBe(true);
+  });
+
+  it('does not seed LHCI demo light when another light already exists', async () => {
+    useEntityStore.getState().upsert({
+      entity_id: 'light.existing',
+      state: 'off',
+      attributes: { friendly_name: 'Existing Light' },
+      last_changed: '2026-01-01T00:00:00.000Z',
+      last_updated: '2026-01-01T00:00:00.000Z',
+      context: { id: 'ctx', parent_id: null, user_id: null },
+    });
+
+    window.history.replaceState({}, '', '/?lhci=1&lhciSeedLights=1');
+
+    await renderAndSettle(<App />);
+
+    expect(useEntityStore.getState().entitiesById['light.lhci_demo']).toBeUndefined();
+    expect(useEntityStore.getState().householdEntityIds['light.lhci_demo']).toBe(true);
   });
 });

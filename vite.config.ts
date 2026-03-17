@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react';
 import { readFileSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import type { Plugin } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -119,6 +120,57 @@ function robustCopyPublicDirPlugin() {
   };
 }
 
+/**
+ * Emits `dist/data/floorplan.json` at build time so the browser can do a fast
+ * `response.json()` instead of downloading the `yaml` library and parsing at
+ * runtime. JSON.parse is ~10x faster than YAML and requires no extra chunk.
+ */
+function floorplanJsonPlugin(): Plugin {
+  return {
+    name: 'floorplan-json',
+    apply: 'build',
+    async buildStart() {
+      const yamlPath = path.resolve(process.cwd(), 'public/data/floorplan.yaml');
+      const yamlText = await fs.readFile(yamlPath, 'utf-8');
+      const { parse } = await import('yaml');
+      this.emitFile({
+        type: 'asset',
+        fileName: 'data/floorplan.json',
+        source: JSON.stringify(parse(yamlText)),
+      });
+    },
+  };
+}
+
+/**
+ * Converts the render-blocking `<link rel="stylesheet">` that Vite injects for
+ * the app CSS into a non-blocking preload. The browser preloads the stylesheet
+ * at the same high priority, but painting can start before it arrives, giving
+ * an earlier FCP and more time for React to execute before LCP.
+ *
+ * Uses the well-known Filament Group pattern:
+ * https://www.filamentgroup.com/lab/load-css-simpler/
+ */
+function asyncCssPlugin(): Plugin {
+  return {
+    name: 'async-css',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        // Only target the Vite-injected app stylesheet (starts with /assets/).
+        // The public/style.css link already uses the media="print" trick.
+        return html.replace(
+          /<link rel="stylesheet" crossorigin href="(\/assets\/[^"]+\.css)">/g,
+          (_, href: string) =>
+            `<link rel="preload" as="style" crossorigin href="${href}" onload="this.onload=null;this.rel='stylesheet'">` +
+            `\n    <noscript><link rel="stylesheet" crossorigin href="${href}"></noscript>`,
+        );
+      },
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -216,6 +268,8 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      floorplanJsonPlugin(),
+      asyncCssPlugin(),
       robustCopyPublicDirPlugin(),
       VitePWA({
         registerType: 'autoUpdate',
@@ -277,7 +331,7 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,yaml}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,yaml,json}'],
           cacheId: `hass-dash-v${appVersion}`,
           cleanupOutdatedCaches: true,
           clientsClaim: true,
