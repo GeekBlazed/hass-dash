@@ -26,6 +26,14 @@ Background standards and process details are linked in the "Resources" section.
 - Respect DI and feature-flag patterns.
 - Prefer targeted tests first, then broader validation.
 
+## MCP Servers
+
+Developers are strongly encouraged to use the following MCP servers for AI agents, assistants, and chatbots when working with this repository:
+
+- `io.github.github/github-mcp-server` - gives the ability to read repositories and code files, manage issues and PRs, analyze code, and automate workflows.
+- `io.github.ChromeDevTools/chrome-devtools-mcp` - gives the ability to inspect and debug web applications in real time, which is especially useful for a React/Vite project like this one.
+- `microsoft/playwright-mcp` - gives the ability to automate browser interactions and end-to-end testing, which can help ensure that changes work correctly in a real user environment.
+
 ## Critical Repo Rules
 
 ### Dependency Injection (required)
@@ -114,6 +122,8 @@ When you change code in this repo, validation must include a production build.
 - Prefer running the most targeted tests first, then a broader suite if needed.
 
 ### Pull Request Requirements
+
+Always use the coding agent and the pull_request_template.md for PRs. Ensure the following before requesting review:
 
 - All CI checks passing
 - 80% code coverage maintained
