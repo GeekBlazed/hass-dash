@@ -10,6 +10,10 @@ vi.mock('../../hooks/useService', () => {
   };
 });
 
+vi.mock('../../hooks/useFeatureFlag', () => ({
+  useFeatureFlag: () => ({ isEnabled: true }),
+}));
+
 vi.mock('../../stores/useDashboardStore', () => {
   return {
     useDashboardStore: (selector: (s: unknown) => unknown) => selector(mockStore),

@@ -6,6 +6,7 @@ import type { IFloorplanDataSource } from '../../interfaces/IFloorplanDataSource
 import { useDashboardStore } from '../../stores/useDashboardStore';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardStage } from './DashboardStage';
+import { NotificationToasts } from './NotificationToasts';
 
 const LazyDashboardControllers = lazy(() =>
   import('./DashboardControllers').then((m) => ({ default: m.DashboardControllers }))
@@ -106,7 +107,8 @@ export function DashboardShell() {
     <div className={viewportClassName}>
       <Suspense fallback={null}>{shouldMountControllers && <LazyDashboardControllers />}</Suspense>
       <div className="frame" role="application" aria-label="Floorplan dashboard">
-        <div className="app">
+        <div className="app relative">
+          <NotificationToasts />
           <DashboardSidebar />
           <DashboardStage onRetryFloorplan={retryFloorplan} />
         </div>
