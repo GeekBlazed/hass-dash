@@ -62,7 +62,13 @@ jobs:
         run: pnpm build
 
       - name: Lighthouse CI (Performance + CWV)
-        run: pnpm lighthouse
+        run: |
+          mkdir -p "$TMPDIR" "$XDG_CACHE_HOME" .lighthouseci/chrome-user-data .lighthouseci/chrome-cache
+          pnpm lighthouse
+        env:
+          # Keep lighthouse/chrome temp artifacts scoped to workspace paths.
+          TMPDIR: ${{ github.workspace }}/.lighthouseci/tmp
+          XDG_CACHE_HOME: ${{ github.workspace }}/.lighthouseci/cache
 
       - name: Upload Lighthouse reports (artifact)
         uses: actions/upload-artifact@v4

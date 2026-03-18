@@ -124,14 +124,27 @@ function robustCopyPublicDirPlugin() {
  * Emits `dist/data/floorplan.json` at build time so the browser can do a fast
  * `response.json()` instead of downloading the `yaml` library and parsing at
  * runtime. JSON.parse is ~10x faster than YAML and requires no extra chunk.
+ *
+ * Source priority:
+ *   1. public/data/floorplan.yaml  — private real layout (gitignored, local only)
+ *   2. public/data/floorplan.demo.yaml — committed demo file used in CI and LHCI
  */
 function floorplanJsonPlugin(): Plugin {
   return {
     name: 'floorplan-json',
     apply: 'build',
     async buildStart() {
-      const yamlPath = path.resolve(process.cwd(), 'public/data/floorplan.yaml');
-      const yamlText = await fs.readFile(yamlPath, 'utf-8');
+      const privatePath = path.resolve(process.cwd(), 'public/data/floorplan.yaml');
+      const demoPath = path.resolve(process.cwd(), 'public/data/floorplan.demo.yaml');
+
+      let yamlText: string;
+      try {
+        yamlText = await fs.readFile(privatePath, 'utf-8');
+      } catch {
+        // Private file not present (e.g. CI checkout) — fall back to demo.
+        yamlText = await fs.readFile(demoPath, 'utf-8');
+      }
+
       const { parse } = await import('yaml');
       this.emitFile({
         type: 'asset',
@@ -164,7 +177,7 @@ function asyncCssPlugin(): Plugin {
           /<link rel="stylesheet" crossorigin href="(\/assets\/[^"]+\.css)">/g,
           (_, href: string) =>
             `<link rel="preload" as="style" crossorigin href="${href}" onload="this.onload=null;this.rel='stylesheet'">` +
-            `\n    <noscript><link rel="stylesheet" crossorigin href="${href}"></noscript>`,
+            `\n    <noscript><link rel="stylesheet" crossorigin href="${href}"></noscript>`
         );
       },
     },

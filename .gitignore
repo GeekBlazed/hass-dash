@@ -17,7 +17,7 @@ coverage
 # Lighthouse CI (generated reports / temp state)
 lighthouseci/
 .lighthouseci/
-
+**\lighthouse.*
 
 # Environment variables
 .env
