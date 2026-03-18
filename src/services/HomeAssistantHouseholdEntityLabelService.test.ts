@@ -12,9 +12,9 @@ describe('HomeAssistantHouseholdEntityLabelService', () => {
       connect,
       isConnected,
       getLabelRegistry: vi.fn().mockResolvedValue([{ label_id: 'x', name: 'Other' }]),
-      getEntityRegistry: vi.fn().mockResolvedValue([
-        { entity_id: 'sensor.kitchen_temperature', labels: ['x'] },
-      ]),
+      getEntityRegistry: vi
+        .fn()
+        .mockResolvedValue([{ entity_id: 'sensor.kitchen_temperature', labels: ['x'] }]),
     };
 
     const service = new HomeAssistantHouseholdEntityLabelService(client as IHomeAssistantClient);
@@ -61,9 +61,11 @@ describe('HomeAssistantHouseholdEntityLabelService', () => {
     const getLabelRegistry = vi
       .fn()
       .mockResolvedValue([{ label_id: 'label_household', name: 'Household' }]);
-    const getEntityRegistry = vi.fn().mockResolvedValue([
-      { entity_id: 'sensor.kitchen_temperature', labels: ['label_household'] },
-    ]);
+    const getEntityRegistry = vi
+      .fn()
+      .mockResolvedValue([
+        { entity_id: 'sensor.kitchen_temperature', labels: ['label_household'] },
+      ]);
 
     const client: Partial<IHomeAssistantClient> = {
       connect,
@@ -101,9 +103,11 @@ describe('HomeAssistantHouseholdEntityLabelService', () => {
     });
 
     const getLabelRegistry = vi.fn().mockReturnValue(labelRegistryPromise);
-    const getEntityRegistry = vi.fn().mockResolvedValue([
-      { entity_id: 'sensor.kitchen_temperature', labels: ['label_household'] },
-    ]);
+    const getEntityRegistry = vi
+      .fn()
+      .mockResolvedValue([
+        { entity_id: 'sensor.kitchen_temperature', labels: ['label_household'] },
+      ]);
 
     const client: Partial<IHomeAssistantClient> = {
       connect,

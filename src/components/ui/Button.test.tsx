@@ -69,9 +69,7 @@ describe('Button', () => {
   });
 
   it('should render icon before text', () => {
-    render(
-      <Button iconBefore={<span data-testid="icon-before">🔥</span>}>With Icon</Button>
-    );
+    render(<Button iconBefore={<span data-testid="icon-before">🔥</span>}>With Icon</Button>);
     const icon = screen.getByTestId('icon-before');
     expect(icon).toBeInTheDocument();
   });
@@ -86,10 +84,10 @@ describe('Button', () => {
     const user = userEvent.setup();
     const handleClick = vi.fn();
     render(<Button onClick={handleClick}>Click Me</Button>);
-    
+
     const button = screen.getByRole('button');
     await user.click(button);
-    
+
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
 
@@ -101,10 +99,10 @@ describe('Button', () => {
         Disabled
       </Button>
     );
-    
+
     const button = screen.getByRole('button');
     await user.click(button);
-    
+
     expect(handleClick).not.toHaveBeenCalled();
   });
 
@@ -116,10 +114,10 @@ describe('Button', () => {
         Loading
       </Button>
     );
-    
+
     const button = screen.getByRole('button');
     await user.click(button);
-    
+
     expect(handleClick).not.toHaveBeenCalled();
   });
 

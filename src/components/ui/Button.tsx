@@ -71,8 +71,7 @@ export function Button({
       'bg-primary text-white hover:bg-primary-dark focus:ring-primary dark:bg-primary-light dark:hover:bg-primary',
     secondary:
       'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-400 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600',
-    ghost:
-      'text-primary hover:bg-primary/10 focus:ring-primary dark:text-primary-light',
+    ghost: 'text-primary hover:bg-primary/10 focus:ring-primary dark:text-primary-light',
     danger:
       'bg-danger text-white hover:bg-danger-dark focus:ring-danger dark:bg-danger-light dark:hover:bg-danger',
   };
@@ -87,7 +86,8 @@ export function Button({
   // Full width style
   const widthStyle = fullWidth ? 'w-full' : '';
 
-  const combinedClassName = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${widthStyle} ${className}`.trim();
+  const combinedClassName =
+    `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${widthStyle} ${className}`.trim();
 
   return (
     <button
