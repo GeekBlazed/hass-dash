@@ -189,6 +189,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const devPort = Number(env.VITE_DEV_PORT ?? 5173);
   const devHmrHost = env.VITE_DEV_HMR_HOST;
+  const devAllowedHosts = env.VITE_DEV_ALLOWED_HOSTS?.split(',')
+    .map((host) => host.trim())
+    .filter(Boolean);
   const devServiceWorkerEnabled = env.VITE_PWA_DEV_SW === 'true';
 
   const haBaseUrl = (() => {
@@ -219,6 +222,9 @@ export default defineConfig(({ mode }) => {
       // when loading from another machine, set VITE_DEV_HMR_HOST to your Windows
       // LAN IP (e.g. 192.168.1.50).
       hmr: devHmrHost ? { host: devHmrHost } : undefined,
+      // Allow custom dev hostnames (e.g. local DNS entry) to pass Vite's
+      // host-header check to prevent DNS rebinding protections from blocking.
+      allowedHosts: devAllowedHosts,
 
       // Dev-only: proxy Home Assistant API calls to avoid browser CORS.
       // Consumers can fetch `/api/...` from the app origin and Vite will forward
