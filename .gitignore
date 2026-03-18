@@ -13,6 +13,8 @@ dist-ssr
 dev-dist
 *.local
 coverage
+playwright-report/
+test-results/
 
 # Lighthouse CI (generated reports / temp state)
 lighthouseci/

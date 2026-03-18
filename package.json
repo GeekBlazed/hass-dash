@@ -27,6 +27,8 @@
     "test:coverage": "node scripts/vitest-coverage.mjs",
     "test:coverage:all": "node scripts/vitest-coverage.mjs --include-slow",
     "test:run": "node scripts/vitest-run.mjs run",
+    "test:e2e": "playwright test",
+    "test:e2e:toast-max-visible": "node scripts/run-toast-max-visible-e2e.mjs",
     "pwa:offline-test": "pnpm build && pnpm preview --host --port 5173 --strictPort",
     "pwa:offline-test:note": "Note: run this script only from the same origin (http://localhost:5173) that the PWA is installed from so the service worker scope behaves correctly.",
     "pwa:icons": "node scripts/generate-pwa-icons.mjs"
@@ -52,6 +54,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@lhci/cli": "^0.15.1",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

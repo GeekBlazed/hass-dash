@@ -44,7 +44,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
   const iconPercent = Math.round(stageIconScale * 100);
 
   const isActuallyOpen = isOpen ?? false;
-  const rootClassName = `map-controls${!isActuallyOpen ? ' is-hidden' : ''}`;
+  const rootClassName = `modal-popup map-controls${!isActuallyOpen ? ' is-hidden' : ''}`;
 
   const panBy = (dx: number, dy: number) => {
     if (isRoomZoomLocked) return;
@@ -144,7 +144,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
       <div className="map-controls__sliders" aria-label="Zoom and font controls">
         <div className="map-controls__zoom">
           <div className="map-controls__zoom-head">
-            <label className="map-controls__label" htmlFor="map-zoom">
+            <label className="modal-popup__label" htmlFor="map-zoom">
               Zoom
             </label>
             <div className="map-controls__value" id="map-zoom-value" aria-hidden="true">
@@ -169,7 +169,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
 
         <div className="map-controls__zoom">
           <div className="map-controls__zoom-head">
-            <label className="map-controls__label" htmlFor="map-font-scale">
+            <label className="modal-popup__label" htmlFor="map-font-scale">
               Font size
             </label>
             <div className="map-controls__value" id="map-font-scale-value" aria-hidden="true">
@@ -193,7 +193,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
 
         <div className="map-controls__zoom">
           <div className="map-controls__zoom-head">
-            <label className="map-controls__label" htmlFor="map-icon-scale">
+            <label className="modal-popup__label" htmlFor="map-icon-scale">
               Markers / icons
             </label>
             <div className="map-controls__value" id="map-icon-scale-value" aria-hidden="true">
@@ -219,8 +219,8 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
       <div className="map-controls__divider" role="separator" aria-hidden="true" />
 
       <div className="map-controls__overlays" aria-label="Overlays">
-        <div className="map-controls__overlays-head">
-          <span className="map-controls__label">Overlays</span>
+        <div className="modal-popup__head">
+          <span className="modal-popup__label">Overlays</span>
         </div>
         <div className="map-controls__overlays-row">
           {getOverlayDefinitions().map((overlay) => {
@@ -228,7 +228,7 @@ export function MapControls({ isOpen, onClose }: MapControlsProps) {
             return (
               <button
                 key={overlay.id}
-                className="map-controls__overlay-btn"
+                className="modal-popup__action-btn"
                 type="button"
                 aria-pressed={isEnabled}
                 aria-label={`Toggle ${overlay.label} overlay`}
