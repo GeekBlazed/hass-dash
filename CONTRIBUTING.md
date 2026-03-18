@@ -18,6 +18,7 @@ Thank you for your interest in contributing to **hass-dash**! This document prov
 - [Commit Message Guidelines](#commit-message-guidelines)
 - [Pull Request Process](#pull-request-process)
 - [Development Standards](#development-standards)
+- [Repository-Specific Conventions](#repository-specific-conventions)
 - [Architecture Requirements](#architecture-requirements)
 - [Getting Help](#getting-help)
 
@@ -41,7 +42,7 @@ This project adheres to the [Contributor Covenant Code of Conduct](https://www.c
 
 ### Prerequisites
 
-- **Node.js:** 20.19+ (required)
+- **Node.js:** 22+ (required)
 - **pnpm:** 9.x (required)
 - **Git:** Latest version
 - **VS Code:** Recommended (with project extensions)
@@ -236,15 +237,7 @@ The `main` branch is **protected**. All changes must go through pull requests wi
 2. **Make your changes** following code standards
 3. **Write tests** for your changes (required)
 4. **Update documentation** if needed
-5. **Run all checks locally:**
-
-   ```bash
-   pnpm lint        # Check code style
-   pnpm format      # Format code
-   pnpm test        # Run unit/integration tests
-   pnpm test:e2e    # Run E2E tests (if applicable)
-   pnpm build       # Verify build succeeds
-   ```
+5. **Run all checks locally:** `pnpm lint`, `pnpm type-check`, `pnpm format`, `pnpm test`, optional `pnpm test:all`, then `pnpm build`
 
 6. **Push to your fork:**
 
@@ -311,7 +304,7 @@ pnpm format
 pnpm format:check
 ```
 
-**Husky pre-commit hooks** automatically lint and format staged files.
+Run lint/format/test/build locally before pushing; automated git hooks are not guaranteed in all environments.
 
 ### File Naming Conventions
 
@@ -323,6 +316,25 @@ pnpm format:check
 ---
 
 ## Testing Requirements
+
+### Test Runner Workflow
+
+This repository uses custom Vitest runner scripts to reduce out-of-memory failures on large suites:
+
+```bash
+pnpm test             # batched run (default)
+pnpm test:run         # direct one-shot run
+pnpm test:all         # include slow/skipped tests
+pnpm test:coverage    # coverage run
+pnpm test:coverage:all
+```
+
+Useful tuning environment variables:
+
+- `VITEST_HEAP_MB`
+- `VITEST_BATCH_SIZE`
+- `VITEST_COVERAGE_HEAP_MB`
+- `VITEST_SKIP_OOM_TESTS`
 
 ### Mandatory Tests
 
@@ -609,6 +621,44 @@ All code must comply with modern web standards. See [DEVELOPMENT-STANDARDS.md](D
 - **HTTPS/TLS** for production
 - **CSP** (Content Security Policy)
 - **Core Web Vitals** performance targets
+
+---
+
+## Repository-Specific Conventions
+
+### Dependency Injection (InversifyJS)
+
+When adding a new service, follow this order:
+
+1. Add interface in `src/interfaces/IServiceName.ts`
+2. Add symbol in `src/core/types.ts` (for example `TYPES.IServiceName`)
+3. Add implementation in `src/services/ServiceName.ts` with `@injectable()`
+4. Bind in `src/core/di-container.ts` using `.inSingletonScope()`
+5. Add/adjust unit tests for implementation and binding usage
+
+In React code, prefer `src/hooks/useService.ts` instead of ad-hoc `container.get(...)` calls.
+
+### Feature Flags
+
+- Feature flags are env-backed (`VITE_FEATURE_*`, `VITE_OVERLAY_*`).
+- Consume flags via `src/hooks/useFeatureFlag.ts` (`useFeatureFlag`, `useFeatureFlags`) rather than reading `import.meta.env` directly in components.
+- Runtime overrides use `sessionStorage` in non-production.
+
+### Runtime and Import Conventions
+
+- `reflect-metadata` must be imported before decorated classes are loaded (see `src/main.tsx`).
+- Path aliases are not configured. Use relative imports.
+
+### Home Assistant + Tracking Conventions
+
+- Reuse the existing HA service pipeline and WebSocket subscriptions; do not open parallel WS streams for the same concern.
+- Entity state is cached in Zustand stores (notably `src/stores/useEntityStore.ts`) and can persist for offline/last-known-good behavior.
+- Tracking/prototype historical docs live in `docs/archive/`.
+
+### Prototype Scope
+
+- Prototype/parity work generally targets `src/components/prototype/` and data in `public/data/`.
+- Treat `public/scripts.js` as archival unless a change explicitly targets legacy prototype runtime behavior.
 
 ---
 
