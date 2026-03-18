@@ -2,7 +2,9 @@ import { lazy, Suspense } from 'react';
 
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 
-const LazyAgendaPanel = lazy(() => import('./AgendaPanel').then((m) => ({ default: m.AgendaPanel })));
+const LazyAgendaPanel = lazy(() =>
+  import('./AgendaPanel').then((m) => ({ default: m.AgendaPanel }))
+);
 const LazyCamerasPanel = lazy(() =>
   import('./CamerasPanel').then((m) => ({ default: m.CamerasPanel }))
 );
@@ -20,11 +22,11 @@ export function SidebarPanelHost() {
   return (
     <>
       {activePanel === 'agenda' ? (
-        <Suspense fallback={<div id="agenda" className="agenda" aria-label="Agenda" />}>
+        <Suspense fallback={<section id="agenda" className="agenda" aria-label="Agenda" />}>
           <LazyAgendaPanel isHidden={false} />
         </Suspense>
       ) : (
-        <div id="agenda" className="agenda is-hidden" aria-label="Agenda" />
+        <section id="agenda" className="agenda is-hidden" aria-label="Agenda" />
       )}
 
       {activePanel === 'lighting' ? (
@@ -49,7 +51,9 @@ export function SidebarPanelHost() {
 
       {activePanel === 'media' ? (
         <Suspense
-          fallback={<section id="media-window" className="tile media-window" aria-label="Media player" />}
+          fallback={
+            <section id="media-window" className="tile media-window" aria-label="Media player" />
+          }
         >
           <LazyMediaPanel isHidden={false} />
         </Suspense>
@@ -64,7 +68,11 @@ export function SidebarPanelHost() {
       {activePanel === 'climate' ? (
         <Suspense
           fallback={
-            <section id="climate-panel" className="tile climate-panel" aria-label="Climate controls" />
+            <section
+              id="climate-panel"
+              className="tile climate-panel"
+              aria-label="Climate controls"
+            />
           }
         >
           <LazyClimatePanel isHidden={false} />
@@ -80,7 +88,11 @@ export function SidebarPanelHost() {
       {activePanel === 'cameras' ? (
         <Suspense
           fallback={
-            <section id="cameras-panel" className="tile cameras-panel" aria-label="Cameras controls" />
+            <section
+              id="cameras-panel"
+              className="tile cameras-panel"
+              aria-label="Cameras controls"
+            />
           }
         >
           <LazyCamerasPanel isHidden={false} />

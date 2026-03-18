@@ -116,8 +116,8 @@ export function ComponentShowcase(): React.ReactElement {
               <DialogHeader>
                 <DialogTitle>Basic Dialog</DialogTitle>
                 <DialogDescription>
-                  This is a simple dialog with a title and description. Click the X or press
-                  Escape to close.
+                  This is a simple dialog with a title and description. Click the X or press Escape
+                  to close.
                 </DialogDescription>
               </DialogHeader>
             </DialogContent>
@@ -168,7 +168,7 @@ export function ComponentShowcase(): React.ReactElement {
                     id="name"
                     type="text"
                     defaultValue="John Doe"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    className="focus:ring-primary w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <div className="space-y-2">
@@ -182,7 +182,7 @@ export function ComponentShowcase(): React.ReactElement {
                     id="email"
                     type="email"
                     defaultValue="john@example.com"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    className="focus:ring-primary w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:ring-2 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>
@@ -211,9 +211,9 @@ export function ComponentShowcase(): React.ReactElement {
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-gray-900 dark:text-white">Primary</h3>
             <div className="flex gap-2">
-              <div className="h-16 w-full rounded bg-primary-light"></div>
-              <div className="h-16 w-full rounded bg-primary"></div>
-              <div className="h-16 w-full rounded bg-primary-dark"></div>
+              <div className="bg-primary-light h-16 w-full rounded"></div>
+              <div className="bg-primary h-16 w-full rounded"></div>
+              <div className="bg-primary-dark h-16 w-full rounded"></div>
             </div>
           </div>
 
@@ -221,9 +221,9 @@ export function ComponentShowcase(): React.ReactElement {
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-gray-900 dark:text-white">Success</h3>
             <div className="flex gap-2">
-              <div className="h-16 w-full rounded bg-success-light"></div>
-              <div className="h-16 w-full rounded bg-success"></div>
-              <div className="h-16 w-full rounded bg-success-dark"></div>
+              <div className="bg-success-light h-16 w-full rounded"></div>
+              <div className="bg-success h-16 w-full rounded"></div>
+              <div className="bg-success-dark h-16 w-full rounded"></div>
             </div>
           </div>
 
@@ -231,9 +231,9 @@ export function ComponentShowcase(): React.ReactElement {
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-gray-900 dark:text-white">Warning</h3>
             <div className="flex gap-2">
-              <div className="h-16 w-full rounded bg-warning-light"></div>
-              <div className="h-16 w-full rounded bg-warning"></div>
-              <div className="h-16 w-full rounded bg-warning-dark"></div>
+              <div className="bg-warning-light h-16 w-full rounded"></div>
+              <div className="bg-warning h-16 w-full rounded"></div>
+              <div className="bg-warning-dark h-16 w-full rounded"></div>
             </div>
           </div>
 
@@ -241,9 +241,9 @@ export function ComponentShowcase(): React.ReactElement {
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-gray-900 dark:text-white">Danger</h3>
             <div className="flex gap-2">
-              <div className="h-16 w-full rounded bg-danger-light"></div>
-              <div className="h-16 w-full rounded bg-danger"></div>
-              <div className="h-16 w-full rounded bg-danger-dark"></div>
+              <div className="bg-danger-light h-16 w-full rounded"></div>
+              <div className="bg-danger h-16 w-full rounded"></div>
+              <div className="bg-danger-dark h-16 w-full rounded"></div>
             </div>
           </div>
         </div>
