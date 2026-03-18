@@ -1,0 +1,9 @@
+services:
+  hass-dash:
+    image: ${HASS_DASH_IMAGE:-hass-dash:1.0.0}
+    container_name: hass-dash
+    environment:
+      CORS_MODE: ${HASS_DASH_CORS_MODE:-restricted}
+    ports:
+      - "8080:80"
+    restart: unless-stopped
