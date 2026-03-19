@@ -14,6 +14,7 @@ import type { IHouseholdAreaEntityIndexService } from '../interfaces/IHouseholdA
 import type { IHouseholdEntityLabelService } from '../interfaces/IHouseholdEntityLabelService';
 import type { IHttpClient } from '../interfaces/IHttpClient';
 import type { ILightService } from '../interfaces/ILightService';
+import type { INotificationService } from '../interfaces/INotificationService';
 import type { IWebSocketService } from '../interfaces/IWebSocketService';
 import { ConfigService } from '../services/ConfigService';
 import { FeatureFlagService } from '../services/FeatureFlagService';
@@ -26,6 +27,7 @@ import { HomeAssistantHouseholdAreaEntityIndexService } from '../services/HomeAs
 import { HomeAssistantHouseholdEntityLabelService } from '../services/HomeAssistantHouseholdEntityLabelService';
 import { HomeAssistantHttpClient } from '../services/HomeAssistantHttpClient';
 import { HomeAssistantLightService } from '../services/HomeAssistantLightService';
+import { HomeAssistantNotificationService } from '../services/HomeAssistantNotificationService';
 import { HomeAssistantServiceCallQueue } from '../services/HomeAssistantServiceCallQueue';
 import { HomeAssistantWebSocketClient } from '../services/HomeAssistantWebSocketClient';
 import { HomeAssistantWebSocketService } from '../services/HomeAssistantWebSocketService';
@@ -81,6 +83,11 @@ container
   .inSingletonScope();
 
 container.bind<ILightService>(TYPES.ILightService).to(HomeAssistantLightService).inSingletonScope();
+
+container
+  .bind<INotificationService>(TYPES.INotificationService)
+  .to(HomeAssistantNotificationService)
+  .inSingletonScope();
 
 container
   .bind<IHomeAssistantConnectionConfig>(TYPES.IHomeAssistantConnectionConfig)

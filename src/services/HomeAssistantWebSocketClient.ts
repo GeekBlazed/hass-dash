@@ -37,6 +37,11 @@ type SubscriptionRecord =
       kind: 'trigger';
       trigger: HaSubscribeTriggerConfig;
       handler: SubscriptionHandler;
+    }
+  | {
+      kind: 'command';
+      command: Record<string, unknown>;
+      handler: SubscriptionHandler;
     };
 
 @injectable()
@@ -230,6 +235,43 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
     };
   }
 
+  async subscribeToCommandStream<TEvent>(
+    command: Record<string, unknown>,
+    handler: (event: TEvent) => void
+  ): Promise<IHaSubscription> {
+    const subscriptionId = this.allocateId();
+
+    const result = await this.sendRawCommand(subscriptionId, {
+      id: subscriptionId,
+      ...command,
+    });
+
+    // Command streams generally ack with a `result` frame before sending `event` frames.
+    void result;
+
+    this.subscriptions.set(subscriptionId, {
+      kind: 'command',
+      command,
+      handler: (event) => {
+        handler(event as TEvent);
+      },
+    });
+
+    return {
+      unsubscribe: async () => {
+        this.subscriptions.delete(subscriptionId);
+        try {
+          await this.sendCommand({
+            type: 'unsubscribe_events',
+            subscription: subscriptionId,
+          });
+        } catch {
+          // If unsubscribe fails, we still consider it unsubscribed locally.
+        }
+      },
+    };
+  }
+
   async callService(params: HaCallServiceParams): Promise<HaCallServiceResult> {
     // Consumers often call connect() themselves, but we also defend here so
     // callService remains robust when the socket drops between interactions.
@@ -381,6 +423,13 @@ export class HomeAssistantWebSocketClient implements IHomeAssistantClient {
         }
 
         return this.sendRawCommand(subscriptionId, command);
+      }
+
+      if (record.kind === 'command') {
+        return this.sendRawCommand(subscriptionId, {
+          id: subscriptionId,
+          ...record.command,
+        });
       }
 
       const command: Record<string, unknown> = {

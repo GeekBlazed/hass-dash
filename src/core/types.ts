@@ -19,6 +19,7 @@ export const TYPES = {
   IHomeAssistantServiceCallQueue: Symbol.for('IHomeAssistantServiceCallQueue'),
 
   ILightService: Symbol.for('ILightService'),
+  INotificationService: Symbol.for('INotificationService'),
 
   ICameraService: Symbol.for('ICameraService'),
 

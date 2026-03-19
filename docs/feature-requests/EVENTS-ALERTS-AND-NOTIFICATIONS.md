@@ -219,7 +219,7 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 ### Phase 2 AC
 
-🔘 Not started
+✅ Done
 
 - Client supports command-stream subscription for persistent_notification/subscribe.
 - Reconnect restores command-stream subscriptions without duplicate handlers.
@@ -227,11 +227,11 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 ### Phase 3 AC
 
-🔘 Not started
+▶️ In Progress
 
 - Service emits normalized events for persistent_notification updates and state_changed events (alert.\* and event.\*).
-- Duplicate events merge into a single active item and increment duplicateCount.
-- Camera target resolution uses combined factors (event context + area + tags) with deterministic priority.
+- Duplicate events merge into a single active item and increment duplicateCount. (Store-level dedupe implemented; service-level burst dedupe strategy still pending)
+- Camera target resolution uses combined factors (event context + area + tags) with deterministic priority. (initial camera-focused action mapping implemented; advanced targeting strategy pending)
 - Service tests validate mapping, dedupe, and reconnect recovery.
 
 ### Phase 4 AC
@@ -247,11 +247,11 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 ### Phase 5 AC
 
-🔘 Not started
+▶️ In Progress
 
-- Action rules can trigger camera modal open for qualifying events.
-- Camera targeting selects expected entity when multiple candidates exist, based on configured priority.
-- Existing manual camera open/close interactions remain intact.
+- Action rules can trigger camera modal open for qualifying events. (action emission and panel-focus bridge implemented; camera modal state refactor still pending)
+- Camera targeting selects expected entity when multiple candidates exist, based on configured priority. (pending)
+- Existing manual camera open/close interactions remain intact. (pending until modal state refactor)
 
 ### Phase 6 AC
 
@@ -265,11 +265,11 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 ### Phase 7 AC
 
-🔘 Not started
+▶️ In Progress
 
 - Targeted tests pass for client/service/store/controller.
 - pnpm type-check and pnpm build pass.
-- Manual QA confirms create/dismiss flows, dedupe behavior, action-triggered camera modal, and reconnect resilience.
+- Manual QA confirms create/dismiss flows, dedupe behavior, action-triggered camera modal, and reconnect resilience. (pending)
 
 ## Decisions
 

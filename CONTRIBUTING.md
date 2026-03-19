@@ -237,7 +237,9 @@ The `main` branch is **protected**. All changes must go through pull requests wi
 2. **Make your changes** following code standards
 3. **Write tests** for your changes (required)
 4. **Update documentation** if needed
-5. **Run all checks locally:** `pnpm lint`, `pnpm type-check`, `pnpm format`, `pnpm test`, optional `pnpm test:all`, then `pnpm build`
+5. **Run all checks locally:** `pnpm format`, then `pnpm test:pr-check`
+
+Note for coding agents: mirror the PR-gate requirement in `.github/copilot-instructions.md` and confirm `pnpm test:pr-check` passes before submitting a PR.
 
 6. **Push to your fork:**
 
@@ -327,6 +329,8 @@ pnpm test:run         # direct one-shot run
 pnpm test:all         # include slow/skipped tests
 pnpm test:coverage    # coverage run
 pnpm test:coverage:all
+pnpm test:e2e         # Playwright end-to-end tests
+pnpm test:pr-check    # PR gate checks (lint + type-check + coverage + e2e + build)
 ```
 
 Useful tuning environment variables:

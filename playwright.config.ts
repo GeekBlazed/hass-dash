@@ -28,6 +28,7 @@ export default defineConfig({
       VITE_FEATURE_NOTIFICATIONS_MOCK: 'true',
       VITE_NOTIFICATIONS_TOAST_MAX_VISIBLE: toastMaxVisible,
       VITE_NOTIFICATIONS_TOAST_TTL_SECONDS: '60',
+      VITE_PWA_DEV_SW: 'false',
     },
   },
   projects: [

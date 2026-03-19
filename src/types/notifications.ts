@@ -1,4 +1,6 @@
 export type NotificationSurface = 'toast' | 'persistent';
+export type NotificationSeverity = 'info' | 'warning' | 'critical';
+export type NotificationSourceKind = 'persistent_notification' | 'alert_state' | 'event_entity';
 
 export type NotificationContentFormat = 'text' | 'markdown' | 'html';
 
@@ -27,4 +29,17 @@ export interface AddNotificationInput {
   content: NotificationContent;
   source: string;
   ttlMs?: number;
+}
+
+export interface NotificationAction {
+  type: 'open-camera' | 'focus-panel';
+  payload?: Record<string, unknown>;
+}
+
+export interface NotificationStreamRecord extends AddNotificationInput {
+  surface: NotificationSurface;
+  sourceKind: NotificationSourceKind;
+  severity?: NotificationSeverity;
+  action?: NotificationAction;
+  remove?: boolean;
 }
