@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { parseMaxVisibleToasts, useNotificationStore } from './useNotificationStore';
 
@@ -14,6 +14,10 @@ const resetNotificationStore = () => {
 describe('useNotificationStore', () => {
   beforeEach(() => {
     resetNotificationStore();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('dedupes toast notifications by dedupe key and increments duplicate count', () => {
@@ -226,5 +230,75 @@ describe('useNotificationStore', () => {
   it('uses floored env max visible toast value when valid', () => {
     vi.stubEnv('VITE_NOTIFICATIONS_TOAST_MAX_VISIBLE', '4.9');
     expect(parseMaxVisibleToasts()).toBe(4);
+  });
+
+  it('migrate() hydrates explicit toast fixtures in dev mode and filters invalid entries', () => {
+    vi.stubEnv('DEV', 'true');
+
+    const options = useNotificationStore.persist.getOptions();
+    const migrate = options.migrate as unknown as (persistedState: unknown) => {
+      toasts: Array<{ dedupeKey: string }>;
+      persistent: unknown[];
+      unreadPersistentIds: string[];
+    };
+
+    const migrated = migrate({
+      persistent: [],
+      unreadPersistentIds: [],
+      toasts: [
+        {
+          id: 'toast-1',
+          dedupeKey: 'toast-1',
+          surface: 'toast',
+          source: 'fixture.seed',
+          content: { body: 'fixture body' },
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          duplicateCount: 1,
+          read: true,
+          expiresAt: Date.now() + 60_000,
+        },
+        {
+          id: 'invalid-toast',
+          dedupeKey: 'invalid-toast',
+          surface: 'toast',
+          source: 'fixture.seed',
+          content: { body: 'missing required shape' },
+        },
+      ],
+    });
+
+    expect(migrated.toasts).toHaveLength(1);
+    expect(migrated.toasts[0]?.dedupeKey).toBe('toast-1');
+  });
+
+  it('migrate() toast fixture hydration follows current DEV mode', () => {
+    const options = useNotificationStore.persist.getOptions();
+    const migrate = options.migrate as unknown as (persistedState: unknown) => {
+      toasts: unknown[];
+    };
+
+    const migrated = migrate({
+      toasts: [
+        {
+          id: 'toast-1',
+          dedupeKey: 'toast-1',
+          surface: 'toast',
+          source: 'fixture.seed',
+          content: { body: 'fixture body' },
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          duplicateCount: 1,
+          read: true,
+          expiresAt: Date.now() + 60_000,
+        },
+      ],
+    });
+
+    if (import.meta.env.DEV) {
+      expect(migrated.toasts).toHaveLength(1);
+    } else {
+      expect(migrated.toasts).toEqual([]);
+    }
   });
 });

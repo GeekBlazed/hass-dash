@@ -20,11 +20,14 @@ export default defineConfig({
   webServer: {
     command: 'pnpm dev --host 127.0.0.1 --port 4173 --strictPort',
     url: 'http://127.0.0.1:4173',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
+    timeout: 120_000,
     env: {
       ...process.env,
       VITE_FEATURE_NOTIFICATIONS: 'true',
       VITE_FEATURE_NOTIFICATIONS_TOASTS: 'true',
+      VITE_FEATURE_NOTIFICATIONS_PERSISTENT: 'true',
+      VITE_FEATURE_NOTIFICATION_ACTIONS: 'true',
       VITE_FEATURE_NOTIFICATIONS_MOCK: 'true',
       VITE_NOTIFICATIONS_TOAST_MAX_VISIBLE: toastMaxVisible,
       VITE_NOTIFICATIONS_TOAST_TTL_SECONDS: '60',
