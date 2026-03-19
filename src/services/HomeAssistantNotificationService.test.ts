@@ -1,10 +1,15 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { IHomeAssistantClient } from '../interfaces/IHomeAssistantClient';
 import type { HaStateChangedEventData } from '../types/home-assistant';
 import { HomeAssistantNotificationService } from './HomeAssistantNotificationService';
 
 describe('HomeAssistantNotificationService', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
+
   it('subscribes to persistent notification command stream and state_changed stream', async () => {
     const commandHandlerRef: { current?: (event: unknown) => void } = {};
     const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
@@ -104,6 +109,102 @@ describe('HomeAssistantNotificationService', () => {
     );
   });
 
+  it('suppresses replayed persistent current snapshots with unchanged content', async () => {
+    const commandHandlerRef: { current?: (event: unknown) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockImplementation(async (_command, handler) => {
+        commandHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+      subscribeToEvents: vi
+        .fn()
+        .mockResolvedValue({ unsubscribe: vi.fn().mockResolvedValue(undefined) }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    commandHandlerRef.current?.({
+      type: 'current',
+      notifications: {
+        abc: {
+          notification_id: 'abc',
+          title: 'Door Open',
+          message: 'Back door left open',
+        },
+      },
+    });
+
+    commandHandlerRef.current?.({
+      type: 'current',
+      notifications: {
+        abc: {
+          notification_id: 'abc',
+          title: 'Door Open',
+          message: 'Back door left open',
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('emits persistent updates when content changes for the same dedupe key', async () => {
+    const commandHandlerRef: { current?: (event: unknown) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockImplementation(async (_command, handler) => {
+        commandHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+      subscribeToEvents: vi
+        .fn()
+        .mockResolvedValue({ unsubscribe: vi.fn().mockResolvedValue(undefined) }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    commandHandlerRef.current?.({
+      type: 'current',
+      notifications: {
+        abc: {
+          notification_id: 'abc',
+          title: 'Door Open',
+          message: 'Back door left open',
+        },
+      },
+    });
+
+    commandHandlerRef.current?.({
+      type: 'updated',
+      notifications: {
+        abc: {
+          notification_id: 'abc',
+          title: 'Door Open',
+          message: 'Back door closed',
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        dedupeKey: 'ha:persistent:abc',
+        content: expect.objectContaining({ body: 'Back door closed' }),
+      })
+    );
+  });
+
   it('maps alert state transitions to toast records', async () => {
     const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
 
@@ -152,6 +253,693 @@ describe('HomeAssistantNotificationService', () => {
         content: expect.objectContaining({ body: 'Back Door is now ON.' }),
       })
     );
+  });
+
+  it('suppresses burst duplicate toast records with the same fingerprint', async () => {
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    const event = {
+      data: {
+        entity_id: 'alert.back_door',
+        old_state: {
+          entity_id: 'alert.back_door',
+          state: 'off',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:00+00:00',
+          last_updated: '2026-01-01T00:00:00+00:00',
+          context: { id: '1', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'alert.back_door',
+          state: 'on',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:01:00+00:00',
+          last_updated: '2026-01-01T00:01:00+00:00',
+          context: { id: '2', parent_id: null, user_id: null },
+        },
+      },
+    };
+
+    stateHandlerRef.current?.(event);
+    stateHandlerRef.current?.(event);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not suppress burst duplicates when window is disabled via env', async () => {
+    vi.stubEnv('VITE_NOTIFICATIONS_BURST_DEDUPE_WINDOW_MS', '0');
+
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    const event = {
+      data: {
+        entity_id: 'alert.back_door',
+        old_state: {
+          entity_id: 'alert.back_door',
+          state: 'off',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:00+00:00',
+          last_updated: '2026-01-01T00:00:00+00:00',
+          context: { id: '1', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'alert.back_door',
+          state: 'on',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:01:00+00:00',
+          last_updated: '2026-01-01T00:01:00+00:00',
+          context: { id: '2', parent_id: null, user_id: null },
+        },
+      },
+    };
+
+    stateHandlerRef.current?.(event);
+    stateHandlerRef.current?.(event);
+
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it('suppresses only duplicates inside configured burst dedupe window', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    vi.stubEnv('VITE_NOTIFICATIONS_BURST_DEDUPE_WINDOW_MS', '50');
+
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    const event = {
+      data: {
+        entity_id: 'alert.back_door',
+        old_state: {
+          entity_id: 'alert.back_door',
+          state: 'off',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:00+00:00',
+          last_updated: '2026-01-01T00:00:00+00:00',
+          context: { id: '1', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'alert.back_door',
+          state: 'on',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:01:00+00:00',
+          last_updated: '2026-01-01T00:01:00+00:00',
+          context: { id: '2', parent_id: null, user_id: null },
+        },
+      },
+    };
+
+    stateHandlerRef.current?.(event);
+    stateHandlerRef.current?.(event);
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(60);
+    stateHandlerRef.current?.(event);
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it('suppresses toast spam by source key within configured cooldown window', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    vi.stubEnv('VITE_NOTIFICATIONS_BURST_DEDUPE_WINDOW_MS', '0');
+    vi.stubEnv('VITE_NOTIFICATIONS_SOURCE_COOLDOWN_MS', '100');
+
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'alert.back_door',
+        old_state: {
+          entity_id: 'alert.back_door',
+          state: 'off',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:00+00:00',
+          last_updated: '2026-01-01T00:00:00+00:00',
+          context: { id: '1', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'alert.back_door',
+          state: 'on',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:01+00:00',
+          last_updated: '2026-01-01T00:00:01+00:00',
+          context: { id: '2', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'alert.back_door',
+        old_state: {
+          entity_id: 'alert.back_door',
+          state: 'on',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:01+00:00',
+          last_updated: '2026-01-01T00:00:01+00:00',
+          context: { id: '2', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'alert.back_door',
+          state: 'off',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:02+00:00',
+          last_updated: '2026-01-01T00:00:02+00:00',
+          context: { id: '3', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ dedupeKey: 'ha:alert:alert.back_door:on' })
+    );
+  });
+
+  it('emits again after source cooldown window elapses', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    vi.stubEnv('VITE_NOTIFICATIONS_BURST_DEDUPE_WINDOW_MS', '0');
+    vi.stubEnv('VITE_NOTIFICATIONS_SOURCE_COOLDOWN_MS', '100');
+
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'alert.back_door',
+        old_state: {
+          entity_id: 'alert.back_door',
+          state: 'off',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:00+00:00',
+          last_updated: '2026-01-01T00:00:00+00:00',
+          context: { id: '1', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'alert.back_door',
+          state: 'on',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:01+00:00',
+          last_updated: '2026-01-01T00:00:01+00:00',
+          context: { id: '2', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    vi.advanceTimersByTime(150);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'alert.back_door',
+        old_state: {
+          entity_id: 'alert.back_door',
+          state: 'on',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:01+00:00',
+          last_updated: '2026-01-01T00:00:01+00:00',
+          context: { id: '2', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'alert.back_door',
+          state: 'off',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:02+00:00',
+          last_updated: '2026-01-01T00:00:02+00:00',
+          context: { id: '3', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ dedupeKey: 'ha:alert:alert.back_door:on' })
+    );
+    expect(handler).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ dedupeKey: 'ha:alert:alert.back_door:off' })
+    );
+  });
+
+  it('applies alert-specific cooldown override without throttling event stream when event cooldown is disabled', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    vi.stubEnv('VITE_NOTIFICATIONS_BURST_DEDUPE_WINDOW_MS', '0');
+    vi.stubEnv('VITE_NOTIFICATIONS_SOURCE_COOLDOWN_MS', '0');
+    vi.stubEnv('VITE_NOTIFICATIONS_SOURCE_COOLDOWN_ALERT_MS', '200');
+    vi.stubEnv('VITE_NOTIFICATIONS_SOURCE_COOLDOWN_EVENT_MS', '0');
+
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'alert.back_door',
+        old_state: {
+          entity_id: 'alert.back_door',
+          state: 'off',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:00+00:00',
+          last_updated: '2026-01-01T00:00:00+00:00',
+          context: { id: 'a1', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'alert.back_door',
+          state: 'on',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:01+00:00',
+          last_updated: '2026-01-01T00:00:01+00:00',
+          context: { id: 'a2', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'alert.back_door',
+        old_state: {
+          entity_id: 'alert.back_door',
+          state: 'on',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:01+00:00',
+          last_updated: '2026-01-01T00:00:01+00:00',
+          context: { id: 'a2', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'alert.back_door',
+          state: 'off',
+          attributes: { friendly_name: 'Back Door' },
+          last_changed: '2026-01-01T00:00:02+00:00',
+          last_updated: '2026-01-01T00:00:02+00:00',
+          context: { id: 'a3', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.driveway_camera',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.driveway_camera',
+          state: '2026-01-01T00:00:01+00:00',
+          attributes: {
+            friendly_name: 'Driveway Camera',
+            event_type: 'vehicle_detected',
+          },
+          last_changed: '2026-01-01T00:00:01+00:00',
+          last_updated: '2026-01-01T00:00:01+00:00',
+          context: { id: 'e1', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.driveway_camera',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.driveway_camera',
+          state: '2026-01-01T00:00:02+00:00',
+          attributes: {
+            friendly_name: 'Driveway Camera',
+            event_type: 'vehicle_detected',
+          },
+          last_changed: '2026-01-01T00:00:02+00:00',
+          last_updated: '2026-01-01T00:00:02+00:00',
+          context: { id: 'e2', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledTimes(3);
+    expect(handler).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ dedupeKey: 'ha:alert:alert.back_door:on' })
+    );
+    expect(handler).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        dedupeKey: 'ha:event:event.driveway_camera:vehicle_detected:2026-01-01T00:00:01+00:00',
+      })
+    );
+    expect(handler).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        dedupeKey: 'ha:event:event.driveway_camera:vehicle_detected:2026-01-01T00:00:02+00:00',
+      })
+    );
+  });
+
+  it('applies event-specific cooldown override for event stream suppression', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    vi.stubEnv('VITE_NOTIFICATIONS_BURST_DEDUPE_WINDOW_MS', '0');
+    vi.stubEnv('VITE_NOTIFICATIONS_SOURCE_COOLDOWN_MS', '0');
+    vi.stubEnv('VITE_NOTIFICATIONS_SOURCE_COOLDOWN_EVENT_MS', '200');
+
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.front_door_camera',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.front_door_camera',
+          state: '2026-01-01T00:00:01+00:00',
+          attributes: {
+            friendly_name: 'Front Door Camera',
+            event_type: 'person_detected',
+            camera_entity_id: 'camera.front_door',
+          },
+          last_changed: '2026-01-01T00:00:01+00:00',
+          last_updated: '2026-01-01T00:00:01+00:00',
+          context: { id: 'e10', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.front_door_camera',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.front_door_camera',
+          state: '2026-01-01T00:00:02+00:00',
+          attributes: {
+            friendly_name: 'Front Door Camera',
+            event_type: 'person_detected',
+            camera_entity_id: 'camera.front_door',
+          },
+          last_changed: '2026-01-01T00:00:02+00:00',
+          last_updated: '2026-01-01T00:00:02+00:00',
+          context: { id: 'e11', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dedupeKey: 'ha:event:event.front_door_camera:person_detected:2026-01-01T00:00:01+00:00',
+      })
+    );
+  });
+
+  it('suppresses warning severity toasts using severity cooldown when source cooldown is disabled', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    vi.stubEnv('VITE_NOTIFICATIONS_BURST_DEDUPE_WINDOW_MS', '0');
+    vi.stubEnv('VITE_NOTIFICATIONS_SOURCE_COOLDOWN_MS', '0');
+    vi.stubEnv('VITE_NOTIFICATIONS_SEVERITY_COOLDOWN_WARNING_MS', '150');
+
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    const warningEvent = {
+      data: {
+        entity_id: 'binary_sensor.garage_camera_person',
+        old_state: {
+          entity_id: 'binary_sensor.garage_camera_person',
+          state: 'off',
+          attributes: { friendly_name: 'Garage Camera Person', device_class: 'occupancy' },
+          last_changed: '2026-01-01T00:00:00+00:00',
+          last_updated: '2026-01-01T00:00:00+00:00',
+          context: { id: 'sw1', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'binary_sensor.garage_camera_person',
+          state: 'on',
+          attributes: { friendly_name: 'Garage Camera Person', device_class: 'occupancy' },
+          last_changed: '2026-01-01T00:00:01+00:00',
+          last_updated: '2026-01-01T00:00:01+00:00',
+          context: { id: 'sw2', parent_id: null, user_id: null },
+        },
+      },
+    };
+
+    stateHandlerRef.current?.(warningEvent);
+    stateHandlerRef.current?.(warningEvent);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ source: 'binary_sensor.state_changed' })
+    );
+  });
+
+  it('does not suppress info severity toasts when only warning severity cooldown is configured', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    vi.stubEnv('VITE_NOTIFICATIONS_BURST_DEDUPE_WINDOW_MS', '0');
+    vi.stubEnv('VITE_NOTIFICATIONS_SOURCE_COOLDOWN_MS', '0');
+    vi.stubEnv('VITE_NOTIFICATIONS_SEVERITY_COOLDOWN_WARNING_MS', '150');
+
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.driveway_camera',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.driveway_camera',
+          state: '2026-01-01T00:00:01+00:00',
+          attributes: {
+            friendly_name: 'Driveway Camera',
+            event_type: 'vehicle_detected',
+          },
+          last_changed: '2026-01-01T00:00:01+00:00',
+          last_updated: '2026-01-01T00:00:01+00:00',
+          context: { id: 'si1', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.driveway_camera',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.driveway_camera',
+          state: '2026-01-01T00:00:02+00:00',
+          attributes: {
+            friendly_name: 'Driveway Camera',
+            event_type: 'vehicle_detected',
+          },
+          last_changed: '2026-01-01T00:00:02+00:00',
+          last_updated: '2026-01-01T00:00:02+00:00',
+          context: { id: 'si2', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it('uses the larger cooldown between source and severity windows', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    vi.stubEnv('VITE_NOTIFICATIONS_BURST_DEDUPE_WINDOW_MS', '0');
+    vi.stubEnv('VITE_NOTIFICATIONS_SOURCE_COOLDOWN_EVENT_MS', '50');
+    vi.stubEnv('VITE_NOTIFICATIONS_SEVERITY_COOLDOWN_WARNING_MS', '200');
+
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    const warningEvent = {
+      data: {
+        entity_id: 'binary_sensor.window_camera_person',
+        old_state: {
+          entity_id: 'binary_sensor.window_camera_person',
+          state: 'off',
+          attributes: { friendly_name: 'Window Camera Person', device_class: 'occupancy' },
+          last_changed: '2026-01-01T00:00:00+00:00',
+          last_updated: '2026-01-01T00:00:00+00:00',
+          context: { id: 'mx1', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'binary_sensor.window_camera_person',
+          state: 'on',
+          attributes: { friendly_name: 'Window Camera Person', device_class: 'occupancy' },
+          last_changed: '2026-01-01T00:00:01+00:00',
+          last_updated: '2026-01-01T00:00:01+00:00',
+          context: { id: 'mx2', parent_id: null, user_id: null },
+        },
+      },
+    };
+
+    stateHandlerRef.current?.(warningEvent);
+
+    vi.advanceTimersByTime(100);
+
+    stateHandlerRef.current?.(warningEvent);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(120);
+
+    stateHandlerRef.current?.(warningEvent);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(100);
+
+    stateHandlerRef.current?.(warningEvent);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(210);
+
+    stateHandlerRef.current?.(warningEvent);
+
+    expect(handler).toHaveBeenCalledTimes(2);
   });
 
   it('maps event.* state changes to toast records with camera open action when camera entity is present', async () => {
@@ -210,7 +998,7 @@ describe('HomeAssistantNotificationService', () => {
     );
   });
 
-  it('maps allowed camera-detection events without camera entity id to focus-panel action', async () => {
+  it('maps allowed camera-detection events without explicit camera attr to inferred open-camera action', async () => {
     const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
 
     const haClient = {
@@ -249,13 +1037,298 @@ describe('HomeAssistantNotificationService', () => {
     expect(handler).toHaveBeenCalledWith(
       expect.objectContaining({
         action: expect.objectContaining({
-          type: 'focus-panel',
+          type: 'open-camera',
           payload: expect.objectContaining({
-            panel: 'cameras',
+            cameraEntityId: 'camera.driveway',
             sourceEntityId: 'event.driveway_camera',
           }),
         }),
         ttlMs: 60_000,
+      })
+    );
+  });
+
+  it('prefers area-matching camera from candidate list for event actions', async () => {
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.front_entry',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.front_entry',
+          state: '2026-01-01T00:01:00+00:00',
+          attributes: {
+            friendly_name: 'Front Entry Event',
+            event_type: 'person_detected',
+            area_id: 'front_entry',
+            camera_entity_ids: ['camera.driveway', 'camera.front_entry'],
+          },
+          last_changed: '2026-01-01T00:01:00+00:00',
+          last_updated: '2026-01-01T00:01:00+00:00',
+          context: { id: '11a', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: expect.objectContaining({
+          type: 'open-camera',
+          payload: expect.objectContaining({
+            cameraEntityId: 'camera.front_entry',
+            sourceEntityId: 'event.front_entry',
+          }),
+        }),
+      })
+    );
+  });
+
+  it('infers camera target from source_entity_id when direct camera attr is missing', async () => {
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.person_detector',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.person_detector',
+          state: '2026-01-01T00:01:00+00:00',
+          attributes: {
+            friendly_name: 'Person Detector Event',
+            event_type: 'person_detected',
+            source_entity_id: 'binary_sensor.garage_camera_person',
+          },
+          last_changed: '2026-01-01T00:01:00+00:00',
+          last_updated: '2026-01-01T00:01:00+00:00',
+          context: { id: '11b', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: expect.objectContaining({
+          type: 'open-camera',
+          payload: expect.objectContaining({
+            cameraEntityId: 'camera.garage',
+            sourceEntityId: 'event.person_detector',
+          }),
+        }),
+      })
+    );
+  });
+
+  it('prefers registry area-matching camera candidate when token scoring is ambiguous', async () => {
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+      getEntityRegistry: vi.fn().mockResolvedValue([
+        { entity_id: 'binary_sensor.detector_entry', area_id: 'area_driveway', labels: [] },
+        { entity_id: 'camera.alpha', area_id: 'area_front', labels: [] },
+        { entity_id: 'camera.beta', area_id: 'area_driveway', labels: [] },
+      ]),
+      getDeviceRegistry: vi.fn().mockResolvedValue([]),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.detector_feed',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.detector_feed',
+          state: '2026-01-01T00:01:00+00:00',
+          attributes: {
+            friendly_name: 'Detector Feed',
+            event_type: 'person_detected',
+            source_entity_id: 'binary_sensor.detector_entry',
+            camera_entity_ids: ['camera.alpha', 'camera.beta'],
+          },
+          last_changed: '2026-01-01T00:01:00+00:00',
+          last_updated: '2026-01-01T00:01:00+00:00',
+          context: { id: '11c', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: expect.objectContaining({
+          type: 'open-camera',
+          payload: expect.objectContaining({
+            cameraEntityId: 'camera.beta',
+            sourceEntityId: 'event.detector_feed',
+          }),
+        }),
+      })
+    );
+  });
+
+  it('prefers registry label overlap when camera candidates do not share an area', async () => {
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+      getEntityRegistry: vi.fn().mockResolvedValue([
+        {
+          entity_id: 'binary_sensor.detector_label_source',
+          area_id: null,
+          labels: ['label_perimeter'],
+        },
+        { entity_id: 'camera.alpha', area_id: null, labels: [] },
+        { entity_id: 'camera.beta', area_id: null, labels: ['label_perimeter'] },
+      ]),
+      getDeviceRegistry: vi.fn().mockResolvedValue([]),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.tag_detector_feed',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.tag_detector_feed',
+          state: '2026-01-01T00:01:00+00:00',
+          attributes: {
+            friendly_name: 'Tag Detector Feed',
+            event_type: 'person_detected',
+            source_entity_id: 'binary_sensor.detector_label_source',
+            camera_entity_ids: ['camera.alpha', 'camera.beta'],
+          },
+          last_changed: '2026-01-01T00:01:00+00:00',
+          last_updated: '2026-01-01T00:01:00+00:00',
+          context: { id: '11d', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: expect.objectContaining({
+          type: 'open-camera',
+          payload: expect.objectContaining({
+            cameraEntityId: 'camera.beta',
+            sourceEntityId: 'event.tag_detector_feed',
+          }),
+        }),
+      })
+    );
+  });
+
+  it('uses device-registry inherited area and labels for camera candidate priority', async () => {
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+      getEntityRegistry: vi.fn().mockResolvedValue([
+        {
+          entity_id: 'binary_sensor.detector_device_source',
+          device_id: 'device_source',
+          area_id: null,
+          labels: [],
+        },
+        { entity_id: 'camera.alpha', device_id: 'device_camera_a', area_id: null, labels: [] },
+        { entity_id: 'camera.beta', device_id: 'device_camera_b', area_id: null, labels: [] },
+      ]),
+      getDeviceRegistry: vi.fn().mockResolvedValue([
+        { id: 'device_source', area_id: 'area_driveway', labels: ['label_perimeter'] },
+        { id: 'device_camera_a', area_id: 'area_front', labels: [] },
+        { id: 'device_camera_b', area_id: 'area_driveway', labels: ['label_perimeter'] },
+      ]),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.device_registry_detector',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.device_registry_detector',
+          state: '2026-01-01T00:01:00+00:00',
+          attributes: {
+            friendly_name: 'Device Registry Detector',
+            event_type: 'person_detected',
+            source_entity_id: ['binary_sensor.detector_device_source'],
+            camera_entity_ids: ['camera.alpha', 'camera.beta'],
+          },
+          last_changed: '2026-01-01T00:01:00+00:00',
+          last_updated: '2026-01-01T00:01:00+00:00',
+          context: { id: '11e', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: expect.objectContaining({
+          type: 'open-camera',
+          payload: expect.objectContaining({
+            cameraEntityId: 'camera.beta',
+            sourceEntityId: 'event.device_registry_detector',
+          }),
+        }),
       })
     );
   });
