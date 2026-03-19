@@ -733,4 +733,107 @@ describe('HomeAssistantWebSocketClient', () => {
 
     expect(handler2).toHaveBeenCalled();
   });
+
+  it('subscribeToCommandStream() invokes handler and unsubscribes via unsubscribe_events', async () => {
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
+
+    const handler = vi.fn();
+    const subscriptionPromise = client.subscribeToCommandStream(
+      { type: 'persistent_notification/subscribe' },
+      handler
+    );
+
+    const subscribeSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
+      id: number;
+      type: string;
+    };
+
+    expect(subscribeSent.type).toBe('persistent_notification/subscribe');
+
+    ws.serverSend({ id: subscribeSent.id, type: 'result', success: true, result: null });
+    const subscription = await subscriptionPromise;
+
+    ws.serverSend({
+      id: subscribeSent.id,
+      type: 'event',
+      event: {
+        type: 'added',
+        notifications: {
+          abc: {
+            notification_id: 'abc',
+            title: 'Hi',
+            message: 'There',
+          },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    const unsubscribePromise = subscription.unsubscribe();
+    const unsubscribeSent = JSON.parse(ws.sent[ws.sent.length - 1]) as {
+      id: number;
+      type: string;
+      subscription: number;
+    };
+
+    expect(unsubscribeSent.type).toBe('unsubscribe_events');
+    expect(unsubscribeSent.subscription).toBe(subscribeSent.id);
+
+    ws.serverSend({ id: unsubscribeSent.id, type: 'result', success: true, result: null });
+    await expect(unsubscribePromise).resolves.toBeUndefined();
+  });
+
+  it('resubscribeAll replays command-stream subscriptions after reconnect', async () => {
+    const config = createConnectionConfigStub({
+      webSocketUrl: 'ws://example/api/websocket',
+      accessToken: 'token',
+    });
+
+    const client = new HomeAssistantWebSocketClient(config, ws);
+    await client.connect();
+
+    const subscriptionPromise = client.subscribeToCommandStream(
+      { type: 'persistent_notification/subscribe' },
+      () => undefined
+    );
+
+    const initialSubscribe = JSON.parse(ws.sent[ws.sent.length - 1]) as {
+      id: number;
+      type: string;
+    };
+
+    expect(initialSubscribe.type).toBe('persistent_notification/subscribe');
+    ws.serverSend({ id: initialSubscribe.id, type: 'result', success: true, result: null });
+    await subscriptionPromise;
+
+    const sentBeforeReconnect = ws.sent.length;
+    ws.disconnect();
+    ws.serverReconnect();
+
+    const replayed = ws.sent
+      .slice(sentBeforeReconnect)
+      .map((s) => {
+        try {
+          return JSON.parse(s) as { id?: unknown; type?: unknown };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .find(
+        (m) => m?.type === 'persistent_notification/subscribe' && m?.id === initialSubscribe.id
+      );
+
+    expect(replayed).toBeTruthy();
+
+    // Unblock pending replay call.
+    ws.serverSend({ id: initialSubscribe.id, type: 'result', success: true, result: null });
+  });
 });

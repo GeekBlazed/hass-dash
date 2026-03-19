@@ -114,6 +114,17 @@ export class QueuedHomeAssistantClient implements IHomeAssistantClient {
     return this.raw.subscribeToTrigger(trigger, handler);
   }
 
+  subscribeToCommandStream<TEvent>(
+    command: Record<string, unknown>,
+    handler: (event: TEvent) => void
+  ): Promise<{ unsubscribe: () => Promise<void> }> {
+    if (!this.raw.subscribeToCommandStream) {
+      return Promise.reject(new Error('subscribeToCommandStream is not supported by this client'));
+    }
+
+    return this.raw.subscribeToCommandStream(command, handler);
+  }
+
   async callService(params: HaCallServiceParams): Promise<HaCallServiceResult> {
     if (isBrowserOffline()) {
       await this.queue.enqueue(params);

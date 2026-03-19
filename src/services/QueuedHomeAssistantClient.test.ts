@@ -215,6 +215,44 @@ describe('QueuedHomeAssistantClient + HomeAssistantServiceCallQueue', () => {
     expect(supportedRaw.subscribeToTrigger).toHaveBeenCalledTimes(1);
   });
 
+  it('subscribeToCommandStream rejects when unsupported and forwards when supported', async () => {
+    const unsupportedRaw = {
+      subscribeToEvents: vi.fn(),
+      callService: vi.fn(),
+    } as unknown as IHomeAssistantClient;
+
+    const unsupportedClient = new QueuedHomeAssistantClient(
+      unsupportedRaw,
+      new HomeAssistantServiceCallQueue(unsupportedRaw)
+    );
+
+    await expect(
+      unsupportedClient.subscribeToCommandStream?.(
+        { type: 'persistent_notification/subscribe' },
+        () => undefined
+      )
+    ).rejects.toThrow('subscribeToCommandStream is not supported by this client');
+
+    const subscription = { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+    const supportedRaw = {
+      subscribeToCommandStream: vi.fn().mockResolvedValue(subscription),
+      callService: vi.fn(),
+    } as unknown as IHomeAssistantClient;
+
+    const supportedClient = new QueuedHomeAssistantClient(
+      supportedRaw,
+      new HomeAssistantServiceCallQueue(supportedRaw)
+    );
+
+    const result = await supportedClient.subscribeToCommandStream?.(
+      { type: 'persistent_notification/subscribe' },
+      () => undefined
+    );
+
+    expect(result).toBe(subscription);
+    expect(supportedRaw.subscribeToCommandStream).toHaveBeenCalledTimes(1);
+  });
+
   it('sendCommand and registry helpers reject when unsupported', async () => {
     const rawClient = {
       callService: vi.fn(),

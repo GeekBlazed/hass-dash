@@ -219,7 +219,7 @@ export function FloorplanSvg({
       ro.disconnect();
       mo?.disconnect();
     };
-  }, [computedViewBox, stageFontScale]);
+  }, [computedViewBox, idPrefix, interactive, stageFontScale, viewMode]);
 
   useEffect(() => {
     const svg = svgRef.current;

@@ -125,6 +125,7 @@ When you change code in this repo, validation must include a production build.
 
 Always use the coding agent and the pull_request_template.md for PRs. Ensure the following before requesting review:
 
+- Run `pnpm test:pr-check` and confirm it passes before submitting the PR.
 - All CI checks passing
 - 80% code coverage maintained
 - No TypeScript errors
@@ -178,6 +179,7 @@ pnpm test            # Run tests in watch mode
 pnpm test:run        # Run tests once
 pnpm test:ui         # Open Vitest UI
 pnpm test:coverage   # Run tests with coverage report
+pnpm test:pr-check   # Full PR gate checks (lint, type-check, coverage, e2e, build)
 
 # Code Quality
 pnpm lint            # ESLint

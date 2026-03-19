@@ -49,6 +49,7 @@ type NotificationStore = {
   pruneExpiredToasts: (now?: number) => void;
 
   addPersistent: (input: AddNotificationInput) => void;
+  removePersistentByDedupeKey: (dedupeKey: string) => void;
   markPersistentRead: (id: string) => void;
   markAllPersistentRead: () => void;
   seedMockPersistent: (items: ReadonlyArray<AddNotificationInput>) => void;
@@ -146,6 +147,26 @@ export const useNotificationStore = create<NotificationStore>()(
             return {
               persistent,
               unreadPersistentIds: unread,
+            };
+          });
+        },
+
+        removePersistentByDedupeKey: (dedupeKey) => {
+          set((state) => {
+            const removedIds = new Set(
+              state.persistent.filter((item) => item.dedupeKey === dedupeKey).map((item) => item.id)
+            );
+
+            if (removedIds.size === 0) {
+              return {
+                persistent: state.persistent,
+                unreadPersistentIds: state.unreadPersistentIds,
+              };
+            }
+
+            return {
+              persistent: state.persistent.filter((item) => item.dedupeKey !== dedupeKey),
+              unreadPersistentIds: state.unreadPersistentIds.filter((id) => !removedIds.has(id)),
             };
           });
         },

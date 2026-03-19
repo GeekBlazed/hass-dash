@@ -52,6 +52,15 @@ export interface IHomeAssistantClient {
     handler: (event: HaTriggerEvent) => void
   ): Promise<IHaSubscription>;
 
+  /**
+   * Optional: Subscribe to command-stream style WebSocket APIs that emit event frames
+   * after the initial `result` ack (e.g. `persistent_notification/subscribe`).
+   */
+  subscribeToCommandStream?<TEvent>(
+    command: Record<string, unknown>,
+    handler: (event: TEvent) => void
+  ): Promise<IHaSubscription>;
+
   callService(params: HaCallServiceParams): Promise<HaCallServiceResult>;
 
   /**
