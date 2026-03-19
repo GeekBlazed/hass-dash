@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
+import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityState } from '../../../types/home-assistant';
 import { CameraStreamModal } from './CameraStreamModal';
@@ -14,8 +15,9 @@ const getDisplayName = (entity: HaEntityState): string => {
 export function CamerasPanel({ isHidden = true }: { isHidden?: boolean }) {
   const entitiesById = useEntityStore((s) => s.entitiesById);
   const hassDashEntityIds = useEntityStore((s) => s.hassDashEntityIds);
-
-  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+  const selectedCameraEntityId = useDashboardStore((s) => s.selectedCameraEntityId);
+  const openCameraModal = useDashboardStore((s) => s.openCameraModal);
+  const closeCameraModal = useDashboardStore((s) => s.closeCameraModal);
 
   const cameras = useMemo(() => {
     const allCameras = Object.values(entitiesById).filter((e) => e.entity_id.startsWith('camera.'));
@@ -63,7 +65,7 @@ export function CamerasPanel({ isHidden = true }: { isHidden?: boolean }) {
                 type="button"
                 className="cameras-item__details"
                 onClick={() => {
-                  setSelectedCameraId(camera.id);
+                  openCameraModal(camera.id);
                 }}
                 aria-label={`Open live view for ${camera.name ?? camera.id}`}
               >
@@ -86,12 +88,12 @@ export function CamerasPanel({ isHidden = true }: { isHidden?: boolean }) {
         {emptyCopy}
       </div>
 
-      {selectedCameraId && (
+      {selectedCameraEntityId && (
         <CameraStreamModal
-          entityId={selectedCameraId}
-          open={selectedCameraId !== null}
+          entityId={selectedCameraEntityId}
+          open={selectedCameraEntityId !== null}
           onOpenChange={(open) => {
-            if (!open) setSelectedCameraId(null);
+            if (!open) closeCameraModal();
           }}
         />
       )}

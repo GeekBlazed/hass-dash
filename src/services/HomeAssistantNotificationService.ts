@@ -19,6 +19,9 @@ type PersistentNotificationUpdateEvent = {
   notifications?: Record<string, PersistentNotificationPayload>;
 };
 
+const CAMERA_EVENT_TOAST_TTL_MS = 60_000;
+const CAMERA_DETECTION_EVENT_KEYWORDS = ['person', 'vehicle', 'animal', 'package'];
+
 @injectable()
 export class HomeAssistantNotificationService implements INotificationService {
   private readonly handlers = new Set<(record: NotificationStreamRecord) => void>();
@@ -185,7 +188,69 @@ export class HomeAssistantNotificationService implements INotificationService {
 
     if (entityId.startsWith('event.')) {
       this.handleEventEntityStateChange(data.new_state);
+      return;
     }
+
+    if (entityId.startsWith('binary_sensor.')) {
+      this.handleBinarySensorStateChange(data.old_state, data.new_state);
+    }
+  }
+
+  private handleBinarySensorStateChange(
+    oldState: HaEntityState | null,
+    newState: HaEntityState | null
+  ): void {
+    if (!newState) return;
+
+    const attrs = (newState.attributes ?? {}) as Record<string, unknown>;
+    const previous = String(oldState?.state ?? '')
+      .trim()
+      .toLowerCase();
+    const current = String(newState.state ?? '')
+      .trim()
+      .toLowerCase();
+
+    if (current === previous) return;
+    if (current !== 'on') return;
+
+    const inferredEventType = this.inferBinarySensorEventType(newState.entity_id, attrs);
+    if (!inferredEventType) return;
+    if (!this.isSupportedCameraDetectionEventType(inferredEventType)) return;
+
+    const cameraEntityId = this.resolveCameraEntityId(newState.entity_id, attrs);
+    const label = this.getDisplayName(attrs, newState.entity_id);
+
+    this.emit({
+      surface: 'toast',
+      sourceKind: 'event_entity',
+      source: 'binary_sensor.state_changed',
+      dedupeKey: `ha:binary_sensor:${newState.entity_id}:${inferredEventType}:${current}`,
+      severity: 'warning',
+      ttlMs: CAMERA_EVENT_TOAST_TTL_MS,
+      action: cameraEntityId
+        ? {
+            type: 'open-camera',
+            payload: {
+              cameraEntityId,
+              focusPanel: 'cameras',
+              eventType: inferredEventType,
+              sourceEntityId: newState.entity_id,
+            },
+          }
+        : {
+            type: 'focus-panel',
+            payload: {
+              panel: 'cameras',
+              eventType: inferredEventType,
+              sourceEntityId: newState.entity_id,
+            },
+          },
+      content: {
+        title: label,
+        body: `Event detected: ${inferredEventType}`,
+        format: 'text',
+      },
+    });
   }
 
   private handleAlertStateChange(
@@ -231,6 +296,12 @@ export class HomeAssistantNotificationService implements INotificationService {
         : String(newState.state ?? '').trim();
 
     if (!eventType) return;
+    if (!this.isSupportedCameraDetectionEventType(eventType)) return;
+
+    const cameraContext =
+      newState.entity_id.includes('camera') ||
+      !!this.toOptionalText(attrs.camera_entity_id)?.startsWith('camera.');
+    if (!cameraContext) return;
 
     const label = this.getDisplayName(attrs, newState.entity_id);
     const action = this.resolveActionForEventEntity(newState.entity_id, eventType, attrs);
@@ -241,6 +312,7 @@ export class HomeAssistantNotificationService implements INotificationService {
       source: 'event.state_changed',
       dedupeKey: `ha:event:${newState.entity_id}:${eventType}:${newState.last_updated}`,
       severity: 'info',
+      ttlMs: action ? CAMERA_EVENT_TOAST_TTL_MS : undefined,
       action,
       content: {
         title: label,
@@ -313,23 +385,9 @@ export class HomeAssistantNotificationService implements INotificationService {
     eventType: string,
     attrs: Record<string, unknown>
   ): NotificationStreamRecord['action'] {
-    const normalizedType = eventType.trim().toLowerCase();
+    if (!this.isSupportedCameraDetectionEventType(eventType)) return undefined;
 
-    const looksCameraRelated =
-      entityId.startsWith('event.camera_') ||
-      entityId.includes('camera') ||
-      normalizedType.includes('person') ||
-      normalizedType.includes('motion') ||
-      normalizedType.includes('vehicle') ||
-      normalizedType.includes('package') ||
-      normalizedType.includes('animal');
-
-    if (!looksCameraRelated) return undefined;
-
-    const cameraEntityId =
-      this.toOptionalText(attrs.camera_entity_id) ??
-      this.toOptionalText(attrs.entity_id) ??
-      undefined;
+    const cameraEntityId = this.resolveCameraEntityId(entityId, attrs);
 
     if (cameraEntityId && cameraEntityId.startsWith('camera.')) {
       return {
@@ -338,6 +396,7 @@ export class HomeAssistantNotificationService implements INotificationService {
           cameraEntityId,
           focusPanel: 'cameras',
           eventType,
+          sourceEntityId: entityId,
         },
       };
     }
@@ -347,7 +406,63 @@ export class HomeAssistantNotificationService implements INotificationService {
       payload: {
         panel: 'cameras',
         eventType,
+        sourceEntityId: entityId,
       },
     };
+  }
+
+  private resolveCameraEntityId(
+    entityId: string,
+    attrs: Record<string, unknown>
+  ): string | undefined {
+    const fromAttrs =
+      this.toOptionalText(attrs.camera_entity_id) ?? this.toOptionalText(attrs.entity_id);
+    if (fromAttrs && fromAttrs.startsWith('camera.')) {
+      return fromAttrs;
+    }
+
+    if (entityId.startsWith('binary_sensor.')) {
+      const binarySuffixes = ['_person', '_vehicle', '_animal', '_package'];
+      const rawName = entityId.slice('binary_sensor.'.length);
+
+      for (const suffix of binarySuffixes) {
+        if (rawName.endsWith(suffix)) {
+          const base = rawName.slice(0, -suffix.length);
+          if (base.length > 0) {
+            if (base.endsWith('_camera')) {
+              const stem = base.slice(0, -'_camera'.length);
+              if (stem.length > 0) {
+                return `camera.${stem}`;
+              }
+            }
+
+            return `camera.${base}`;
+          }
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  private inferBinarySensorEventType(
+    entityId: string,
+    attrs: Record<string, unknown>
+  ): string | undefined {
+    const explicitEventType = this.toOptionalText(attrs.event_type);
+    if (explicitEventType) return explicitEventType;
+
+    const classifier = `${entityId} ${this.toOptionalText(attrs.device_class) ?? ''}`.toLowerCase();
+    if (classifier.includes('person')) return 'person_detected';
+    if (classifier.includes('vehicle')) return 'vehicle_detected';
+    if (classifier.includes('animal')) return 'animal_detected';
+    if (classifier.includes('package')) return 'package_detected';
+
+    return undefined;
+  }
+
+  private isSupportedCameraDetectionEventType(eventType: string): boolean {
+    const normalized = eventType.trim().toLowerCase();
+    return CAMERA_DETECTION_EVENT_KEYWORDS.some((keyword) => normalized.includes(keyword));
   }
 }

@@ -17,6 +17,7 @@ export interface NotificationItem {
   surface: NotificationSurface;
   content: NotificationContent;
   source: string;
+  action?: NotificationAction;
   createdAt: number;
   updatedAt: number;
   duplicateCount: number;
@@ -28,6 +29,7 @@ export interface AddNotificationInput {
   dedupeKey: string;
   content: NotificationContent;
   source: string;
+  action?: NotificationAction;
   ttlMs?: number;
 }
 

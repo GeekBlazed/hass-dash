@@ -31,6 +31,10 @@ interface DashboardState {
   activePanel: DashboardPanel;
   setActivePanel: (panel: DashboardPanel) => void;
 
+  selectedCameraEntityId: string | null;
+  openCameraModal: (entityId: string) => void;
+  closeCameraModal: () => void;
+
   overlays: Record<DashboardOverlay, boolean>;
   setOverlayEnabled: (overlay: DashboardOverlay, enabled: boolean) => void;
   toggleOverlay: (overlay: DashboardOverlay) => void;
@@ -110,6 +114,14 @@ export const useDashboardStore = create<DashboardState>()(
         activePanel: 'climate',
         setActivePanel: (panel) => {
           set({ activePanel: panel });
+        },
+
+        selectedCameraEntityId: null,
+        openCameraModal: (entityId) => {
+          set({ selectedCameraEntityId: entityId });
+        },
+        closeCameraModal: () => {
+          set({ selectedCameraEntityId: null });
         },
 
         overlays: DEFAULT_OVERLAYS,

@@ -196,19 +196,21 @@ describe('HomeAssistantNotificationService', () => {
         surface: 'toast',
         sourceKind: 'event_entity',
         source: 'event.state_changed',
+        ttlMs: 60_000,
         content: expect.objectContaining({ body: 'Event detected: person_detected' }),
         action: expect.objectContaining({
           type: 'open-camera',
           payload: expect.objectContaining({
             cameraEntityId: 'camera.front_door',
             focusPanel: 'cameras',
+            sourceEntityId: 'event.front_door_camera',
           }),
         }),
       })
     );
   });
 
-  it('maps camera-like events without camera entity id to focus-panel action', async () => {
+  it('maps allowed camera-detection events without camera entity id to focus-panel action', async () => {
     const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
 
     const haClient = {
@@ -228,14 +230,14 @@ describe('HomeAssistantNotificationService', () => {
 
     stateHandlerRef.current?.({
       data: {
-        entity_id: 'event.driveway_sensor',
+        entity_id: 'event.driveway_camera',
         old_state: null,
         new_state: {
-          entity_id: 'event.driveway_sensor',
+          entity_id: 'event.driveway_camera',
           state: '2026-01-01T00:01:00+00:00',
           attributes: {
-            friendly_name: 'Driveway Sensor',
-            event_type: 'motion_detected',
+            friendly_name: 'Driveway Camera',
+            event_type: 'vehicle_detected',
           },
           last_changed: '2026-01-01T00:01:00+00:00',
           last_updated: '2026-01-01T00:01:00+00:00',
@@ -248,7 +250,118 @@ describe('HomeAssistantNotificationService', () => {
       expect.objectContaining({
         action: expect.objectContaining({
           type: 'focus-panel',
-          payload: expect.objectContaining({ panel: 'cameras' }),
+          payload: expect.objectContaining({
+            panel: 'cameras',
+            sourceEntityId: 'event.driveway_camera',
+          }),
+        }),
+        ttlMs: 60_000,
+      })
+    );
+  });
+
+  it('ignores binary_sensor motion events for camera notifications', async () => {
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'binary_sensor.bedroom_motion',
+        old_state: {
+          entity_id: 'binary_sensor.bedroom_motion',
+          state: 'off',
+          attributes: { device_class: 'motion' },
+          last_changed: '2026-01-01T00:00:00+00:00',
+          last_updated: '2026-01-01T00:00:00+00:00',
+          context: { id: 'bm-1', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'binary_sensor.bedroom_motion',
+          state: 'on',
+          attributes: { device_class: 'motion' },
+          last_changed: '2026-01-01T00:01:00+00:00',
+          last_updated: '2026-01-01T00:01:00+00:00',
+          context: { id: 'bm-2', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('maps binary_sensor camera person transitions to toast records with camera action', async () => {
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'binary_sensor.studio_camera_person',
+        old_state: {
+          entity_id: 'binary_sensor.studio_camera_person',
+          state: 'off',
+          attributes: {
+            friendly_name: 'Studio Camera Person',
+            device_class: 'occupancy',
+          },
+          last_changed: '2026-01-01T00:01:00+00:00',
+          last_updated: '2026-01-01T00:01:00+00:00',
+          context: { id: '4a', parent_id: null, user_id: null },
+        },
+        new_state: {
+          entity_id: 'binary_sensor.studio_camera_person',
+          state: 'on',
+          attributes: {
+            friendly_name: 'Studio Camera Person',
+            device_class: 'occupancy',
+          },
+          last_changed: '2026-01-01T00:02:00+00:00',
+          last_updated: '2026-01-01T00:02:00+00:00',
+          context: { id: '4b', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'binary_sensor.state_changed',
+        sourceKind: 'event_entity',
+        dedupeKey: 'ha:binary_sensor:binary_sensor.studio_camera_person:person_detected:on',
+        ttlMs: 60_000,
+        content: expect.objectContaining({ body: 'Event detected: person_detected' }),
+        action: expect.objectContaining({
+          type: 'open-camera',
+          payload: expect.objectContaining({
+            cameraEntityId: 'camera.studio',
+            sourceEntityId: 'binary_sensor.studio_camera_person',
+          }),
         }),
       })
     );
@@ -513,7 +626,7 @@ describe('HomeAssistantNotificationService', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('emits event toasts without action for non-camera-like event types', async () => {
+  it('ignores event entities for non-allowlisted event types', async () => {
     const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
 
     const haClient = {
@@ -533,14 +646,14 @@ describe('HomeAssistantNotificationService', () => {
 
     stateHandlerRef.current?.({
       data: {
-        entity_id: 'event.mailbox_sensor',
+        entity_id: 'event.mailbox_camera',
         old_state: null,
         new_state: {
-          entity_id: 'event.mailbox_sensor',
+          entity_id: 'event.mailbox_camera',
           state: '2026-01-01T00:01:00+00:00',
           attributes: {
-            friendly_name: 'Mailbox',
-            event_type: 'battery_low',
+            friendly_name: 'Mailbox Camera',
+            event_type: 'motion_detected',
           },
           last_changed: '2026-01-01T00:01:00+00:00',
           last_updated: '2026-01-01T00:01:00+00:00',
@@ -549,12 +662,7 @@ describe('HomeAssistantNotificationService', () => {
       },
     });
 
-    expect(handler).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourceKind: 'event_entity',
-        action: undefined,
-      })
-    );
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it('ignores event entities when event_type and state are empty after trim', async () => {

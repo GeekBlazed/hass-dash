@@ -5,6 +5,7 @@ import { container } from '../../../core/di-container';
 import { TYPES } from '../../../core/types';
 import type { ICameraService } from '../../../interfaces/ICameraService';
 import type { IHomeAssistantConnectionConfig } from '../../../interfaces/IHomeAssistantConnectionConfig';
+import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityState } from '../../../types/home-assistant';
 import { CamerasPanel } from './CamerasPanel';
@@ -26,6 +27,7 @@ const makeCamera = (entityId: string, state: string, friendlyName?: string): HaE
 describe('CamerasPanel', () => {
   beforeEach(() => {
     useEntityStore.getState().clear();
+    useDashboardStore.getState().closeCameraModal();
     vi.restoreAllMocks();
   });
 
