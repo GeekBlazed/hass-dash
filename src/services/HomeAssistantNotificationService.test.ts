@@ -109,6 +109,47 @@ describe('HomeAssistantNotificationService', () => {
     );
   });
 
+  it('emits remove records even when the service has no prior fingerprint for the dedupe key', async () => {
+    const commandHandlerRef: { current?: (event: unknown) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockImplementation(async (_command, handler) => {
+        commandHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+      subscribeToEvents: vi
+        .fn()
+        .mockResolvedValue({ unsubscribe: vi.fn().mockResolvedValue(undefined) }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    commandHandlerRef.current?.({
+      type: 'removed',
+      notifications: {
+        orphaned: {
+          notification_id: 'orphaned',
+          title: 'Orphaned',
+          message: 'Already gone',
+        },
+      },
+    });
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dedupeKey: 'ha:persistent:orphaned',
+        source: 'persistent_notification.removed',
+        remove: true,
+      })
+    );
+  });
+
   it('suppresses replayed persistent current snapshots with unchanged content', async () => {
     const commandHandlerRef: { current?: (event: unknown) => void } = {};
 
@@ -1736,6 +1777,101 @@ describe('HomeAssistantNotificationService', () => {
     });
 
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('ignores allowlisted event entities that do not have camera context or camera-hinted ids', async () => {
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.front_patio',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.front_patio',
+          state: '2026-01-01T00:01:00+00:00',
+          attributes: {
+            friendly_name: 'Front Patio Event',
+            event_type: 'person_detected',
+          },
+          last_changed: '2026-01-01T00:01:00+00:00',
+          last_updated: '2026-01-01T00:01:00+00:00',
+          context: { id: 'ev-no-camera', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('refreshes stale registry snapshot in background while handling events', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+
+    const stateHandlerRef: { current?: (event: { data: HaStateChangedEventData }) => void } = {};
+
+    const getEntityRegistry = vi
+      .fn()
+      .mockResolvedValue([{ entity_id: 'camera.driveway', area_id: 'area_a', labels: [] }]);
+    const getDeviceRegistry = vi.fn().mockResolvedValue([]);
+
+    const haClient = {
+      isConnected: vi.fn().mockReturnValue(true),
+      connect: vi.fn().mockResolvedValue(undefined),
+      subscribeToCommandStream: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+      subscribeToEvents: vi.fn().mockImplementation(async (_eventType, handler) => {
+        stateHandlerRef.current = handler;
+        return { unsubscribe: vi.fn().mockResolvedValue(undefined) };
+      }),
+      getEntityRegistry,
+      getDeviceRegistry,
+    } as unknown as IHomeAssistantClient;
+
+    const service = new HomeAssistantNotificationService(haClient);
+    const handler = vi.fn();
+
+    await service.subscribe(handler);
+    expect(getEntityRegistry).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(5 * 60 * 1000 + 1);
+
+    stateHandlerRef.current?.({
+      data: {
+        entity_id: 'event.driveway_camera',
+        old_state: null,
+        new_state: {
+          entity_id: 'event.driveway_camera',
+          state: '2026-01-01T00:06:00+00:00',
+          attributes: {
+            friendly_name: 'Driveway Camera',
+            event_type: 'person_detected',
+            camera_entity_ids: ['camera.driveway'],
+          },
+          last_changed: '2026-01-01T00:06:00+00:00',
+          last_updated: '2026-01-01T00:06:00+00:00',
+          context: { id: 'refresh-1', parent_id: null, user_id: null },
+        },
+      },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(getEntityRegistry).toHaveBeenCalledTimes(2);
   });
 
   it('ignores event entities when event_type and state are empty after trim', async () => {

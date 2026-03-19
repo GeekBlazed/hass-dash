@@ -297,10 +297,6 @@ export class HomeAssistantNotificationService implements INotificationService {
       const dedupeKey = `ha:persistent:${notificationId}`;
 
       if (updateType === 'removed') {
-        if (!this.lastPersistentFingerprintByDedupeKey.has(dedupeKey)) {
-          continue;
-        }
-
         this.lastPersistentFingerprintByDedupeKey.delete(dedupeKey);
 
         this.emit({
@@ -595,6 +591,8 @@ export class HomeAssistantNotificationService implements INotificationService {
     entityId: string,
     attrs: Record<string, unknown>
   ): string | undefined {
+    this.maybeRefreshRegistrySnapshotInBackground();
+
     const scoredCandidates = new Map<string, number>();
 
     const addCandidates = (value: unknown, baseScore: number): void => {
@@ -710,7 +708,9 @@ export class HomeAssistantNotificationService implements INotificationService {
 
     if (sourceEntityId.startsWith('event.')) {
       const rawName = sourceEntityId.slice('event.'.length);
-      candidates.add(`camera.${rawName}`);
+      if (this.hasCameraHint(rawName)) {
+        candidates.add(`camera.${rawName}`);
+      }
 
       if (rawName.endsWith('_camera')) {
         const stem = rawName.slice(0, -'_camera'.length);
@@ -778,6 +778,25 @@ export class HomeAssistantNotificationService implements INotificationService {
 
   private toComparableTokens(value: string): Set<string> {
     return new Set(this.toTokenList(value));
+  }
+
+  private hasCameraHint(value: string): boolean {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return false;
+
+    return normalized.includes('camera') || normalized.endsWith('_cam');
+  }
+
+  private maybeRefreshRegistrySnapshotInBackground(): void {
+    if (!this.registrySnapshot) return;
+    if (this.registrySnapshotInFlight) return;
+
+    const now = Date.now();
+    if (now - this.registrySnapshotFetchedAt < REGISTRY_CACHE_TTL_MS) {
+      return;
+    }
+
+    void this.primeRegistrySnapshotIfNeeded();
   }
 
   private async primeRegistrySnapshotIfNeeded(): Promise<void> {
