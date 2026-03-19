@@ -96,7 +96,7 @@ export function NotificationsPanel({ isHidden }: NotificationsPanelProps) {
     return (
       <section
         id="notifications-panel"
-        className={`tile notifications-panel${isHidden ? 'is-hidden' : ''}`}
+        className={`tile notifications-panel${isHidden ? ' is-hidden' : ''}`}
         aria-label="Notifications"
       >
         <div className="notifications-panel__empty">Notifications are unavailable.</div>
@@ -107,7 +107,7 @@ export function NotificationsPanel({ isHidden }: NotificationsPanelProps) {
   return (
     <section
       id="notifications-panel"
-      className={`tile notifications-panel${isHidden ? 'is-hidden' : ''}`}
+      className={`tile notifications-panel${isHidden ? ' is-hidden' : ''}`}
       aria-label="Notifications"
     >
       <header className="notifications-panel__head">
