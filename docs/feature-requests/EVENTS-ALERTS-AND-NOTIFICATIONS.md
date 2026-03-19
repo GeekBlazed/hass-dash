@@ -214,7 +214,7 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 ▶️ In Progress
 
 - Notification types compile under strict TypeScript and include dedupe identity + duplicateCount.
-- Env keys for feature flags and toast TTL are defined and documented, with defaults specified.
+- Env keys for feature flags, toast TTL, max visible toast count, burst-dedupe window, source-cooldown overrides, and severity-cooldown overrides are defined and documented, with defaults specified.
 - Discovery notes are captured for rule-source format and normalized schema.
 
 ### Phase 2 AC
@@ -230,9 +230,10 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 ▶️ In Progress
 
 - Service emits normalized events for persistent_notification updates and state_changed events (alert.\*, event.\*, and selected binary_sensor camera detections).
-- Duplicate events merge into a single active item and increment duplicateCount. (Store-level dedupe implemented; service-level burst dedupe strategy still pending)
+- Duplicate events merge into a single active item and increment duplicateCount. (Store-level dedupe and service-level burst dedupe implemented; burst dedupe window is env-configurable)
+- Source cooldown anti-spam suppression is implemented and env-configurable, including alert/event-tier and severity-tier overrides, to reduce repeated loops.
 - Camera detection allow-list is tightened to person/vehicle/animal/package (motion excluded to reduce false positives).
-- Camera target resolution uses available payload + source-entity heuristics with deterministic fallback; advanced area/tag priority strategy is still pending.
+- Camera target resolution uses payload/source heuristics, event-context token scoring, and registry-backed area/tag priority with deterministic fallback.
 - Service tests validate mapping, dedupe, and reconnect recovery.
 
 ### Phase 4 AC
@@ -251,7 +252,7 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 ▶️ In Progress
 
 - Action rules trigger camera-focused workflow for qualifying events via toast CTA/preview click-to-open.
-- Camera targeting usually selects the expected entity using payload and source heuristics; advanced multi-factor priority (event context + area + tags) is still pending.
+- Camera targeting usually selects the expected entity using payload/source heuristics, event-context token scoring, and registry-backed area/tag priority (including area/tag hints from payload).
 - Existing manual camera open/close interactions remain intact after modal state refactor.
 
 ### Phase 6 AC
@@ -271,6 +272,7 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 - Targeted tests pass for client/service/store/controller.
 - pnpm type-check and pnpm build pass.
+- pnpm test:pr-check passes with current notification pipeline changes.
 - Manual QA confirms create/dismiss flows, dedupe behavior, action-triggered camera modal, and preview-click camera open behavior. (Reconnect resilience verification still pending)
 
 ## Decisions
@@ -282,5 +284,5 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 ## Further Considerations
 
 1. Detection rule source for camera/person events should be configuration-driven (entity-id prefixes or matcher table) to avoid hardcoding one integration format.
-1. Add anti-spam policy per source (cooldown by source key) so repeated alert loops do not overwhelm users.
+1. Monitor production telemetry to tune source/severity cooldown defaults and reduce false suppression of legitimate rapid updates.
 1. If future scope requires "all Home Assistant notification intents," add optional admin-only call_service subscription behind a separate feature flag.
