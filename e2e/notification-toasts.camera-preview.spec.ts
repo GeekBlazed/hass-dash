@@ -68,8 +68,8 @@ test.describe('notification toasts camera preview', () => {
 
     await expect(page.locator('#cameras-panel')).not.toHaveClass(/is-hidden/);
     await expect(page.getByRole('dialog')).toBeVisible();
-      await expect(
-        page.getByRole('button', { name: 'Open camera feed for camera.front_door' })
-      ).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Open camera feed for camera.front_door' })
+    ).toHaveCount(0);
   });
 });
