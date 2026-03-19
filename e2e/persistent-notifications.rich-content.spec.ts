@@ -50,13 +50,9 @@ test.describe('persistent notification rich content sanitization', () => {
     );
 
     await page.goto('/');
+    await page.getByRole('button', { name: 'Notifications' }).click();
 
-    const control = page.locator('section[aria-label="Persistent notifications"]').first();
-    await expect(control).toBeVisible();
-
-    await control.getByRole('button', { name: 'Notifications' }).click();
-
-    const panel = page.locator('#persistent-notifications-panel').first();
+    const panel = page.locator('#notifications-panel').first();
     await expect(panel).toBeVisible();
     await expect(panel.getByText('Unsafe Sample')).toBeVisible();
 

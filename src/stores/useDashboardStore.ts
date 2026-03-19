@@ -3,7 +3,14 @@ import { devtools, persist } from 'zustand/middleware';
 
 import type { FloorplanModel } from '../features/model/floorplan';
 
-export type DashboardPanel = 'agenda' | 'climate' | 'lighting' | 'media' | 'cameras' | null;
+export type DashboardPanel =
+  | 'agenda'
+  | 'climate'
+  | 'lighting'
+  | 'media'
+  | 'cameras'
+  | 'notifications'
+  | null;
 
 export type DashboardOverlay = 'tracking' | 'climate' | 'lighting';
 

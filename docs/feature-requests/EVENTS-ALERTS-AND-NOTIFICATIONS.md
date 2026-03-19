@@ -35,14 +35,14 @@ Implement a layered notifications pipeline that combines Home Assistant persiste
 - Persistent notifications should have a dedicated UI component, separate from transient toasts.
 - Do not duplicate persistent notifications or toasts. Track duplicate count and expose it in the UI.
 - Persist unread notifications across refresh.
-- Feature flags should be env-backed and default to off.
+- Feature flags should be env-backed. Notification feature flags default to on and can be explicitly disabled.
 - App runs as a trusted user.
 - Before full Home Assistant notification stream wiring is complete, pre-populate persistent notifications with mock/sample data for UI validation.
 - Before full notification ingestion, trigger toasts from existing tracked light turn on/off events as the first live signal source.
 
 ### Open discovery items
 
-- Rich content rendering strategy and sanitization rules for markdown/HTML payloads.
+- None for v1. Rich content rendering and sanitization strategy is implemented in both toast and persistent-notification surfaces.
 
 ### Discovery decisions (2026-03-19)
 
@@ -52,12 +52,15 @@ Implement a layered notifications pipeline that combines Home Assistant persiste
 
 ### Environment contract (v1)
 
-- Feature flags (default false unless set):
+- Feature flags:
   - VITE_FEATURE_NOTIFICATIONS
   - VITE_FEATURE_NOTIFICATIONS_TOASTS
   - VITE_FEATURE_NOTIFICATIONS_PERSISTENT
   - VITE_FEATURE_NOTIFICATION_ACTIONS
   - VITE_FEATURE_NOTIFICATIONS_MOCK (development bootstrap helper)
+
+Notification capability flags default to true when unset and can be turned off explicitly with `=false`.
+
 - Toast behavior:
   - VITE_NOTIFICATIONS_TOAST_TTL_SECONDS (default: 20)
   - VITE_NOTIFICATIONS_TOAST_MAX_VISIBLE (default: 3)
@@ -91,7 +94,7 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 1.3 Add feature-flag contract for notifications (VITE_FEATURE_NOTIFICATIONS) and optional action flag (VITE_FEATURE_NOTIFICATION_ACTIONS) consumed through useFeatureFlag hooks. **parallel with step 2.1**
 
-1.4 Add additional env-backed feature flags (default false) for separate capabilities such as toast presentation and persistent notification surface.
+1.4 Add additional env-backed feature flags for separate capabilities such as toast presentation and persistent notification surface.
 
 1.5 Add env contract for toast TTL (for example: VITE_NOTIFICATIONS_TOAST_TTL_SECONDS, default 20).
 
@@ -196,6 +199,18 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 - Trigger event.\* camera/person events and verify camera modal action.
 - Verify reconnect (restart HA or network toggle) resubscribes and does not duplicate events.
 
+#### 8. Phase 8 - Deferred gap closure (post-v1)
+
+8.1 Expand generalized non-camera event coverage from the original monitor list, including location-tracking events and arbitrary device-event mappings.
+
+8.2 Add an explicit bounded batching queue layer in ingestion (50ms-style queue/flush) in addition to existing anti-spam dedupe/cooldown behavior.
+
+8.3 Rework alert dedupe key granularity to include entity + context/time semantics where appropriate, rather than relying only on entity + state with cooldown suppression.
+
+8.4 Externalize event-to-action rule definitions into a config-driven matcher/table source instead of code-first-only service logic.
+
+8.5 Add optional raw payload diagnostics retention behind a dedicated debug/safety guard while preserving normalized model behavior for default runtime paths.
+
 ## Relevant files
 
 - /home/jeremy/src/hass-dash/src/interfaces/IHomeAssistantClient.ts - Add command-stream subscription contract.
@@ -292,12 +307,54 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 ### Phase 7 AC
 
-▶️ In Progress
+✅ Done
 
 - Targeted tests pass for client/service/store/controller. (Verified 2026-03-19)
 - pnpm type-check and pnpm build pass. (Verified 2026-03-19)
 - pnpm test:pr-check passes with current notification pipeline changes. (Verified 2026-03-19)
-- Manual QA confirms create/dismiss flows, dedupe behavior, action-triggered camera modal, and preview-click camera open behavior. (Reconnect resilience verification still pending)
+- Reconnect resilience is validated at browser-network level via Playwright offline/online transport recovery smoke coverage, plus websocket resubscribe/recovery unit coverage.
+- Manual QA confirms create/dismiss flows, dedupe behavior, action-triggered camera modal, and preview-click camera open behavior.
+
+### Phase 8 AC
+
+🔘 Not started
+
+- Location-tracking and generalized device-event notifications are mapped through the same normalized pipeline, with tests covering representative entities/events.
+- Ingestion includes an explicit bounded batch queue layer (target 50ms-style flush window) with tests for burst behavior and ordering.
+- Alert dedupe keys include entity + context/time-aware semantics (or equivalent documented strategy), with tests proving expected merge/split behavior.
+- Event-to-action rule source is configurable (matcher/table driven), with fallback/default config and validation tests.
+- Optional raw payload diagnostics retention is available behind an explicit guard and is disabled by default; tests verify both enabled and disabled paths.
+
+## Final Review: Deferred / Not Yet Implemented
+
+The following items are intentionally deferred from the original broad request, or partially implemented and should be tracked separately if they remain in scope:
+
+1. Generic event coverage beyond alert/event/camera-focused signals:
+
+- Current implementation is camera/alert-oriented for v1 and does not yet implement broad location-tracking and arbitrary device-event notification mapping from the original monitor list.
+
+2. Bounded batching queue in notification ingestion (Phase 3.5 wording):
+
+- Burst-dedupe/cooldown anti-spam controls are implemented.
+- A dedicated 50ms-style in-memory batch queue/flush layer (as explicitly described in the original step text) is not implemented as a separate mechanism.
+
+3. Alert dedupe key granularity vs original wording:
+
+- Alert dedupe keys are state-based (`ha:alert:<entity>:<state>`), with additional anti-spam suppression from cooldown logic.
+- The original step text mentioned dedupe by entity + context/time; context/time is not currently part of alert dedupe keys.
+
+4. Compact notification history surface (Phase 6.5):
+
+- Still optional and not implemented in v1.
+
+5. Configuration-driven event-to-action rule source:
+
+- Rule logic is code-first in service implementation for v1.
+- External declarative matcher/table configuration is planned but not implemented.
+
+6. Optional raw payload diagnostics retention:
+
+- Not implemented by design for v1 (normalized model only).
 
 ## Decisions
 
