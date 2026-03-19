@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import { useEffect, useMemo } from 'react';
 
 import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
@@ -21,41 +22,32 @@ const markdownToHtml = (markdown: string): string => {
     .replace(/\n/g, '<br/>');
 };
 
+// Allowlist of safe inline/block tags for notification content.
+// SVG, math, form elements, and all script-capable tags are intentionally excluded.
+const PURIFY_ALLOWED_TAGS = [
+  'a', 'b', 'br', 'code', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'i', 'img', 'li', 'ol', 'p', 'pre', 'span', 'strong', 'ul',
+];
+
+// Only attributes that are safe to render in notification content.
+// Excludes: xlink:href, srcset, formaction, action, data-*, and all event handlers.
+const PURIFY_ALLOWED_ATTR = ['alt', 'class', 'href', 'rel', 'src', 'target', 'title'];
+
+const PURIFY_CONFIG: DOMPurify.Config = {
+  ALLOWED_TAGS: PURIFY_ALLOWED_TAGS,
+  ALLOWED_ATTR: PURIFY_ALLOWED_ATTR,
+  ALLOW_DATA_ATTR: false,
+  // Only permit https:// URLs and data:image/* (inline images) in href/src.
+  // Relative URLs are intentionally excluded from notification content to avoid
+  // open-redirect and path-traversal scenarios.
+  ALLOWED_URI_REGEXP: /^(?:https?:\/\/|data:image\/)/i,
+};
+
 const sanitizeHtml = (rawHtml: string): string => {
-  if (typeof DOMParser === 'undefined') {
+  if (!DOMPurify.isSupported) {
     return escapeHtml(rawHtml);
   }
-
-  const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
-
-  for (const el of Array.from(doc.querySelectorAll('script,style,iframe,object,embed,link,meta'))) {
-    el.remove();
-  }
-
-  for (const el of Array.from(doc.querySelectorAll('*'))) {
-    for (const attr of Array.from(el.attributes)) {
-      const name = attr.name.toLowerCase();
-      const value = attr.value.trim();
-
-      if (name.startsWith('on') || name === 'srcdoc') {
-        el.removeAttribute(attr.name);
-        continue;
-      }
-
-      if (name === 'href' || name === 'src') {
-        const safe =
-          value.startsWith('/') ||
-          value.startsWith('http://') ||
-          value.startsWith('https://') ||
-          value.startsWith('data:image/');
-        if (!safe) {
-          el.removeAttribute(attr.name);
-        }
-      }
-    }
-  }
-
-  return doc.body.innerHTML;
+  return DOMPurify.sanitize(rawHtml, PURIFY_CONFIG) as string;
 };
 
 const renderContentHtml = (content: NotificationContent): string => {
