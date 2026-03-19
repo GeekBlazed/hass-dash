@@ -3,6 +3,7 @@ import { useDashboardStore } from './useDashboardStore';
 
 const createInitialDashboardState = () => ({
   activePanel: 'climate' as const,
+  selectedCameraEntityId: null,
   overlays: { tracking: true, climate: true, lighting: false } as const,
   isMapControlsOpen: false,
   stageView: { x: 0, y: 0, scale: 1 },
@@ -35,6 +36,14 @@ describe('useDashboardStore', () => {
   it('can set active panel', () => {
     useDashboardStore.getState().setActivePanel('lighting');
     expect(useDashboardStore.getState().activePanel).toBe('lighting');
+  });
+
+  it('can open and close camera modal state', () => {
+    useDashboardStore.getState().openCameraModal('camera.front_door');
+    expect(useDashboardStore.getState().selectedCameraEntityId).toBe('camera.front_door');
+
+    useDashboardStore.getState().closeCameraModal();
+    expect(useDashboardStore.getState().selectedCameraEntityId).toBeNull();
   });
 
   it('can update stage view partially', () => {

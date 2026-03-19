@@ -229,14 +229,15 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 ▶️ In Progress
 
-- Service emits normalized events for persistent_notification updates and state_changed events (alert.\* and event.\*).
+- Service emits normalized events for persistent_notification updates and state_changed events (alert.\*, event.\*, and selected binary_sensor camera detections).
 - Duplicate events merge into a single active item and increment duplicateCount. (Store-level dedupe implemented; service-level burst dedupe strategy still pending)
-- Camera target resolution uses combined factors (event context + area + tags) with deterministic priority. (initial camera-focused action mapping implemented; advanced targeting strategy pending)
+- Camera detection allow-list is tightened to person/vehicle/animal/package (motion excluded to reduce false positives).
+- Camera target resolution uses available payload + source-entity heuristics with deterministic fallback; advanced area/tag priority strategy is still pending.
 - Service tests validate mapping, dedupe, and reconnect recovery.
 
 ### Phase 4 AC
 
-▶️ In Progress
+✅ Done
 
 - Store persists unread notifications across refresh.
 - Visible toast stack is capped at 3 with newest first.
@@ -249,19 +250,20 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 ▶️ In Progress
 
-- Action rules can trigger camera modal open for qualifying events. (action emission and panel-focus bridge implemented; camera modal state refactor still pending)
-- Camera targeting selects expected entity when multiple candidates exist, based on configured priority. (pending)
-- Existing manual camera open/close interactions remain intact. (pending until modal state refactor)
+- Action rules trigger camera-focused workflow for qualifying events via toast CTA/preview click-to-open.
+- Camera targeting usually selects the expected entity using payload and source heuristics; advanced multi-factor priority (event context + area + tags) is still pending.
+- Existing manual camera open/close interactions remain intact after modal state refactor.
 
 ### Phase 6 AC
 
-▶️ In Progress
+✅ Done
 
-- Toasts auto-dismiss using env-configured TTL (default 20 seconds).
+- Toasts auto-dismiss using env-configured TTL (default 20 seconds, with longer camera-detection TTL currently set to 60 seconds).
 - Toast and persistent-notification UIs are separate components.
 - Rich content renders correctly, and unsafe HTML/markdown is sanitized before render.
 - Duplicate indicator control shows active duplicate count for each deduped item.
 - Persistent notifications UI can render both mock seeded data and live mapped data without component changes.
+- Camera detection toasts support inline preview and click-through to full modal while dismissing the originating toast.
 
 ### Phase 7 AC
 
@@ -269,7 +271,7 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 - Targeted tests pass for client/service/store/controller.
 - pnpm type-check and pnpm build pass.
-- Manual QA confirms create/dismiss flows, dedupe behavior, action-triggered camera modal, and reconnect resilience. (pending)
+- Manual QA confirms create/dismiss flows, dedupe behavior, action-triggered camera modal, and preview-click camera open behavior. (Reconnect resilience verification still pending)
 
 ## Decisions
 

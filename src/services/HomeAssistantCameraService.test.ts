@@ -84,6 +84,20 @@ describe('HomeAssistantCameraService', () => {
     expect(result).toBeNull();
   });
 
+  it('prefers HD stream URL when multiple stream candidates are returned', async () => {
+    sendCommand.mockResolvedValue({
+      streams: [
+        { url: '/api/stream/front_door_sd.m3u8', quality: 'sd' },
+        { url: '/api/stream/front_door_hd.m3u8', quality: 'hd' },
+      ],
+      url: '/api/stream/front_door_default.m3u8',
+    });
+
+    const result = await service.getStreamUrl('camera.front_door' as HaEntityId);
+
+    expect(result).toBe('http://ha.local:8123/api/stream/front_door_hd.m3u8');
+  });
+
   it('throws when no base URL can be resolved for stream requests', async () => {
     getConfig.mockReturnValue({ baseUrl: '   ' });
     getEffectiveWebSocketUrl.mockReturnValue('ftp://ha.local');

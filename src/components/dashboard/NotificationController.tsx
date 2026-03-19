@@ -89,8 +89,8 @@ export function NotificationController() {
         }
 
         if (record.action.type === 'open-camera') {
-          // Phase 5 starter: focus Cameras panel now; modal opening follows when
-          // camera modal state is lifted from local panel state.
+          // Keep the event-driven UX toast-first: modal opens only when user
+          // clicks the camera preview card inside the toast notification.
           setActivePanel('cameras');
         }
       }

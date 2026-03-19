@@ -138,6 +138,27 @@ describe('useNotificationStore', () => {
     vi.useRealTimers();
   });
 
+  it('retains toast action payload for UI action handling', () => {
+    const state = useNotificationStore.getState();
+
+    state.addToast({
+      dedupeKey: 'camera-event',
+      source: 'event.state_changed',
+      content: { title: 'Camera', body: 'Event detected: person_detected' },
+      action: {
+        type: 'open-camera',
+        payload: { cameraEntityId: 'camera.studio_camera' },
+      },
+      ttlMs: 60_000,
+    });
+
+    const toast = useNotificationStore.getState().toasts[0];
+    expect(toast?.action).toEqual({
+      type: 'open-camera',
+      payload: { cameraEntityId: 'camera.studio_camera' },
+    });
+  });
+
   it('dedupes persistent notifications and can mark one as read', () => {
     const state = useNotificationStore.getState();
 

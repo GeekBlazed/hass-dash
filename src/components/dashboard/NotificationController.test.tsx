@@ -29,6 +29,7 @@ const notificationState = {
 
 const dashboardState = {
   setActivePanel: vi.fn(),
+  openCameraModal: vi.fn(),
 };
 
 const streamSubscription = {
@@ -68,6 +69,7 @@ describe('NotificationController', () => {
     notificationState.removePersistentByDedupeKey.mockReset();
     notificationState.seedMockPersistent.mockReset();
     dashboardState.setActivePanel.mockReset();
+    dashboardState.openCameraModal.mockReset();
     streamSubscription.unsubscribe.mockReset();
     notificationService.subscribe.mockReset();
     notificationService.subscribe.mockResolvedValue(streamSubscription);
@@ -275,6 +277,7 @@ describe('NotificationController', () => {
     expect(dashboardState.setActivePanel).toHaveBeenCalledTimes(2);
     expect(dashboardState.setActivePanel).toHaveBeenNthCalledWith(1, 'cameras');
     expect(dashboardState.setActivePanel).toHaveBeenNthCalledWith(2, 'cameras');
+    expect(dashboardState.openCameraModal).not.toHaveBeenCalled();
   });
 
   it('does not execute action records when action flag is disabled', () => {
@@ -305,5 +308,6 @@ describe('NotificationController', () => {
     });
 
     expect(dashboardState.setActivePanel).not.toHaveBeenCalled();
+    expect(dashboardState.openCameraModal).not.toHaveBeenCalled();
   });
 });

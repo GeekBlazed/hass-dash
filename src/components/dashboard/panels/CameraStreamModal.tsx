@@ -156,6 +156,18 @@ export function CameraStreamModal({ entityId, open, onOpenChange }: CameraStream
     return true;
   }, [streamKind, streamUrl]);
 
+  const switchToFallbackStream = (): boolean => {
+    if (!entityPictureStreamUrl) return false;
+    if (!streamUrl) return false;
+    if (streamUrl === entityPictureStreamUrl) return false;
+
+    setStreamUrl(entityPictureStreamUrl);
+    setStreamStarted(false);
+    setStreamStartTimedOut(false);
+    setError(null);
+    return true;
+  };
+
   useEffect(() => {
     if (!open) return;
 
@@ -182,25 +194,36 @@ export function CameraStreamModal({ entityId, open, onOpenChange }: CameraStream
       setStreamStarted(false);
       setStreamStartTimedOut(false);
 
+      // Prefer camera service stream URL to allow integrations to select best
+      // quality (for example HD vs SD). Fall back to entity_picture proxy stream.
+      if (cameraService.getStreamUrl) {
+        try {
+          const url = await cameraService.getStreamUrl(entityId);
+          if (cancelled) return;
+          if (url?.trim()) {
+            const nextKind = classifyStreamUrl(url);
+            const canPlay = !(nextKind === 'hls' && !canPlayHlsNatively());
+            if (canPlay || !entityPictureStreamUrl) {
+              setStreamUrl(url);
+            } else {
+              setStreamUrl(entityPictureStreamUrl);
+            }
+            return;
+          }
+        } catch (e: unknown) {
+          if (cancelled) return;
+          if (!entityPictureStreamUrl) {
+            setError(e instanceof Error ? e.message : 'Failed to load camera stream');
+            return;
+          }
+        }
+      }
+
       // Prefer the MJPEG proxy stream used by the official Home Assistant dashboard.
       // Avoid pre-probing: multipart streams can be slow to deliver the first frame,
       // and probing can mis-detect them as "not multipart".
       if (entityPictureStreamUrl) {
         setStreamUrl(entityPictureStreamUrl);
-        return;
-      }
-
-      if (!cameraService.getStreamUrl) {
-        return;
-      }
-
-      try {
-        const url = await cameraService.getStreamUrl(entityId);
-        if (cancelled) return;
-        setStreamUrl(url);
-      } catch (e: unknown) {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : 'Failed to load camera stream');
       }
     }
 
@@ -254,6 +277,9 @@ export function CameraStreamModal({ entityId, open, onOpenChange }: CameraStream
               className="absolute inset-0 h-full w-full object-cover"
               onLoad={() => setStreamStarted(true)}
               onError={() => {
+                if (switchToFallbackStream()) {
+                  return;
+                }
                 setStreamStartTimedOut(true);
                 setError('Stream failed to start');
               }}
@@ -271,10 +297,16 @@ export function CameraStreamModal({ entityId, open, onOpenChange }: CameraStream
               onPlaying={() => setStreamStarted(true)}
               onCanPlay={() => setStreamStarted(true)}
               onStalled={() => {
+                if (switchToFallbackStream()) {
+                  return;
+                }
                 setStreamStartTimedOut(true);
                 setError('Stream stalled');
               }}
               onError={() => {
+                if (switchToFallbackStream()) {
+                  return;
+                }
                 setStreamStartTimedOut(true);
                 setError('Stream failed to start');
               }}

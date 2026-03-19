@@ -1,10 +1,21 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useDashboardStore } from '../../stores/useDashboardStore';
 import { useNotificationStore } from '../../stores/useNotificationStore';
 import type { NotificationItem } from '../../types/notifications';
 import { NotificationToasts } from './NotificationToasts';
+
+const entityState: {
+  entitiesById: Record<string, { attributes?: Record<string, unknown> }>;
+} = {
+  entitiesById: {},
+};
+
+vi.mock('../../stores/useEntityStore', () => ({
+  useEntityStore: (selector: (s: unknown) => unknown) => selector(entityState),
+}));
 
 const flagState = {
   NOTIFICATIONS: true,
@@ -42,16 +53,19 @@ const makeToast = (
 
 const resetNotificationStore = () => {
   useNotificationStore.persist.clearStorage();
-  useNotificationStore.setState({
-    toasts: [],
-    persistent: [],
-    unreadPersistentIds: [],
-  });
+  useNotificationStore.setState(useNotificationStore.getInitialState(), true);
+};
+
+const resetDashboardStoreCamera = () => {
+  useDashboardStore.getState().setActivePanel('climate');
+  useDashboardStore.getState().closeCameraModal();
 };
 
 describe('NotificationToasts', () => {
   beforeEach(() => {
     resetNotificationStore();
+    entityState.entitiesById = {};
+    resetDashboardStoreCamera();
     flagState.NOTIFICATIONS = true;
     flagState.NOTIFICATIONS_TOASTS = true;
     vi.useRealTimers();
@@ -156,5 +170,240 @@ describe('NotificationToasts', () => {
 
     vi.advanceTimersByTime(1000);
     expect(pruneExpiredToasts).toHaveBeenCalledTimes(2);
+
+    vi.useRealTimers();
+  });
+
+  it('opens camera modal and dismisses toast when camera preview card is clicked', async () => {
+    entityState.entitiesById = {
+      'camera.studio_camera': {
+        attributes: {
+          friendly_name: 'Studio Camera',
+          entity_picture: '/api/camera_proxy/camera.studio_camera?token=test',
+        },
+      },
+    };
+
+    useNotificationStore.setState({
+      toasts: [
+        makeToast('camera-toast', 'Event detected: person_detected', 'text', {
+          action: {
+            type: 'open-camera',
+            payload: { cameraEntityId: 'camera.studio_camera' },
+          },
+        }),
+      ],
+    });
+
+    render(<NotificationToasts />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Open camera feed for camera.studio_camera' })
+    );
+
+    expect(useDashboardStore.getState().activePanel).toBe('cameras');
+    expect(useDashboardStore.getState().selectedCameraEntityId).toBe('camera.studio_camera');
+    expect(useNotificationStore.getState().toasts).toHaveLength(0);
+  });
+
+  it('keeps open-camera CTA visible when camera entity is not in local cache', () => {
+    entityState.entitiesById = {};
+
+    useNotificationStore.setState({
+      toasts: [
+        makeToast('camera-toast-missing', 'Event detected: person_detected', 'text', {
+          action: {
+            type: 'open-camera',
+            payload: {
+              cameraEntityId: 'camera.studio_camera',
+              sourceEntityId: 'binary_sensor.studio_camera_person',
+            },
+          },
+        }),
+      ],
+    });
+
+    render(<NotificationToasts />);
+
+    expect(
+      screen.getByRole('button', { name: 'Open camera feed for camera.studio_camera' })
+    ).toBeInTheDocument();
+  });
+
+  it('infers camera entity id from binary sensor source when direct id is absent', () => {
+    entityState.entitiesById = {
+      'camera.garage': {
+        attributes: {
+          friendly_name: 'Garage Camera',
+          entity_picture: '/api/camera_proxy/camera.garage?token=test',
+        },
+      },
+    };
+
+    useNotificationStore.setState({
+      toasts: [
+        makeToast('camera-toast-binary-source', 'Event detected: person_detected', 'text', {
+          action: {
+            type: 'open-camera',
+            payload: {
+              sourceEntityId: 'binary_sensor.garage_person',
+            },
+          },
+        }),
+      ],
+    });
+
+    render(<NotificationToasts />);
+
+    expect(
+      screen.getByRole('button', { name: 'Open camera feed for camera.garage' })
+    ).toBeInTheDocument();
+  });
+
+  it('infers camera entity id from event source with _camera suffix fallback', () => {
+    entityState.entitiesById = {
+      'camera.front_door': {
+        attributes: {
+          friendly_name: 'Front Door',
+          entity_picture: '/api/camera_proxy/camera.front_door?token=test',
+        },
+      },
+    };
+
+    useNotificationStore.setState({
+      toasts: [
+        makeToast('camera-toast-event-source', 'Event detected: package_detected', 'text', {
+          action: {
+            type: 'open-camera',
+            payload: {
+              sourceEntityId: 'event.front_door_camera',
+            },
+          },
+        }),
+      ],
+    });
+
+    render(<NotificationToasts />);
+
+    expect(
+      screen.getByRole('button', { name: 'Open camera feed for camera.front_door' })
+    ).toBeInTheDocument();
+  });
+
+  it('uses heuristic camera resolution from source entity tokens when no direct candidate exists', () => {
+    entityState.entitiesById = {
+      'camera.studio_view': {
+        attributes: {
+          friendly_name: 'Studio View',
+          entity_picture: '/api/camera_proxy/camera.studio_view?token=test',
+        },
+      },
+    };
+
+    useNotificationStore.setState({
+      toasts: [
+        makeToast('camera-toast-heuristic', 'Event detected: person_detected', 'text', {
+          action: {
+            type: 'open-camera',
+            payload: {
+              sourceEntityId: 'binary_sensor.studio_alarm',
+            },
+          },
+        }),
+      ],
+    });
+
+    render(<NotificationToasts />);
+
+    expect(
+      screen.getByRole('button', { name: 'Open camera feed for camera.studio_view' })
+    ).toBeInTheDocument();
+  });
+
+  it('uses absolute preview URLs from camera entity picture as-is', () => {
+    entityState.entitiesById = {
+      'camera.pool': {
+        attributes: {
+          friendly_name: 'Pool Camera',
+          entity_picture: 'https://cdn.example.com/pool/live.jpg',
+        },
+      },
+    };
+
+    useNotificationStore.setState({
+      toasts: [
+        makeToast('camera-toast-absolute-preview', 'Event detected: person_detected', 'text', {
+          action: {
+            type: 'open-camera',
+            payload: {
+              cameraEntityId: 'camera.pool',
+            },
+          },
+        }),
+      ],
+    });
+
+    const { container } = render(<NotificationToasts />);
+
+    const previewImage = container.querySelector('.notification-toasts__camera-preview img');
+    expect(previewImage).not.toBeNull();
+    expect(previewImage?.getAttribute('src')).toBe('https://cdn.example.com/pool/live.jpg');
+  });
+
+  it('uses non-proxy relative preview URL as-is', () => {
+    entityState.entitiesById = {
+      'camera.deck': {
+        attributes: {
+          friendly_name: 'Deck Camera',
+          entity_picture: '/images/deck/latest.jpg',
+        },
+      },
+    };
+
+    useNotificationStore.setState({
+      toasts: [
+        makeToast('camera-toast-relative-preview', 'Event detected: person_detected', 'text', {
+          action: {
+            type: 'open-camera',
+            payload: {
+              cameraEntityId: 'camera.deck',
+            },
+          },
+        }),
+      ],
+    });
+
+    const { container } = render(<NotificationToasts />);
+
+    const previewImage = container.querySelector('.notification-toasts__camera-preview img');
+    expect(previewImage).not.toBeNull();
+    expect(previewImage?.getAttribute('src')).toBe('/images/deck/latest.jpg');
+  });
+
+  it('does not render camera preview CTA when action payload cannot resolve a camera entity', () => {
+    entityState.entitiesById = {
+      'camera.studio': {
+        attributes: {
+          friendly_name: 'Studio',
+        },
+      },
+    };
+
+    useNotificationStore.setState({
+      toasts: [
+        makeToast('camera-toast-unresolvable', 'Event detected: person_detected', 'text', {
+          action: {
+            type: 'open-camera',
+            payload: {
+              cameraEntityId: 'sensor.not_a_camera',
+            },
+          },
+        }),
+      ],
+    });
+
+    render(<NotificationToasts />);
+
+    expect(screen.queryByLabelText(/Open camera feed for/i)).toBeNull();
   });
 });

@@ -25,6 +25,75 @@ const deriveBaseUrlFromWebSocketUrl = (webSocketUrl: string): string | undefined
   }
 };
 
+type StreamCandidate = {
+  url: string;
+  score: number;
+};
+
+const HD_KEYWORDS = ['hd', 'high', 'fullhd', '1080', '2k', '4k', '2160'];
+const SD_KEYWORDS = ['sd', 'low', 'substream', '640', '480', '360'];
+
+const scoreLabel = (label: string): number => {
+  const normalized = label.toLowerCase();
+  let score = 0;
+
+  if (HD_KEYWORDS.some((k) => normalized.includes(k))) score += 10;
+  if (SD_KEYWORDS.some((k) => normalized.includes(k))) score -= 10;
+
+  return score;
+};
+
+const collectStreamCandidates = (value: unknown): StreamCandidate[] => {
+  const candidates: StreamCandidate[] = [];
+
+  const add = (url: unknown, ...labels: unknown[]) => {
+    if (typeof url !== 'string' || url.trim().length === 0) return;
+
+    const score = labels
+      .filter((v): v is string => typeof v === 'string')
+      .map((s) => scoreLabel(s))
+      .reduce((acc, next) => acc + next, 0);
+
+    candidates.push({ url: url.trim(), score });
+  };
+
+  if (typeof value === 'string') {
+    add(value);
+    return candidates;
+  }
+
+  if (!value || typeof value !== 'object') {
+    return candidates;
+  }
+
+  const obj = value as Record<string, unknown>;
+
+  add(obj.url, obj.quality, obj.stream, obj.name, obj.title, obj.profile);
+  add(obj.hd_url, 'hd');
+  add(obj.high_url, 'high');
+  add(obj.sd_url, 'sd');
+  add(obj.low_url, 'low');
+
+  const nestedStreams = obj.streams;
+  if (Array.isArray(nestedStreams)) {
+    for (const entry of nestedStreams) {
+      if (!entry || typeof entry !== 'object') continue;
+      const stream = entry as Record<string, unknown>;
+      add(stream.url, stream.quality, stream.stream, stream.name, stream.title, stream.profile);
+    }
+  }
+
+  return candidates;
+};
+
+const selectPreferredStreamUrl = (value: unknown): string | null => {
+  const candidates = collectStreamCandidates(value);
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0]?.url ?? null;
+};
+
 @injectable()
 export class HomeAssistantCameraService implements ICameraService {
   constructor(
@@ -63,15 +132,8 @@ export class HomeAssistantCameraService implements ICameraService {
       entity_id: entityId,
     });
 
-    let streamUrl: string | undefined;
-    if (typeof result === 'string') {
-      streamUrl = result;
-    } else if (typeof result === 'object' && result !== null) {
-      const candidate = (result as { url?: unknown }).url;
-      if (typeof candidate === 'string') streamUrl = candidate;
-    }
-
-    if (!streamUrl?.trim()) return null;
+    const streamUrl = selectPreferredStreamUrl(result);
+    if (!streamUrl) return null;
 
     const absolute = new URL(streamUrl, baseUrl);
     return absolute.toString();
