@@ -233,7 +233,7 @@ describe('useNotificationStore', () => {
   });
 
   it('migrate() hydrates explicit toast fixtures in dev mode and filters invalid entries', () => {
-    vi.stubEnv('DEV', 'true');
+    vi.stubEnv('DEV', true);
 
     const options = useNotificationStore.persist.getOptions();
     const migrate = options.migrate as unknown as (persistedState: unknown) => {
