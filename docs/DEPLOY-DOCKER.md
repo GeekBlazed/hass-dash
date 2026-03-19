@@ -22,6 +22,85 @@ By default, CORS runs in `restricted` mode (RFC1918 + localhost only).
   - `nginx.open.conf`
   - `docker-compose.host.yml`
 
+## Scripted workflow (recommended)
+
+From repository root:
+
+```bash
+# Optional: set your registry repo once per shell
+export HASS_DASH_IMAGE_REPO=geekblaze/hass-dash
+
+# Build local image with current tracked build tag + latest
+pnpm docker:build
+
+# Increment build number, build image, push versioned tag and latest
+pnpm docker:push
+
+# Deploy using the current tracked versioned tag
+pnpm docker:deploy
+```
+
+Blue-green commands (optional, zero-downtime cutover pattern):
+
+```bash
+# Show active color and container health
+pnpm docker:bg:status
+
+# Deploy to the inactive color, health-check it, then switch proxy traffic
+pnpm docker:bg:switch
+
+# Force switch to a specific color
+pnpm docker:bg:switch blue
+pnpm docker:bg:switch green
+```
+
+### Where version numbers are tracked
+
+- App semantic version is tracked in `package.json` under `version`.
+- Docker build number is tracked in `.docker-build.json` under `build`.
+- Versioned Docker tag format is: `<app-version>-build.<build-number>` (example: `0.1.0-build.3`).
+- `pnpm docker:push` increments `.docker-build.json` and pushes both:
+  - `<repo>:<app-version>-build.<build-number>`
+  - `<repo>:latest`
+
+If `package.json` version changes, the build counter resets to `0` for the new app version.
+
+## Blue-green on a single host
+
+This repository includes an optional blue-green compose stack with:
+
+- Two app containers: `hass-dash-blue` and `hass-dash-green`
+- One fixed entrypoint proxy: `hass-dash-proxy` on port `8080`
+- Active upstream config at `docker/nginx.bluegreen.active.conf`
+
+Files:
+
+- `docker-compose.bluegreen.yml`
+- `docker/nginx.bluegreen.blue.conf`
+- `docker/nginx.bluegreen.green.conf`
+- `docker/nginx.bluegreen.active.conf`
+- `scripts/docker-bluegreen.mjs`
+
+How switch works:
+
+1. Determine active color from `docker/nginx.bluegreen.active.conf`.
+2. Deploy the opposite color with the current build tag (or `HASS_DASH_BLUEGREEN_IMAGE` override).
+3. Wait for container health to become healthy/running.
+4. Swap proxy config and restart proxy.
+
+Rollback:
+
+```bash
+pnpm docker:bg:switch blue
+# or
+pnpm docker:bg:switch green
+```
+
+Notes:
+
+- Existing single-service compose deployment (`docker-compose.host.yml`) remains available.
+- Blue-green stack should be run separately from the single-service stack on the same host/port.
+
 ## 1) Build the image on machine A
 
 From repository root:

@@ -1,0 +1,38 @@
+services:
+  hass-dash-blue:
+    image: ${HASS_DASH_BLUE_IMAGE:-hass-dash:latest}
+    container_name: hass-dash-blue
+    environment:
+      CORS_MODE: ${HASS_DASH_CORS_MODE:-restricted}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+
+  hass-dash-green:
+    image: ${HASS_DASH_GREEN_IMAGE:-hass-dash:latest}
+    container_name: hass-dash-green
+    environment:
+      CORS_MODE: ${HASS_DASH_CORS_MODE:-restricted}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+
+  hass-dash-proxy:
+    image: nginx:1.27-alpine
+    container_name: hass-dash-proxy
+    depends_on:
+      - hass-dash-blue
+      - hass-dash-green
+    ports:
+      - "${HASS_DASH_BLUEGREEN_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx.bluegreen.active.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped

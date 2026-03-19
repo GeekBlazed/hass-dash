@@ -30,6 +30,11 @@
     "test:e2e": "playwright test",
     "test:pr-check": "pnpm lint && pnpm type-check && pnpm test:coverage && pnpm test:e2e && pnpm build",
     "test:e2e:toast-max-visible": "node scripts/run-toast-max-visible-e2e.mjs",
+    "docker:build": "node scripts/docker-image.mjs build",
+    "docker:push": "node scripts/docker-image.mjs push",
+    "docker:deploy": "node scripts/docker-image.mjs deploy",
+    "docker:bg:switch": "node scripts/docker-bluegreen.mjs switch",
+    "docker:bg:status": "node scripts/docker-bluegreen.mjs status",
     "pwa:offline-test": "pnpm build && pnpm preview --host --port 5173 --strictPort",
     "pwa:offline-test:note": "Note: run this script only from the same origin (http://localhost:5173) that the PWA is installed from so the service worker scope behaves correctly.",
     "pwa:icons": "node scripts/generate-pwa-icons.mjs"
