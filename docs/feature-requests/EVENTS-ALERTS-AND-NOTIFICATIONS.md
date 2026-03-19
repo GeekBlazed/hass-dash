@@ -24,8 +24,8 @@ Implement a layered notifications pipeline that combines Home Assistant persiste
 
 ### Implementation constraints and defaults
 
-- Event-to-action rule source is not finalized yet and requires discovery.
-- Source normalization schema is not finalized yet and requires discovery.
+- Event-to-action rules are now code-first in the notification service, with a documented path to move to config-driven mapping.
+- Source normalization schema is finalized for v1 and represented by NotificationStreamRecord/NotificationItem.
 - Camera targeting should use a combination of factors, including area and tagging, plus event context where available.
 - Toast notifications are auto-dismiss by default.
 - Toast TTL must be env-configurable and defaults to 20 seconds.
@@ -42,9 +42,33 @@ Implement a layered notifications pipeline that combines Home Assistant persiste
 
 ### Open discovery items
 
-- Final event-to-action rule source and configuration format.
-- Final normalized notification schema (including whether to retain source-specific raw payloads for diagnostics).
 - Rich content rendering strategy and sanitization rules for markdown/HTML payloads.
+
+### Discovery decisions (2026-03-19)
+
+- Rule-source format for v1: code-first matcher/resolver strategy in HomeAssistantNotificationService, with future externalization to a declarative matcher table.
+- Normalized schema for v1: NotificationStreamRecord (ingestion stream) and NotificationItem (store/view model) with stable dedupeKey and duplicateCount.
+- Raw payload retention policy for v1: do not persist source-specific raw payloads in the store. Keep only normalized fields needed for UX and actions; add optional debug-only raw capture behind a separate flag if future diagnostics require it.
+
+### Environment contract (v1)
+
+- Feature flags (default false unless set):
+  - VITE_FEATURE_NOTIFICATIONS
+  - VITE_FEATURE_NOTIFICATIONS_TOASTS
+  - VITE_FEATURE_NOTIFICATIONS_PERSISTENT
+  - VITE_FEATURE_NOTIFICATION_ACTIONS
+  - VITE_FEATURE_NOTIFICATIONS_MOCK (development bootstrap helper)
+- Toast behavior:
+  - VITE_NOTIFICATIONS_TOAST_TTL_SECONDS (default: 20)
+  - VITE_NOTIFICATIONS_TOAST_MAX_VISIBLE (default: 3)
+- Deduping and anti-spam controls:
+  - VITE_NOTIFICATIONS_BURST_DEDUPE_WINDOW_MS (default: 1500)
+  - VITE_NOTIFICATIONS_SOURCE_COOLDOWN_MS (default: 0)
+  - VITE_NOTIFICATIONS_SOURCE_COOLDOWN_ALERT_MS (default: source cooldown fallback)
+  - VITE_NOTIFICATIONS_SOURCE_COOLDOWN_EVENT_MS (default: source cooldown fallback)
+  - VITE_NOTIFICATIONS_SEVERITY_COOLDOWN_INFO_MS (default: 0)
+  - VITE_NOTIFICATIONS_SEVERITY_COOLDOWN_WARNING_MS (default: 0)
+  - VITE_NOTIFICATIONS_SEVERITY_COOLDOWN_CRITICAL_MS (default: 0)
 
 ### Implementation order update
 
@@ -211,7 +235,7 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 ### Phase 1 AC
 
-▶️ In Progress
+✅ Done
 
 - Notification types compile under strict TypeScript and include dedupe identity + duplicateCount.
 - Env keys for feature flags, toast TTL, max visible toast count, burst-dedupe window, source-cooldown overrides, and severity-cooldown overrides are defined and documented, with defaults specified.
@@ -227,7 +251,7 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 ### Phase 3 AC
 
-▶️ In Progress
+✅ Done
 
 - Service emits normalized events for persistent_notification updates and state_changed events (alert.\*, event.\*, and selected binary_sensor camera detections).
 - Duplicate events merge into a single active item and increment duplicateCount. (Store-level dedupe and service-level burst dedupe implemented; burst dedupe window is env-configurable)
@@ -249,7 +273,7 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 ### Phase 5 AC
 
-▶️ In Progress
+✅ Done
 
 - Action rules trigger camera-focused workflow for qualifying events via toast CTA/preview click-to-open.
 - Camera targeting usually selects the expected entity using payload/source heuristics, event-context token scoring, and registry-backed area/tag priority (including area/tag hints from payload).
@@ -270,9 +294,9 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 
 ▶️ In Progress
 
-- Targeted tests pass for client/service/store/controller.
-- pnpm type-check and pnpm build pass.
-- pnpm test:pr-check passes with current notification pipeline changes.
+- Targeted tests pass for client/service/store/controller. (Verified 2026-03-19)
+- pnpm type-check and pnpm build pass. (Verified 2026-03-19)
+- pnpm test:pr-check passes with current notification pipeline changes. (Verified 2026-03-19)
 - Manual QA confirms create/dismiss flows, dedupe behavior, action-triggered camera modal, and preview-click camera open behavior. (Reconnect resilience verification still pending)
 
 ## Decisions
