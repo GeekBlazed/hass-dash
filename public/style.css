@@ -299,6 +299,47 @@ button.qa {
   min-height: 0;
 }
 
+.notifications-panel {
+  position: relative;
+  width: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.notifications-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.notifications-panel__title {
+  margin: 0;
+  color: rgba(234, 231, 223, 0.92);
+  font-size: 0.85rem;
+  line-height: 1.25;
+  font-weight: 650;
+}
+
+.notifications-panel__list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 10px;
+  padding-right: 2px;
+}
+
+.notifications-panel__empty {
+  padding: 10px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(18, 18, 18, 0.2);
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.2px;
+}
+
 .cameras-panel__empty {
   padding: 10px 8px;
   border-radius: 14px;
@@ -1824,7 +1865,8 @@ button.qa {
 }
 
 .tile.cameras-panel,
-.tile.lighting-panel {
+.tile.lighting-panel,
+.tile.notifications-panel {
   display: flex;
   flex-direction: column;
   gap: 12px;

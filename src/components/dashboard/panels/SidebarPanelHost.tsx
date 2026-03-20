@@ -15,6 +15,9 @@ const LazyLightingPanel = lazy(() =>
   import('./LightingPanel').then((m) => ({ default: m.LightingPanel }))
 );
 const LazyMediaPanel = lazy(() => import('./MediaPanel').then((m) => ({ default: m.MediaPanel })));
+const LazyNotificationsPanel = lazy(() =>
+  import('./NotificationsPanel').then((m) => ({ default: m.NotificationsPanel }))
+);
 
 export function SidebarPanelHost() {
   const activePanel = useDashboardStore((state) => state.activePanel);
@@ -102,6 +105,26 @@ export function SidebarPanelHost() {
           id="cameras-panel"
           className="tile cameras-panel is-hidden"
           aria-label="Cameras controls"
+        />
+      )}
+
+      {activePanel === 'notifications' ? (
+        <Suspense
+          fallback={
+            <section
+              id="notifications-panel"
+              className="tile notifications-panel"
+              aria-label="Notifications"
+            />
+          }
+        >
+          <LazyNotificationsPanel isHidden={false} />
+        </Suspense>
+      ) : (
+        <section
+          id="notifications-panel"
+          className="tile notifications-panel is-hidden"
+          aria-label="Notifications"
         />
       )}
     </>

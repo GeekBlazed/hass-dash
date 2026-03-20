@@ -8,6 +8,13 @@ type Listener = () => void;
 
 const OVERRIDES_STORAGE_KEY = 'hassdash:featureFlagOverrides';
 
+const DEFAULT_TRUE_FLAGS = new Set<string>([
+  'VITE_FEATURE_NOTIFICATIONS',
+  'VITE_FEATURE_NOTIFICATIONS_TOASTS',
+  'VITE_FEATURE_NOTIFICATIONS_PERSISTENT',
+  'VITE_FEATURE_NOTIFICATION_ACTIONS',
+]);
+
 const isNonProductionMode = (): boolean => import.meta.env.MODE !== 'production';
 
 @injectable()
@@ -29,10 +36,19 @@ export class FeatureFlagService implements IFeatureFlagService {
     if (override !== undefined) return override;
 
     const raw = import.meta.env[envKey];
+    if (raw === undefined && DEFAULT_TRUE_FLAGS.has(envKey)) {
+      return true;
+    }
+
     return String(raw).toLowerCase() === 'true';
   }
 
   getAll(): Record<string, boolean> {
+    const defaults: Record<string, boolean> = {};
+    for (const key of DEFAULT_TRUE_FLAGS) {
+      defaults[key] = true;
+    }
+
     const envFlags: Record<string, boolean> = {};
 
     for (const [key, value] of Object.entries(import.meta.env)) {
@@ -43,6 +59,7 @@ export class FeatureFlagService implements IFeatureFlagService {
     const overrides = this.readOverrides();
 
     return {
+      ...defaults,
       ...envFlags,
       ...overrides,
     };

@@ -54,4 +54,27 @@ describe('DashboardQuickActions', () => {
     expect(state.overlays.lighting).toBe(false);
     expect(state.overlays.climate).toBe(true);
   });
+
+  it('opens and closes notifications panel without changing overlays', () => {
+    useDashboardStore.setState({
+      activePanel: 'climate',
+      overlays: { tracking: true, climate: true, lighting: false },
+    });
+
+    render(<DashboardQuickActions />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^notifications$/i }));
+
+    let state = useDashboardStore.getState();
+    expect(state.activePanel).toBe('notifications');
+    expect(state.overlays.lighting).toBe(false);
+    expect(state.overlays.climate).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: /^notifications$/i }));
+
+    state = useDashboardStore.getState();
+    expect(state.activePanel).toBe(null);
+    expect(state.overlays.lighting).toBe(false);
+    expect(state.overlays.climate).toBe(true);
+  });
 });

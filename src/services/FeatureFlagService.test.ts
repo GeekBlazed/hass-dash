@@ -40,9 +40,24 @@ describe('FeatureFlagService', () => {
     });
   });
 
-  it('returns false when env var is unset', () => {
+  it('returns false when non-default env var is unset', () => {
     const service = new FeatureFlagService();
     expect(service.isEnabled('SOME_MISSING_FLAG')).toBe(false);
+  });
+
+  it('defaults notification flags to true when env var is unset', () => {
+    const service = new FeatureFlagService();
+
+    expect(service.isEnabled('NOTIFICATIONS')).toBe(true);
+    expect(service.isEnabled('NOTIFICATIONS_TOASTS')).toBe(true);
+    expect(service.isEnabled('NOTIFICATIONS_PERSISTENT')).toBe(true);
+    expect(service.isEnabled('NOTIFICATION_ACTIONS')).toBe(true);
+  });
+
+  it('allows explicit env false for notification flags', () => {
+    withStubbedEnv({ VITE_FEATURE_NOTIFICATIONS: 'false' }, (service) => {
+      expect(service.isEnabled('NOTIFICATIONS')).toBe(false);
+    });
   });
 
   it('supports runtime overrides in non-production modes', () => {
@@ -73,6 +88,7 @@ describe('FeatureFlagService', () => {
         expect(all.VITE_FEATURE_ALPHA).toBe(true);
         expect(all.VITE_FEATURE_BETA).toBe(true);
         expect(all.VITE_OVERLAY_LIGHTING).toBe(true);
+        expect(all.VITE_FEATURE_NOTIFICATIONS).toBe(true);
       }
     );
   });

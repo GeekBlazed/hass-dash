@@ -82,14 +82,22 @@ export function DashboardQuickActions() {
         />
         <div className="label">Media</div>
       </button>
-      <button className="qa" type="button" aria-label="Security" aria-disabled="true" disabled>
+      <button
+        className="qa"
+        type="button"
+        id="notifications-toggle"
+        aria-label="Notifications"
+        aria-controls="notifications-panel"
+        aria-expanded={activePanel === 'notifications'}
+        onClick={() => togglePanel('notifications')}
+      >
         <Icon
-          icon="mdi:security-home"
+          icon="mdi:bell-badge-outline"
           aria-hidden="true"
-          data-testid="security-icon"
-          className="security-icon"
+          data-testid="notifications-icon"
+          className="notifications-icon"
         />
-        <div className="label">Security</div>
+        <div className="label">Notifications</div>
       </button>
       <button
         className="qa"
