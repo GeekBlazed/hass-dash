@@ -24,7 +24,13 @@ export const sanitizeHtml = (rawHtml: string): string => {
 
   const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
 
-  for (const el of Array.from(doc.querySelectorAll('script,style,iframe,object,embed,link,meta'))) {
+  const allowedAttrs = new Set(['alt', 'class', 'href', 'rel', 'src', 'target', 'title']);
+
+  for (const el of Array.from(
+    doc.querySelectorAll(
+      'script,style,iframe,object,embed,link,meta,svg,math,form,input,button,select,textarea,option,optgroup,fieldset,legend,label'
+    )
+  )) {
     el.remove();
   }
 
@@ -33,18 +39,20 @@ export const sanitizeHtml = (rawHtml: string): string => {
       const name = attr.name.toLowerCase();
       const value = attr.value.trim();
 
-      if (name.startsWith('on') || name === 'srcdoc') {
+      if (name.startsWith('on') || name === 'srcdoc' || !allowedAttrs.has(name)) {
         el.removeAttribute(attr.name);
         continue;
       }
 
-      if (name === 'href' || name === 'src') {
-        const safe =
-          value.startsWith('/') ||
-          value.startsWith('http://') ||
-          value.startsWith('https://') ||
-          value.startsWith('data:image/');
-        if (!safe) {
+      if (name === 'href') {
+        if (!value.startsWith('https://')) {
+          el.removeAttribute(attr.name);
+        }
+      }
+
+      if (name === 'src') {
+        const safeSrc = value.startsWith('https://') || value.startsWith('data:image/');
+        if (!safeSrc) {
           el.removeAttribute(attr.name);
         }
       }
