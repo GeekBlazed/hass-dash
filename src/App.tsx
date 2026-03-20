@@ -4,11 +4,13 @@ import { DebugPanel } from './components/DebugPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LhciLightingModalHarness } from './components/lhci/LhciLightingModalHarness';
 import { PwaUpdateBanner } from './components/pwa/PwaUpdateBanner';
+import { getAppVersion } from './pwa/appVersion';
 import { useDevToolsStore } from './stores/useDevToolsStore';
 import { useEntityStore } from './stores/useEntityStore';
 
 function App() {
   const isDevelopment = import.meta.env.DEV;
+  const appVersion = getAppVersion();
   const showDebugPanel = useDevToolsStore((s) => s.debugPanelOpen);
   const syncFromUrl = useDevToolsStore((s) => s.syncFromUrl);
 
@@ -73,6 +75,13 @@ function App() {
       <Dashboard />
       <LhciLightingModalHarness />
       <PwaUpdateBanner />
+      <div
+        className="pointer-events-none fixed bottom-1 left-1/2 z-40 -translate-x-1/2 text-base opacity-60"
+        aria-label="App version"
+        style={{ bottom: '4px', fontSize: '0.85rem' }}
+      >
+        {appVersion}
+      </div>
       {isDevelopment && showDebugPanel && (
         <div className="fixed z-50" style={{ right: '8px', top: '8px' }}>
           <DebugPanel />

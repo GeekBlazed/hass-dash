@@ -16,9 +16,6 @@ describe('Layout', () => {
 
     // Main content
     expect(screen.getByText('Test Content')).toBeInTheDocument();
-
-    // Footer elements
-    expect(screen.getByText(/v0.1.0/)).toBeInTheDocument();
   });
 
   it('should render children in main content area', () => {

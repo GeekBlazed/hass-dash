@@ -75,18 +75,32 @@ function resolveImageTag() {
   }
 
   const packageJson = readJson(packageJsonFile);
-  const appVersion = packageJson.version;
+  const releaseVersion = resolveReleaseVersion();
   const imageRepo = process.env.HASS_DASH_IMAGE_REPO || packageJson.name;
 
   let build = 0;
   if (existsSync(dockerStateFile)) {
     const state = readJson(dockerStateFile);
-    if (state.version === appVersion && Number.isInteger(state.build) && state.build >= 0) {
+    if (state.version === releaseVersion && Number.isInteger(state.build) && state.build >= 0) {
       build = state.build;
     }
   }
 
-  return `${imageRepo}:${appVersion}-build.${build}`;
+  return `${imageRepo}:${releaseVersion}-build${build}`;
+}
+
+function resolveReleaseVersion() {
+  const configured = process.env.HASS_DASH_RELEASE_VERSION?.trim();
+  if (configured) {
+    return configured;
+  }
+
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth() + 1;
+  const releaseIndex = now.getUTCDate();
+
+  return `${year}.${month}.${releaseIndex}`;
 }
 
 function getActiveColor() {

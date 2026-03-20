@@ -33,6 +33,17 @@ describe('App', () => {
     expect(screen.getByRole('application', { name: /floorplan dashboard/i })).toBeInTheDocument();
   });
 
+  it('renders app version at bottom center', async () => {
+    const versionUnderTest = 'test-build-version';
+    vi.stubEnv('VITE_APP_VERSION', versionUnderTest);
+
+    await renderAndSettle(<App />);
+
+    const versionLabel = screen.getByLabelText(/app version/i);
+    expect(versionLabel).toBeInTheDocument();
+    expect(versionLabel).toHaveTextContent(versionUnderTest);
+  });
+
   it('renders quick action buttons', async () => {
     await renderAndSettle(<App />);
 

@@ -5,8 +5,10 @@ import { Footer } from './Footer';
 describe('Footer', () => {
   it('should render app name and version', () => {
     render(<Footer />);
-    expect(screen.getByText(/HassDash/)).toBeInTheDocument();
-    expect(screen.getByText(/v0.1.0/)).toBeInTheDocument();
+
+    const branding = screen.getByText(/HassDash/).closest('div');
+    expect(branding).toBeInTheDocument();
+    expect(branding).toHaveTextContent(/HassDash\s*v\S+/i);
   });
 
   it('should render GitHub link', () => {

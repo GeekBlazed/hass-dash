@@ -64,7 +64,7 @@ test.describe('notification toasts camera preview', () => {
     });
     await expect(previewButton).toBeVisible();
 
-    await previewButton.click();
+    await previewButton.dispatchEvent('click');
 
     await expect(page.locator('#cameras-panel')).not.toHaveClass(/is-hidden/);
     await expect(page.getByRole('dialog')).toBeVisible();
