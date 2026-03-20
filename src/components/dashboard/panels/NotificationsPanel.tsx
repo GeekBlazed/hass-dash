@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 
 import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import { useNotificationStore } from '../../../stores/useNotificationStore';
+import { renderNotificationContentHtml } from '../../../utils/notificationContentRenderer';
 import type { NotificationContent } from '../../../types/notifications';
 
 const escapeHtml = (value: string): string =>
@@ -168,7 +169,7 @@ export function NotificationsPanel({ isHidden }: NotificationsPanelProps) {
 
                 <div
                   className="notification-toasts__body"
-                  dangerouslySetInnerHTML={{ __html: renderContentHtml(item.content) }}
+                  dangerouslySetInnerHTML={{ __html: renderNotificationContentHtml(item.content) }}
                 />
               </article>
             );
