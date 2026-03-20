@@ -1,8 +1,67 @@
+import DOMPurify from 'dompurify';
 import { useEffect, useMemo } from 'react';
 
 import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import { useNotificationStore } from '../../../stores/useNotificationStore';
 import { renderNotificationContentHtml } from '../../../utils/notificationContentRenderer';
+import type { NotificationContent } from '../../../types/notifications';
+
+const escapeHtml = (value: string): string =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+const markdownToHtml = (markdown: string): string => {
+  // Intentionally minimal markdown support for bootstrap discovery.
+  return escapeHtml(markdown)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br/>');
+};
+
+// Allowlist of safe inline/block tags for notification content.
+// SVG, math, form elements, and all script-capable tags are intentionally excluded.
+const PURIFY_ALLOWED_TAGS = [
+  'a', 'b', 'br', 'code', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'i', 'img', 'li', 'ol', 'p', 'pre', 'span', 'strong', 'ul',
+];
+
+// Only attributes that are safe to render in notification content.
+// Excludes: xlink:href, srcset, formaction, action, data-*, and all event handlers.
+const PURIFY_ALLOWED_ATTR = ['alt', 'class', 'href', 'rel', 'src', 'target', 'title'];
+
+const PURIFY_CONFIG: DOMPurify.Config = {
+  ALLOWED_TAGS: PURIFY_ALLOWED_TAGS,
+  ALLOWED_ATTR: PURIFY_ALLOWED_ATTR,
+  ALLOW_DATA_ATTR: false,
+  // Only permit https:// URLs and data:image/* (inline images) in href/src.
+  // Relative URLs are intentionally excluded from notification content to avoid
+  // open-redirect and path-traversal scenarios.
+  ALLOWED_URI_REGEXP: /^(?:https?:\/\/|data:image\/)/i,
+};
+
+const sanitizeHtml = (rawHtml: string): string => {
+  if (!DOMPurify.isSupported) {
+    return escapeHtml(rawHtml);
+  }
+  return DOMPurify.sanitize(rawHtml, PURIFY_CONFIG) as string;
+};
+
+const renderContentHtml = (content: NotificationContent): string => {
+  if (content.format === 'html') {
+    return sanitizeHtml(content.body);
+  }
+
+  if (content.format === 'markdown') {
+    return sanitizeHtml(markdownToHtml(content.body));
+  }
+
+  return sanitizeHtml(escapeHtml(content.body).replace(/\n/g, '<br/>'));
+};
 
 export interface NotificationsPanelProps {
   isHidden: boolean;
@@ -30,7 +89,7 @@ export function NotificationsPanel({ isHidden }: NotificationsPanelProps) {
     return (
       <section
         id="notifications-panel"
-        className={`tile notifications-panel${isHidden ? 'is-hidden' : ''}`}
+        className={`tile notifications-panel${isHidden ? ' is-hidden' : ''}`}
         aria-label="Notifications"
       >
         <div className="notifications-panel__empty">Notifications are unavailable.</div>
@@ -41,7 +100,7 @@ export function NotificationsPanel({ isHidden }: NotificationsPanelProps) {
   return (
     <section
       id="notifications-panel"
-      className={`tile notifications-panel${isHidden ? 'is-hidden' : ''}`}
+      className={`tile notifications-panel${isHidden ? ' is-hidden' : ''}`}
       aria-label="Notifications"
     >
       <header className="notifications-panel__head">
