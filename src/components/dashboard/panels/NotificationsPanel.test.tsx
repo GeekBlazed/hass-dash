@@ -129,6 +129,71 @@ describe('NotificationsPanel', () => {
     expect(container.querySelector('img')).not.toBeNull();
   });
 
+  it('strips risky attributes not covered by the old sanitizer', () => {
+    state.persistent = [
+      makePersistent(
+        'xss-attrs',
+        [
+          '<a xlink:href="javascript:alert(1)">xlink</a>',
+          '<img srcset="https://evil.com/track.png 2x" src="https://ok.com/img.png" alt="test"/>',
+          '<form><button formaction="https://evil.com">go</button></form>',
+          '<svg><script>evil()</script></svg>',
+        ].join(''),
+        'html'
+      ),
+    ];
+
+    const { container } = render(<NotificationsPanel isHidden={false} />);
+
+    // xlink:href must be stripped (not in allowlist)
+    const xlinkEl = container.querySelector('[xlink\\:href]');
+    expect(xlinkEl).toBeNull();
+
+    // srcset must be stripped (not in allowlist)
+    const imgWithSrcset = container.querySelector('img[srcset]');
+    expect(imgWithSrcset).toBeNull();
+
+    // formaction and form elements must be stripped
+    expect(container.querySelector('form')).toBeNull();
+    expect(container.querySelector('[formaction]')).toBeNull();
+
+    // inline SVG must be stripped entirely
+    expect(container.querySelector('svg')).toBeNull();
+  });
+
+  it('strips relative and non-https href/src values', () => {
+    state.persistent = [
+      makePersistent(
+        'url-schemes',
+        [
+          '<a href="/internal/path">relative</a>',
+          '<a href="javascript:alert(1)">js</a>',
+          '<img src="data:text/html,<script>evil()</script>" alt="bad data"/>',
+          '<a href="https://safe.example.com">safe</a>',
+        ].join(''),
+        'html'
+      ),
+    ];
+
+    const { container } = render(<NotificationsPanel isHidden={false} />);
+
+    // Relative hrefs must be stripped
+    const relativeLink = container.querySelector('a[href="/internal/path"]');
+    expect(relativeLink).toBeNull();
+
+    // javascript: hrefs must be stripped
+    const jsLink = container.querySelector('a[href^="javascript"]');
+    expect(jsLink).toBeNull();
+
+    // Non-image data URIs must be stripped
+    const badDataImg = container.querySelector('img[src^="data:text"]');
+    expect(badDataImg).toBeNull();
+
+    // https:// hrefs must be preserved
+    const safeLink = container.querySelector('a[href="https://safe.example.com"]');
+    expect(safeLink).not.toBeNull();
+  });
+
   it('clears all persistent notifications when dismiss all is clicked', async () => {
     const user = userEvent.setup();
 
