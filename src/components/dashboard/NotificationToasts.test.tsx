@@ -351,6 +351,9 @@ describe('NotificationToasts', () => {
   });
 
   it('uses non-proxy relative preview URL as-is', () => {
+    vi.stubEnv('VITE_HA_BASE_URL', undefined);
+    vi.stubEnv('VITE_HA_WEBSOCKET_URL', undefined);
+
     entityState.entitiesById = {
       'camera.deck': {
         attributes: {
@@ -378,6 +381,40 @@ describe('NotificationToasts', () => {
     const previewImage = container.querySelector('.notification-toasts__camera-preview img');
     expect(previewImage).not.toBeNull();
     expect(previewImage?.getAttribute('src')).toBe('/images/deck/latest.jpg');
+  });
+
+  it('resolves proxy preview URL to configured HA base URL', () => {
+    vi.stubEnv('VITE_HA_BASE_URL', 'http://ha-local.geekblaze.com');
+
+    entityState.entitiesById = {
+      'camera.driveway_sd': {
+        attributes: {
+          friendly_name: 'Driveway Camera',
+          entity_picture: '/api/camera_proxy/camera.driveway_sd?token=test',
+        },
+      },
+    };
+
+    useNotificationStore.setState({
+      toasts: [
+        makeToast('camera-toast-base-url', 'Event detected: person_detected', 'text', {
+          action: {
+            type: 'open-camera',
+            payload: {
+              cameraEntityId: 'camera.driveway_sd',
+            },
+          },
+        }),
+      ],
+    });
+
+    const { container } = render(<NotificationToasts />);
+
+    const previewImage = container.querySelector('.notification-toasts__camera-preview img');
+    expect(previewImage).not.toBeNull();
+    expect(previewImage?.getAttribute('src')).toBe(
+      'http://ha-local.geekblaze.com/api/camera_proxy_stream/camera.driveway_sd?token=test'
+    );
   });
 
   it('does not render camera preview CTA when action payload cannot resolve a camera entity', () => {

@@ -4,6 +4,10 @@ import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { useDashboardStore } from '../../stores/useDashboardStore';
 import { useEntityStore } from '../../stores/useEntityStore';
 import { parseMaxVisibleToasts, useNotificationStore } from '../../stores/useNotificationStore';
+import {
+  deriveBaseUrlFromWebSocketUrl,
+  resolveEntityPictureUrl,
+} from '../../utils/deviceLocationTracking';
 import { renderNotificationContentHtml } from '../../utils/notificationContentRenderer';
 
 const toOptionalText = (value: unknown): string | undefined => {
@@ -14,7 +18,8 @@ const toOptionalText = (value: unknown): string | undefined => {
 
 const resolveCameraPreviewUrl = (
   cameraEntityId: string,
-  entitiesById: Record<string, { attributes?: Record<string, unknown> }>
+  entitiesById: Record<string, { attributes?: Record<string, unknown> }>,
+  haBaseUrl: string | undefined
 ): string | undefined => {
   const entity = entitiesById[cameraEntityId];
   const attrs = (entity?.attributes ?? {}) as Record<string, unknown>;
@@ -32,12 +37,13 @@ const resolveCameraPreviewUrl = (
 
   if (raw.startsWith('/')) {
     if (raw.startsWith('/api/camera_proxy/')) {
-      return raw.replace('/api/camera_proxy/', '/api/camera_proxy_stream/');
+      const streamPath = raw.replace('/api/camera_proxy/', '/api/camera_proxy_stream/');
+      return resolveEntityPictureUrl(streamPath, haBaseUrl) ?? streamPath;
     }
-    return raw;
+    return resolveEntityPictureUrl(raw, haBaseUrl) ?? raw;
   }
 
-  return undefined;
+  return resolveEntityPictureUrl(raw, haBaseUrl);
 };
 
 const inferCameraEntityIdBySourceHeuristic = (
@@ -138,8 +144,26 @@ const resolveCameraEntityId = (
   return candidates[0];
 };
 
-const fallbackPreviewUrlForCameraEntityId = (cameraEntityId: string): string => {
-  return `/api/camera_proxy_stream/${cameraEntityId}`;
+const fallbackPreviewUrlForCameraEntityId = (
+  cameraEntityId: string,
+  haBaseUrl: string | undefined
+): string => {
+  const path = `/api/camera_proxy_stream/${cameraEntityId}`;
+  return resolveEntityPictureUrl(path, haBaseUrl) ?? path;
+};
+
+const getConfiguredHaBaseUrl = (): string | undefined => {
+  const base = import.meta.env.VITE_HA_BASE_URL;
+  if (typeof base === 'string' && base.trim().length > 0) {
+    return base.trim();
+  }
+
+  const webSocketUrl = import.meta.env.VITE_HA_WEBSOCKET_URL;
+  if (typeof webSocketUrl === 'string' && webSocketUrl.trim().length > 0) {
+    return deriveBaseUrlFromWebSocketUrl(webSocketUrl.trim());
+  }
+
+  return undefined;
 };
 
 export function NotificationToasts() {
@@ -172,6 +196,7 @@ export function NotificationToasts() {
   const activeToasts = toasts;
   const visible = activeToasts.slice(0, maxVisibleToasts);
   const activeToastCount = activeToasts.length;
+  const haBaseUrl = getConfiguredHaBaseUrl();
 
   const previewByToastId = useMemo(() => {
     const map: Record<string, { cameraEntityId: string; previewUrl?: string }> = {};
@@ -183,8 +208,8 @@ export function NotificationToasts() {
       if (!cameraEntityId) continue;
 
       const previewUrl =
-        resolveCameraPreviewUrl(cameraEntityId, entitiesById) ??
-        fallbackPreviewUrlForCameraEntityId(cameraEntityId);
+        resolveCameraPreviewUrl(cameraEntityId, entitiesById, haBaseUrl) ??
+        fallbackPreviewUrlForCameraEntityId(cameraEntityId, haBaseUrl);
 
       map[toast.id] = {
         cameraEntityId,
@@ -193,7 +218,7 @@ export function NotificationToasts() {
     }
 
     return map;
-  }, [entitiesById, visible]);
+  }, [entitiesById, haBaseUrl, visible]);
 
   if (!notificationsEnabled || !toastsEnabled) return null;
   if (visible.length === 0) return null;

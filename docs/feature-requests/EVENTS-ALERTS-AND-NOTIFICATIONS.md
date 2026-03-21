@@ -330,31 +330,25 @@ This means Phase 6 foundational work (toast + persistent notifications UI surfac
 The following items are intentionally deferred from the original broad request, or partially implemented and should be tracked separately if they remain in scope:
 
 1. Generic event coverage beyond alert/event/camera-focused signals:
-
-- Current implementation is camera/alert-oriented for v1 and does not yet implement broad location-tracking and arbitrary device-event notification mapping from the original monitor list.
+   - Current implementation is camera/alert-oriented for v1 and does not yet implement broad location-tracking and arbitrary device-event notification mapping from the original monitor list.
 
 2. Bounded batching queue in notification ingestion (Phase 3.5 wording):
-
-- Burst-dedupe/cooldown anti-spam controls are implemented.
-- A dedicated 50ms-style in-memory batch queue/flush layer (as explicitly described in the original step text) is not implemented as a separate mechanism.
+   - Burst-dedupe/cooldown anti-spam controls are implemented.
+   - A dedicated 50ms-style in-memory batch queue/flush layer (as explicitly described in the original step text) is not implemented as a separate mechanism.
 
 3. Alert dedupe key granularity vs original wording:
-
-- Alert dedupe keys are state-based (`ha:alert:<entity>:<state>`), with additional anti-spam suppression from cooldown logic.
-- The original step text mentioned dedupe by entity + context/time; context/time is not currently part of alert dedupe keys.
+   - Alert dedupe keys are state-based (`ha:alert:<entity>:<state>`), with additional anti-spam suppression from cooldown logic.
+   - The original step text mentioned dedupe by entity + context/time; context/time is not currently part of alert dedupe keys.
 
 4. Compact notification history surface (Phase 6.5):
-
-- Still optional and not implemented in v1.
+   - Still optional and not implemented in v1.
 
 5. Configuration-driven event-to-action rule source:
-
-- Rule logic is code-first in service implementation for v1.
-- External declarative matcher/table configuration is planned but not implemented.
+   - Rule logic is code-first in service implementation for v1.
+   - External declarative matcher/table configuration is planned but not implemented.
 
 6. Optional raw payload diagnostics retention:
-
-- Not implemented by design for v1 (normalized model only).
+   - Not implemented by design for v1 (normalized model only).
 
 ## Decisions
 

@@ -12,8 +12,8 @@ const envFile = path.join(repoRoot, '.env');
 loadDotEnv(envFile);
 
 const packageJson = readJson(path.join(repoRoot, 'package.json'));
-const appVersion = packageJson.version;
 const imageRepo = process.env.HASS_DASH_IMAGE_REPO || packageJson.name;
+const releaseVersion = resolveReleaseVersion();
 
 const command = process.argv[2];
 
@@ -26,27 +26,51 @@ const state = getState();
 
 switch (command) {
   case 'build': {
-    const tag = formatTag(state.build);
-    run('docker', ['build', '-t', `${imageRepo}:${tag}`, '-t', `${imageRepo}:latest`, '.']);
-    console.log(`Built image tags: ${imageRepo}:${tag}, ${imageRepo}:latest`);
+    const releaseTag = formatReleaseTag();
+    const buildTag = formatBuildTag(state.build);
+    run('docker', [
+      'build',
+      '-t',
+      `${imageRepo}:${releaseTag}`,
+      '-t',
+      `${imageRepo}:${buildTag}`,
+      '-t',
+      `${imageRepo}:latest`,
+      '.',
+    ]);
+    console.log(
+      `Built image tags: ${imageRepo}:${releaseTag}, ${imageRepo}:${buildTag}, ${imageRepo}:latest`
+    );
     break;
   }
   case 'push': {
     const nextBuild = state.build + 1;
-    const tag = formatTag(nextBuild);
-    run('docker', ['build', '-t', `${imageRepo}:${tag}`, '-t', `${imageRepo}:latest`, '.']);
-    run('docker', ['push', `${imageRepo}:${tag}`]);
+    const releaseTag = formatReleaseTag();
+    const buildTag = formatBuildTag(nextBuild);
+    run('docker', [
+      'build',
+      '-t',
+      `${imageRepo}:${releaseTag}`,
+      '-t',
+      `${imageRepo}:${buildTag}`,
+      '-t',
+      `${imageRepo}:latest`,
+      '.',
+    ]);
+    run('docker', ['push', `${imageRepo}:${releaseTag}`]);
+    run('docker', ['push', `${imageRepo}:${buildTag}`]);
     run('docker', ['push', `${imageRepo}:latest`]);
 
-    const nextState = { version: appVersion, build: nextBuild };
+    const nextState = { version: releaseVersion, build: nextBuild };
     writeJson(buildStateFile, nextState);
 
-    console.log(`Pushed image tags: ${imageRepo}:${tag}, ${imageRepo}:latest`);
+    console.log(
+      `Pushed image tags: ${imageRepo}:${releaseTag}, ${imageRepo}:${buildTag}, ${imageRepo}:latest`
+    );
     break;
   }
   case 'deploy': {
-    const tag = formatTag(state.build);
-    const image = process.env.HASS_DASH_IMAGE || `${imageRepo}:${tag}`;
+    const image = process.env.HASS_DASH_IMAGE || `${imageRepo}:${formatBuildTag(state.build)}`;
 
     run('docker', ['compose', '-f', 'docker-compose.host.yml', 'up', '-d'], {
       HASS_DASH_IMAGE: image,
@@ -56,28 +80,30 @@ switch (command) {
     break;
   }
   case 'status': {
-    const tag = formatTag(state.build);
+    const releaseTag = formatReleaseTag();
+    const buildTag = formatBuildTag(state.build);
     console.log(`Image repository: ${imageRepo}`);
-    console.log(`App version: ${appVersion}`);
+    console.log(`Release version: ${releaseVersion}`);
     console.log(`Current build: ${state.build}`);
-    console.log(`Current versioned tag: ${imageRepo}:${tag}`);
+    console.log(`Current release tag: ${imageRepo}:${releaseTag}`);
+    console.log(`Current build tag: ${imageRepo}:${buildTag}`);
     break;
   }
 }
 
 function getState() {
-  const defaultState = { version: appVersion, build: 0 };
+  const defaultState = { version: releaseVersion, build: 0 };
 
   if (!existsSync(buildStateFile)) {
     return defaultState;
   }
 
   const parsed = readJson(buildStateFile);
-  const persistedVersion = typeof parsed.version === 'string' ? parsed.version : appVersion;
+  const persistedVersion = typeof parsed.version === 'string' ? parsed.version : releaseVersion;
   const persistedBuild = Number.isInteger(parsed.build) && parsed.build >= 0 ? parsed.build : 0;
 
-  // When package version changes, reset build counter for the new version.
-  if (persistedVersion !== appVersion) {
+  // When release version changes, reset build counter for the new version.
+  if (persistedVersion !== releaseVersion) {
     return defaultState;
   }
 
@@ -87,8 +113,26 @@ function getState() {
   };
 }
 
-function formatTag(buildNumber) {
-  return `${appVersion}-build.${buildNumber}`;
+function formatReleaseTag() {
+  return releaseVersion;
+}
+
+function formatBuildTag(buildNumber) {
+  return `${releaseVersion}-build${buildNumber}`;
+}
+
+function resolveReleaseVersion() {
+  const configured = process.env.HASS_DASH_RELEASE_VERSION?.trim();
+  if (configured) {
+    return configured;
+  }
+
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth() + 1;
+  const releaseIndex = now.getUTCDate();
+
+  return `${year}.${month}.${releaseIndex}`;
 }
 
 function readJson(filePath) {
