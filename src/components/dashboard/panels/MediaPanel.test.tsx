@@ -91,4 +91,18 @@ describe('MediaPanel', () => {
 
     expect(screen.queryByLabelText('Media controls')).not.toBeInTheDocument();
   });
+
+  it('does not clear externally owned stage stream url on unmount', () => {
+    useDashboardStore.setState({ stageMediaStreamUrl: 'http://stream.external/pip' });
+
+    const { unmount } = render(<MediaPanel isHidden={false} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Music' }));
+    expect(useDashboardStore.getState().stageMediaStreamUrl).toBeNull();
+
+    useDashboardStore.setState({ stageMediaStreamUrl: 'http://stream.external/pip' });
+    unmount();
+
+    expect(useDashboardStore.getState().stageMediaStreamUrl).toBe('http://stream.external/pip');
+  });
 });

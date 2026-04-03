@@ -80,12 +80,6 @@ export function MediaPanel({ isHidden = true }: { isHidden?: boolean }) {
     setStageMediaStreamUrl(shouldShowStream ? FIRESTICK_STAGE_STREAM_URL : null);
   }, [activeMode, activeVideoSourceId, setStageMediaStreamUrl]);
 
-  useEffect(() => {
-    return () => {
-      setStageMediaStreamUrl(null);
-    };
-  }, [setStageMediaStreamUrl]);
-
   return (
     <section
       id="media-window"

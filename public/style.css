@@ -2278,6 +2278,10 @@ button.qa {
   background: rgba(220, 220, 220, 0.3);
 }
 
+.android-logo-block {
+  color: #009505;
+}
+
 .media-window__source-label {
   min-width: 0;
 }

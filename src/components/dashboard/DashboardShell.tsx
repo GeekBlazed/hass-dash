@@ -116,6 +116,7 @@ export function DashboardShell() {
           <DashboardStage onRetryFloorplan={retryFloorplan} />
           {selectedCameraEntityId && (
             <PictureInPictureModal
+              key={selectedCameraEntityId}
               entityId={selectedCameraEntityId}
               open={selectedCameraEntityId !== null}
               onOpenChange={(open) => {
