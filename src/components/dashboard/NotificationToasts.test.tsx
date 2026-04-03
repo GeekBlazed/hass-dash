@@ -174,7 +174,7 @@ describe('NotificationToasts', () => {
     vi.useRealTimers();
   });
 
-  it('opens camera modal and dismisses toast when camera preview card is clicked', async () => {
+  it('opens camera modal without switching panel and dismisses toast when camera preview card is clicked', async () => {
     entityState.entitiesById = {
       'camera.studio_camera': {
         attributes: {
@@ -201,7 +201,7 @@ describe('NotificationToasts', () => {
       screen.getByRole('button', { name: 'Open camera feed for camera.studio_camera' })
     );
 
-    expect(useDashboardStore.getState().activePanel).toBe('cameras');
+    expect(useDashboardStore.getState().activePanel).toBe('climate');
     expect(useDashboardStore.getState().selectedCameraEntityId).toBe('camera.studio_camera');
     expect(useNotificationStore.getState().toasts).toHaveLength(0);
   });

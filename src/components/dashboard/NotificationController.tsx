@@ -4,7 +4,6 @@ import { TYPES } from '../../core/types';
 import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { useService } from '../../hooks/useService';
 import type { INotificationService } from '../../interfaces/INotificationService';
-import { useDashboardStore } from '../../stores/useDashboardStore';
 import { useEntityStore } from '../../stores/useEntityStore';
 import { useNotificationStore } from '../../stores/useNotificationStore';
 import type { AddNotificationInput, NotificationStreamRecord } from '../../types/notifications';
@@ -59,10 +58,8 @@ export function NotificationController() {
   const { isEnabled: notificationsEnabled } = useFeatureFlag('NOTIFICATIONS');
   const { isEnabled: toastsEnabled } = useFeatureFlag('NOTIFICATIONS_TOASTS');
   const { isEnabled: persistentEnabled } = useFeatureFlag('NOTIFICATIONS_PERSISTENT');
-  const { isEnabled: actionsEnabled } = useFeatureFlag('NOTIFICATION_ACTIONS');
 
   const entitiesById = useEntityStore((s) => s.entitiesById);
-  const setActivePanel = useDashboardStore((s) => s.setActivePanel);
 
   const addToast = useNotificationStore((s) => s.addToast);
   const addPersistent = useNotificationStore((s) => s.addPersistent);
@@ -79,22 +76,6 @@ export function NotificationController() {
     let unsubscribe: (() => Promise<void>) | null = null;
 
     const handleRecord = (record: NotificationStreamRecord) => {
-      if (actionsEnabled && record.action) {
-        if (record.action.type === 'focus-panel') {
-          const requestedPanel =
-            typeof record.action.payload?.panel === 'string' ? record.action.payload.panel : null;
-          if (requestedPanel === 'cameras') {
-            setActivePanel('cameras');
-          }
-        }
-
-        if (record.action.type === 'open-camera') {
-          // Keep the event-driven UX toast-first: modal opens only when user
-          // clicks the camera preview card inside the toast notification.
-          setActivePanel('cameras');
-        }
-      }
-
       if (record.surface === 'persistent') {
         if (!persistentEnabled) return;
 
@@ -137,9 +118,7 @@ export function NotificationController() {
     notificationsEnabled,
     persistentEnabled,
     removePersistentByDedupeKey,
-    setActivePanel,
     toastsEnabled,
-    actionsEnabled,
   ]);
 
   useEffect(() => {

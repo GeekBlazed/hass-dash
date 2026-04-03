@@ -4,7 +4,9 @@ const OVERRIDES_STORAGE_KEY = 'hassdash:featureFlagOverrides';
 const NOTIFICATION_STORE_KEY = 'hass-dash:notifications';
 
 test.describe('notification toasts camera preview', () => {
-  test('opens camera panel/modal and dismisses toast when preview is clicked', async ({ page }) => {
+  test('opens picture-in-picture modal without switching panels and dismisses toast', async ({
+    page,
+  }) => {
     await page.addInitScript(
       ({ overridesStorageKey, notificationStoreKey }) => {
         window.sessionStorage.setItem(
@@ -66,7 +68,7 @@ test.describe('notification toasts camera preview', () => {
 
     await previewButton.dispatchEvent('click');
 
-    await expect(page.locator('#cameras-panel')).not.toHaveClass(/is-hidden/);
+    await expect(page.locator('#cameras-panel')).toHaveClass(/is-hidden/);
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(
       page.getByRole('button', { name: 'Open camera feed for camera.front_door' })

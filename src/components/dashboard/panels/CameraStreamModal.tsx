@@ -6,8 +6,15 @@ import { useService } from '../../../hooks/useService';
 import type { ICameraService } from '../../../interfaces/ICameraService';
 import type { IHomeAssistantConnectionConfig } from '../../../interfaces/IHomeAssistantConnectionConfig';
 import { useEntityStore } from '../../../stores/useEntityStore';
-import type { HaEntityId, HaEntityState } from '../../../types/home-assistant';
+import type { HaEntityId } from '../../../types/home-assistant';
 import { Dialog, DialogClose, DialogContent } from '../../ui/Dialog';
+import {
+  canPlayHlsNatively,
+  classifyStreamUrl,
+  deriveProxyStreamUrlFromEntityPicture,
+  getDisplayName,
+  getEntityPictureUrl,
+} from './cameraStreamUtils';
 
 type CameraStreamModalProps = {
   entityId: HaEntityId;
@@ -30,86 +37,6 @@ const CAMERA_TITLE_STYLE: CSSProperties = {
   marginTop: CAMERA_TITLE_MARGIN_TOP_PX,
   textShadow: `${CAMERA_TITLE_SHADOW_X_PX}px ${CAMERA_TITLE_SHADOW_Y_PX}px ${CAMERA_TITLE_SHADOW_BLUR_PX}px ${CAMERA_TITLE_TEXT_COLOR}`,
 };
-
-function getDisplayName(entity: HaEntityState | undefined): string {
-  if (!entity) return '';
-  const attrs = entity.attributes as Record<string, unknown> | undefined;
-  const friendlyName = typeof attrs?.friendly_name === 'string' ? attrs.friendly_name : '';
-  const name = typeof attrs?.name === 'string' ? attrs.name : '';
-  return friendlyName.trim() || name.trim() || entity.entity_id;
-}
-
-function classifyStreamUrl(url: string): 'hls' | 'mjpeg' | 'unknown' {
-  const lower = url.toLowerCase();
-  if (lower.includes('.m3u8') || lower.includes('application/vnd.apple.mpegurl')) return 'hls';
-  // Home Assistant's MJPEG proxy stream endpoint.
-  if (lower.includes('/api/camera_proxy_stream/')) return 'mjpeg';
-  if (lower.includes('mjpeg') || lower.includes('.mjpg') || lower.includes('.mjpeg'))
-    return 'mjpeg';
-  return 'unknown';
-}
-
-function getEntityPictureUrl(
-  entity: HaEntityState | undefined,
-  haBaseUrl: string | undefined
-): string | null {
-  const attrs = entity?.attributes as Record<string, unknown> | undefined;
-  const raw = typeof attrs?.entity_picture === 'string' ? attrs.entity_picture.trim() : '';
-  if (!raw) return null;
-
-  // If the entity gives us an absolute URL (or data/blob), keep it.
-  if (
-    raw.startsWith('http://') ||
-    raw.startsWith('https://') ||
-    raw.startsWith('data:') ||
-    raw.startsWith('blob:')
-  ) {
-    return raw;
-  }
-
-  // If it's a path (common: `/api/camera_proxy/...?...token=...`), prefer an
-  // absolute HA URL so media loads directly (no CORS for <img>/<video> and no
-  // Vite proxy involvement).
-  if (raw.startsWith('/')) {
-    if (!haBaseUrl) return raw;
-    try {
-      return new URL(raw, haBaseUrl).toString();
-    } catch {
-      return raw;
-    }
-  }
-
-  // Best-effort for odd relative values.
-  try {
-    return new URL(raw, window.location.origin).toString();
-  } catch {
-    return null;
-  }
-}
-
-function deriveProxyStreamUrlFromEntityPicture(entityPictureUrl: string): string | null {
-  // If the camera entity_picture points at `/api/camera_proxy/<entity>?token=...`
-  // then the MJPEG stream is typically available at `/api/camera_proxy_stream/<entity>?token=...`.
-  try {
-    const url = new URL(entityPictureUrl);
-    if (!url.pathname.startsWith('/api/camera_proxy/')) return null;
-    url.pathname = url.pathname.replace('/api/camera_proxy/', '/api/camera_proxy_stream/');
-    return url.toString();
-  } catch {
-    // If it's a path-only value, do a simple transform.
-    if (entityPictureUrl.startsWith('/api/camera_proxy/')) {
-      return entityPictureUrl.replace('/api/camera_proxy/', '/api/camera_proxy_stream/');
-    }
-    return null;
-  }
-}
-
-function canPlayHlsNatively(): boolean {
-  if (typeof document === 'undefined') return false;
-  const video = document.createElement('video');
-  const result = video.canPlayType('application/vnd.apple.mpegurl');
-  return result === 'probably' || result === 'maybe';
-}
 
 export function CameraStreamModal({ entityId, open, onOpenChange }: CameraStreamModalProps) {
   const cameraService = useService<ICameraService>(TYPES.ICameraService);

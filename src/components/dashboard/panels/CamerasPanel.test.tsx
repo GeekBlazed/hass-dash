@@ -1,10 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { container } from '../../../core/di-container';
-import { TYPES } from '../../../core/types';
-import type { ICameraService } from '../../../interfaces/ICameraService';
-import type { IHomeAssistantConnectionConfig } from '../../../interfaces/IHomeAssistantConnectionConfig';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityState } from '../../../types/home-assistant';
@@ -105,56 +101,13 @@ describe('CamerasPanel', () => {
     expect(screen.queryByText('Kitchen Camera')).not.toBeNull();
   });
 
-  it('opens details and fetches a snapshot when a camera is selected', async () => {
+  it('stores selected camera id when a camera is selected', () => {
     useEntityStore.getState().upsert(makeCamera('camera.kitchen', 'idle', 'Kitchen'));
-
-    const getStreamUrl = vi
-      .fn<NonNullable<ICameraService['getStreamUrl']>>()
-      .mockResolvedValue('http://example.test/stream.mjpeg');
-
-    const fetchProxyImage = vi
-      .fn<ICameraService['fetchProxyImage']>()
-      .mockResolvedValue(new Blob(['x'], { type: 'image/jpeg' }));
-
-    const mockService: ICameraService = {
-      turnOn: vi.fn().mockResolvedValue(undefined),
-      turnOff: vi.fn().mockResolvedValue(undefined),
-      getStreamUrl,
-      fetchProxyImage,
-    };
-
-    const mockConnectionConfig: IHomeAssistantConnectionConfig = {
-      getConfig: () => ({
-        baseUrl: 'http://ha.example:8123',
-        webSocketUrl: 'ws://ha.example:8123/api/websocket',
-        accessToken: 'token',
-      }),
-      getEffectiveWebSocketUrl: () => 'ws://ha.example:8123/api/websocket',
-      getAccessToken: () => 'token',
-      validate: () => ({
-        isValid: true,
-        errors: [],
-        effectiveWebSocketUrl: 'ws://ha.example:8123/api/websocket',
-      }),
-      getOverrides: () => ({}),
-      setOverrides: () => {},
-      clearOverrides: () => {},
-    };
-
-    const getSpy = vi.spyOn(container, 'get').mockImplementation((serviceId: unknown) => {
-      if (serviceId === TYPES.ICameraService) return mockService;
-      if (serviceId === TYPES.IHomeAssistantConnectionConfig) return mockConnectionConfig;
-      throw new Error(`Unexpected service lookup in test: ${String(serviceId)}`);
-    });
 
     render(<CamerasPanel isHidden={false} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Open live view for Kitchen' }));
 
-    await screen.findByRole('dialog');
-    await screen.findByRole('img', { name: 'Live stream from Kitchen' });
-    expect(getStreamUrl).toHaveBeenCalledWith('camera.kitchen');
-
-    getSpy.mockRestore();
+    expect(useDashboardStore.getState().selectedCameraEntityId).toBe('camera.kitchen');
   });
 });

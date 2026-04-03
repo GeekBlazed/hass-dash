@@ -628,6 +628,7 @@ export class HomeAssistantHttpClient implements IHttpClient {
 - No dependencies
 - More verbose error handling
 - Consider for bundle size optimization
+- Reference HA API docs: [https://developers.home-assistant.io/docs/api/rest/](https://developers.home-assistant.io/docs/api/rest/)
 
 ---
 

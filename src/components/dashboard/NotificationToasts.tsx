@@ -173,7 +173,6 @@ export function NotificationToasts() {
   const toasts = useNotificationStore((s) => s.toasts);
   const dismissToast = useNotificationStore((s) => s.dismissToast);
   const pruneExpiredToasts = useNotificationStore((s) => s.pruneExpiredToasts);
-  const setActivePanel = useDashboardStore((s) => s.setActivePanel);
   const openCameraModal = useDashboardStore((s) => s.openCameraModal);
   const entitiesById = useEntityStore((s) => s.entitiesById);
 
@@ -288,7 +287,6 @@ export function NotificationToasts() {
                   const cameraEntityId = previewByToastId[item.id]?.cameraEntityId;
                   if (!cameraEntityId) return;
 
-                  setActivePanel('cameras');
                   openCameraModal(cameraEntityId);
                   dismissToast(item.id);
                 }}
