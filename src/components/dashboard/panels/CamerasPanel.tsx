@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import { useDashboardStore } from '../../../stores/useDashboardStore';
 import { useEntityStore } from '../../../stores/useEntityStore';
 import type { HaEntityState } from '../../../types/home-assistant';
-import { CameraStreamModal } from './CameraStreamModal';
 
 const getDisplayName = (entity: HaEntityState): string => {
   const attrs = entity.attributes as Record<string, unknown> | undefined;
@@ -15,9 +14,7 @@ const getDisplayName = (entity: HaEntityState): string => {
 export function CamerasPanel({ isHidden = true }: { isHidden?: boolean }) {
   const entitiesById = useEntityStore((s) => s.entitiesById);
   const hassDashEntityIds = useEntityStore((s) => s.hassDashEntityIds);
-  const selectedCameraEntityId = useDashboardStore((s) => s.selectedCameraEntityId);
   const openCameraModal = useDashboardStore((s) => s.openCameraModal);
-  const closeCameraModal = useDashboardStore((s) => s.closeCameraModal);
 
   const cameras = useMemo(() => {
     const allCameras = Object.values(entitiesById).filter((e) => e.entity_id.startsWith('camera.'));
@@ -87,16 +84,6 @@ export function CamerasPanel({ isHidden = true }: { isHidden?: boolean }) {
       >
         {emptyCopy}
       </div>
-
-      {selectedCameraEntityId && (
-        <CameraStreamModal
-          entityId={selectedCameraEntityId}
-          open={selectedCameraEntityId !== null}
-          onOpenChange={(open) => {
-            if (!open) closeCameraModal();
-          }}
-        />
-      )}
     </section>
   );
 }

@@ -49,6 +49,8 @@ const mockStore = {
   setFloorplanLoading: vi.fn(),
   setFloorplanLoaded: vi.fn(),
   setFloorplanError: vi.fn(),
+  selectedCameraEntityId: null,
+  closeCameraModal: vi.fn(),
 };
 
 const useServiceMock = vi.mocked(useService);
@@ -62,6 +64,8 @@ describe('DashboardShell', () => {
     mockStore.setFloorplanLoading.mockReset();
     mockStore.setFloorplanLoaded.mockReset();
     mockStore.setFloorplanError.mockReset();
+    mockStore.closeCameraModal.mockReset();
+    mockStore.selectedCameraEntityId = null;
 
     vi.useRealTimers();
   });

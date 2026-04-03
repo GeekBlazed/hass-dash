@@ -38,6 +38,9 @@ interface DashboardState {
   activePanel: DashboardPanel;
   setActivePanel: (panel: DashboardPanel) => void;
 
+  stageMediaStreamUrl: string | null;
+  setStageMediaStreamUrl: (url: string | null) => void;
+
   selectedCameraEntityId: string | null;
   openCameraModal: (entityId: string) => void;
   closeCameraModal: () => void;
@@ -121,6 +124,11 @@ export const useDashboardStore = create<DashboardState>()(
         activePanel: 'climate',
         setActivePanel: (panel) => {
           set({ activePanel: panel });
+        },
+
+        stageMediaStreamUrl: null,
+        setStageMediaStreamUrl: (url) => {
+          set({ stageMediaStreamUrl: url });
         },
 
         selectedCameraEntityId: null,

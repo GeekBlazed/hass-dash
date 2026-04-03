@@ -236,7 +236,7 @@ describe('NotificationController', () => {
     expect(notificationState.removePersistentByDedupeKey).toHaveBeenCalledWith('ha:persistent:abc');
   });
 
-  it('focuses cameras panel when stream emits action records and action flag is enabled', () => {
+  it('does not auto-switch panels when stream emits camera action records', () => {
     render(<NotificationController />);
 
     const streamHandler = notificationService.subscribe.mock.calls[0]?.[0] as
@@ -274,9 +274,7 @@ describe('NotificationController', () => {
       },
     });
 
-    expect(dashboardState.setActivePanel).toHaveBeenCalledTimes(2);
-    expect(dashboardState.setActivePanel).toHaveBeenNthCalledWith(1, 'cameras');
-    expect(dashboardState.setActivePanel).toHaveBeenNthCalledWith(2, 'cameras');
+    expect(dashboardState.setActivePanel).not.toHaveBeenCalled();
     expect(dashboardState.openCameraModal).not.toHaveBeenCalled();
   });
 

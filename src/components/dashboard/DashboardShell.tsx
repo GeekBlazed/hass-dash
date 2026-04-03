@@ -7,6 +7,7 @@ import { useDashboardStore } from '../../stores/useDashboardStore';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardStage } from './DashboardStage';
 import { NotificationToasts } from './NotificationToasts';
+import { PictureInPictureModal } from './panels/PictureInPictureModal';
 
 const LazyDashboardControllers = lazy(() =>
   import('./DashboardControllers').then((m) => ({ default: m.DashboardControllers }))
@@ -21,6 +22,8 @@ export function DashboardShell() {
   const setFloorplanLoading = useDashboardStore((s) => s.setFloorplanLoading);
   const setFloorplanLoaded = useDashboardStore((s) => s.setFloorplanLoaded);
   const setFloorplanError = useDashboardStore((s) => s.setFloorplanError);
+  const selectedCameraEntityId = useDashboardStore((s) => s.selectedCameraEntityId);
+  const closeCameraModal = useDashboardStore((s) => s.closeCameraModal);
 
   useEffect(() => {
     let disposed = false;
@@ -111,6 +114,15 @@ export function DashboardShell() {
           <NotificationToasts />
           <DashboardSidebar />
           <DashboardStage onRetryFloorplan={retryFloorplan} />
+          {selectedCameraEntityId && (
+            <PictureInPictureModal
+              entityId={selectedCameraEntityId}
+              open={selectedCameraEntityId !== null}
+              onOpenChange={(open) => {
+                if (!open) closeCameraModal();
+              }}
+            />
+          )}
         </div>
       </div>
     </div>
