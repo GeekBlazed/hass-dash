@@ -4,53 +4,56 @@ const NOTIFICATION_STORE_KEY = 'hass-dash:notifications';
 
 test.describe('notification toasts regression', () => {
   test('renders modal-popup shell, overflow indicator, and dismiss behavior', async ({ page }) => {
-    await page.addInitScript(({ notificationStoreKey }) => {
-      const now = Date.now();
-      window.localStorage.setItem(
-        notificationStoreKey,
-        JSON.stringify({
-          state: {
-            persistent: [],
-            unreadPersistentIds: [],
-            toasts: [
-              {
-                id: 'toast-regression-1',
-                dedupeKey: 'toast-regression-1',
-                surface: 'toast',
-                source: 'test.seed',
-                content: {
-                  title: 'Regression Toast One',
-                  body: 'Toast 1',
-                  format: 'text',
+    await page.addInitScript(
+      ({ notificationStoreKey }) => {
+        const now = Date.now();
+        window.localStorage.setItem(
+          notificationStoreKey,
+          JSON.stringify({
+            state: {
+              persistent: [],
+              unreadPersistentIds: [],
+              toasts: [
+                {
+                  id: 'toast-regression-1',
+                  dedupeKey: 'toast-regression-1',
+                  surface: 'toast',
+                  source: 'test.seed',
+                  content: {
+                    title: 'Regression Toast One',
+                    body: 'Toast 1',
+                    format: 'text',
+                  },
+                  createdAt: now,
+                  updatedAt: now,
+                  duplicateCount: 1,
+                  read: true,
+                  expiresAt: now + 60_000,
                 },
-                createdAt: now,
-                updatedAt: now,
-                duplicateCount: 1,
-                read: true,
-                expiresAt: now + 60_000,
-              },
-              {
-                id: 'toast-regression-2',
-                dedupeKey: 'toast-regression-2',
-                surface: 'toast',
-                source: 'test.seed',
-                content: {
-                  title: 'Regression Toast Two',
-                  body: 'Toast 2',
-                  format: 'text',
+                {
+                  id: 'toast-regression-2',
+                  dedupeKey: 'toast-regression-2',
+                  surface: 'toast',
+                  source: 'test.seed',
+                  content: {
+                    title: 'Regression Toast Two',
+                    body: 'Toast 2',
+                    format: 'text',
+                  },
+                  createdAt: now,
+                  updatedAt: now,
+                  duplicateCount: 1,
+                  read: true,
+                  expiresAt: now + 60_000,
                 },
-                createdAt: now,
-                updatedAt: now,
-                duplicateCount: 1,
-                read: true,
-                expiresAt: now + 60_000,
-              },
-            ],
-          },
-          version: 1,
-        })
-      );
-    }, { notificationStoreKey: NOTIFICATION_STORE_KEY });
+              ],
+            },
+            version: 1,
+          })
+        );
+      },
+      { notificationStoreKey: NOTIFICATION_STORE_KEY }
+    );
 
     await page.goto('/');
 
@@ -91,6 +94,5 @@ test.describe('notification toasts regression', () => {
     if (hadOverflowBeforeDismiss) {
       expect(afterDismissCount).toBeGreaterThanOrEqual(1);
     }
-
   });
 });

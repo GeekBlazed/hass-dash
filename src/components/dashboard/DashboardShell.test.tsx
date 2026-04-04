@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useService } from '../../hooks/useService';
@@ -185,5 +185,23 @@ describe('DashboardShell', () => {
 
     expect(mockStore.setFloorplanLoaded).not.toHaveBeenCalled();
     expect(mockStore.setFloorplanError).not.toHaveBeenCalled();
+  });
+
+  it('toggles sidebar visibility via the vertical sidebar toggle button', () => {
+    globalThis.fetch = vi.fn() as unknown as typeof fetch;
+
+    useServiceMock.mockReturnValue({
+      getFloorplan: vi.fn().mockResolvedValue({}),
+    });
+
+    render(<DashboardShell />);
+
+    expect(screen.getByTestId('sidebar')).toBeInTheDocument();
+    const hideButton = screen.getByRole('button', { name: 'Hide sidebar' });
+
+    fireEvent.click(hideButton);
+
+    expect(screen.getByTestId('sidebar')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show sidebar' })).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 {
   "name": "hass-dash",
   "private": true,
-  "version": "0.1.0",
+  "version": "2026.3.7",
   "type": "module",
   "packageManager": "pnpm@9.0.0",
   "engines": {

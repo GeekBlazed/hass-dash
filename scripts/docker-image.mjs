@@ -30,6 +30,8 @@ switch (command) {
     const buildTag = formatBuildTag(state.build);
     run('docker', [
       'build',
+      '--build-arg',
+      `APP_VERSION=${buildTag}`,
       '-t',
       `${imageRepo}:${releaseTag}`,
       '-t',
@@ -49,6 +51,8 @@ switch (command) {
     const buildTag = formatBuildTag(nextBuild);
     run('docker', [
       'build',
+      '--build-arg',
+      `APP_VERSION=${buildTag}`,
       '-t',
       `${imageRepo}:${releaseTag}`,
       '-t',
