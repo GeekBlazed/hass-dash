@@ -25,7 +25,7 @@ const bootstrapMockNotifications = (): AddNotificationInput[] => [
       title: 'Package Detected',
       body: 'Front porch camera reported a package event at **09:14 AM**.',
       format: 'markdown',
-      imageUrl: 'https://images.unsplash.com/photo-1556740749-887f6717d7e4?w=600',
+      imageUrl: '/icons/pwa-192.png',
     },
   },
   {

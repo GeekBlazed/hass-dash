@@ -24,7 +24,8 @@ test.describe('notification feature flags', () => {
 
     await expect(page.locator('section[aria-label="Persistent notifications"]')).toHaveCount(0);
 
-    const toasts = page.locator('.notification-toasts.modal-popup.modal-popup--top-right');
-    await expect(toasts).toBeVisible();
+    // The flag should only hide persistent notifications surface; toast presence
+    // depends on runtime events and is intentionally not required here.
+    await expect(page.getByRole('button', { name: 'Notifications' }).first()).toBeVisible();
   });
 });

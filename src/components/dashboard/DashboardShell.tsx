@@ -96,10 +96,7 @@ export function DashboardShell() {
   }, [shouldMountControllers]);
 
   useEffect(() => {
-    if (!isSidebarCollapsed) {
-      setIsSidebarRevealActive(false);
-      return;
-    }
+    if (!isSidebarCollapsed) return;
 
     const REVEAL_EDGE_PX = 14;
 
@@ -132,6 +129,9 @@ export function DashboardShell() {
   };
 
   const toggleSidebar = () => {
+    if (isSidebarCollapsed) {
+      setIsSidebarRevealActive(false);
+    }
     setIsSidebarCollapsed((value) => !value);
   };
 
