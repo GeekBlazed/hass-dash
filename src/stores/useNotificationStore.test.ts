@@ -232,9 +232,7 @@ describe('useNotificationStore', () => {
     expect(parseMaxVisibleToasts()).toBe(4);
   });
 
-  it('migrate() hydrates explicit toast fixtures in dev mode and filters invalid entries', () => {
-    vi.stubEnv('DEV', true);
-
+  it('migrate() never hydrates persisted toast fixtures', () => {
     const options = useNotificationStore.persist.getOptions();
     const migrate = options.migrate as unknown as (persistedState: unknown) => {
       toasts: Array<{ dedupeKey: string }>;
@@ -268,11 +266,12 @@ describe('useNotificationStore', () => {
       ],
     });
 
-    expect(migrated.toasts).toHaveLength(1);
-    expect(migrated.toasts[0]?.dedupeKey).toBe('toast-1');
+    expect(migrated.toasts).toEqual([]);
   });
 
-  it('migrate() toast fixture hydration follows current DEV mode', () => {
+  it('migrate() ignores persisted toasts in both dev and prod', () => {
+    vi.stubEnv('DEV', true);
+
     const options = useNotificationStore.persist.getOptions();
     const migrate = options.migrate as unknown as (persistedState: unknown) => {
       toasts: unknown[];
@@ -295,10 +294,6 @@ describe('useNotificationStore', () => {
       ],
     });
 
-    if (import.meta.env.DEV) {
-      expect(migrated.toasts).toHaveLength(1);
-    } else {
-      expect(migrated.toasts).toEqual([]);
-    }
+    expect(migrated.toasts).toEqual([]);
   });
 });

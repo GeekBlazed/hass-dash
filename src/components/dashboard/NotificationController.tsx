@@ -67,7 +67,6 @@ export function NotificationController() {
   const seedMockPersistent = useNotificationStore((s) => s.seedMockPersistent);
 
   const lightStatesRef = useRef<Record<string, string>>({});
-  const mockToastSeededRef = useRef(false);
 
   useEffect(() => {
     if (!notificationsEnabled) return;
@@ -144,38 +143,6 @@ export function NotificationController() {
       });
     }
   }, [addPersistent, notificationsEnabled, persistentEnabled, seedMockPersistent]);
-
-  useEffect(() => {
-    if (!notificationsEnabled || !toastsEnabled) return;
-
-    const raw = import.meta.env.VITE_FEATURE_NOTIFICATIONS_MOCK;
-    const enabledByDefault = import.meta.env.DEV ? 'true' : 'false';
-    const mockEnabled = String(raw ?? enabledByDefault).toLowerCase() === 'true';
-    if (!mockEnabled) return;
-
-    if (mockToastSeededRef.current) return;
-    mockToastSeededRef.current = true;
-
-    addToast({
-      dedupeKey: 'mock-bootstrap-toast-ready',
-      source: 'mock.bootstrap',
-      content: {
-        title: 'Toast Pipeline Ready',
-        body: 'Toasts are enabled. Live light on/off transitions will appear here as they happen.',
-        format: 'text',
-      },
-    });
-
-    addToast({
-      dedupeKey: 'mock-bootstrap-toast-rich',
-      source: 'mock.bootstrap',
-      content: {
-        title: 'Rich Toast Example',
-        body: 'Front porch motion event with **camera context**. This is a bootstrap preview.',
-        format: 'markdown',
-      },
-    });
-  }, [addToast, notificationsEnabled, toastsEnabled]);
 
   useEffect(() => {
     if (!notificationsEnabled || !toastsEnabled) return;

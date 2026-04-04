@@ -6,53 +6,56 @@ const configuredMaxVisible = process.env.PW_TOAST_MAX_VISIBLE;
 
 test.describe('notification toasts max-visible config', () => {
   test('enforces visible count from config and toggles overflow indicator', async ({ page }) => {
-    await page.addInitScript(({ notificationStoreKey }) => {
-      const now = Date.now();
-      window.localStorage.setItem(
-        notificationStoreKey,
-        JSON.stringify({
-          state: {
-            persistent: [],
-            unreadPersistentIds: [],
-            toasts: [
-              {
-                id: 'toast-max-visible-1',
-                dedupeKey: 'toast-max-visible-1',
-                surface: 'toast',
-                source: 'test.seed',
-                content: {
-                  title: 'Max Visible One',
-                  body: 'Toast 1',
-                  format: 'text',
+    await page.addInitScript(
+      ({ notificationStoreKey }) => {
+        const now = Date.now();
+        window.localStorage.setItem(
+          notificationStoreKey,
+          JSON.stringify({
+            state: {
+              persistent: [],
+              unreadPersistentIds: [],
+              toasts: [
+                {
+                  id: 'toast-max-visible-1',
+                  dedupeKey: 'toast-max-visible-1',
+                  surface: 'toast',
+                  source: 'test.seed',
+                  content: {
+                    title: 'Max Visible One',
+                    body: 'Toast 1',
+                    format: 'text',
+                  },
+                  createdAt: now,
+                  updatedAt: now,
+                  duplicateCount: 1,
+                  read: true,
+                  expiresAt: now + 60_000,
                 },
-                createdAt: now,
-                updatedAt: now,
-                duplicateCount: 1,
-                read: true,
-                expiresAt: now + 60_000,
-              },
-              {
-                id: 'toast-max-visible-2',
-                dedupeKey: 'toast-max-visible-2',
-                surface: 'toast',
-                source: 'test.seed',
-                content: {
-                  title: 'Max Visible Two',
-                  body: 'Toast 2',
-                  format: 'text',
+                {
+                  id: 'toast-max-visible-2',
+                  dedupeKey: 'toast-max-visible-2',
+                  surface: 'toast',
+                  source: 'test.seed',
+                  content: {
+                    title: 'Max Visible Two',
+                    body: 'Toast 2',
+                    format: 'text',
+                  },
+                  createdAt: now,
+                  updatedAt: now,
+                  duplicateCount: 1,
+                  read: true,
+                  expiresAt: now + 60_000,
                 },
-                createdAt: now,
-                updatedAt: now,
-                duplicateCount: 1,
-                read: true,
-                expiresAt: now + 60_000,
-              },
-            ],
-          },
-          version: 1,
-        })
-      );
-    }, { notificationStoreKey: NOTIFICATION_STORE_KEY });
+              ],
+            },
+            version: 1,
+          })
+        );
+      },
+      { notificationStoreKey: NOTIFICATION_STORE_KEY }
+    );
 
     await page.goto('/');
 

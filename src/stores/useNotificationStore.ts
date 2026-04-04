@@ -39,29 +39,6 @@ const sanitizeUnread = (ids: unknown): string[] => {
   return ids.filter((v): v is string => typeof v === 'string');
 };
 
-const sanitizeToasts = (items: unknown): NotificationItem[] => {
-  if (!Array.isArray(items)) return [];
-  return items.filter((item): item is NotificationItem => {
-    if (!item || typeof item !== 'object') return false;
-
-    const candidate = item as Partial<NotificationItem>;
-    return (
-      typeof candidate.id === 'string' &&
-      typeof candidate.dedupeKey === 'string' &&
-      candidate.surface === 'toast' &&
-      typeof candidate.source === 'string' &&
-      typeof candidate.createdAt === 'number' &&
-      typeof candidate.updatedAt === 'number' &&
-      typeof candidate.duplicateCount === 'number' &&
-      typeof candidate.read === 'boolean' &&
-      (candidate.expiresAt === null || typeof candidate.expiresAt === 'number') &&
-      !!candidate.content &&
-      typeof candidate.content === 'object' &&
-      typeof candidate.content.body === 'string'
-    );
-  });
-};
-
 type NotificationStore = {
   toasts: NotificationItem[];
   persistent: NotificationItem[];
@@ -254,15 +231,12 @@ export const useNotificationStore = create<NotificationStore>()(
             toasts?: unknown;
           };
 
-          // Preserve the existing product behavior (toasts are not persisted by
-          // default), but allow explicit toast fixtures in dev/test when a
-          // storage payload includes them.
-          const toasts = import.meta.env.DEV ? sanitizeToasts(s.toasts) : [];
-
           return {
             persistent: Array.isArray(s.persistent) ? s.persistent : [],
             unreadPersistentIds: sanitizeUnread(s.unreadPersistentIds),
-            toasts,
+            // Toasts are intentionally never hydrated from persisted storage.
+            // This prevents stale/demo fixtures from resurfacing on startup.
+            toasts: [],
           };
         },
       }

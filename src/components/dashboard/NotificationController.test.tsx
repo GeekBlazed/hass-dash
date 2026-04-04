@@ -107,21 +107,13 @@ describe('NotificationController', () => {
     expect(notificationState.addPersistent).not.toHaveBeenCalled();
   });
 
-  it('seeds bootstrap toasts only once', () => {
+  it('does not seed bootstrap example toasts in mock mode', () => {
     vi.stubEnv('VITE_FEATURE_NOTIFICATIONS_MOCK', 'true');
 
     const { rerender } = render(<NotificationController />);
     rerender(<NotificationController />);
 
-    expect(notificationState.addToast).toHaveBeenCalledTimes(2);
-    expect(notificationState.addToast).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ dedupeKey: 'mock-bootstrap-toast-ready' })
-    );
-    expect(notificationState.addToast).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ dedupeKey: 'mock-bootstrap-toast-rich' })
-    );
+    expect(notificationState.addToast).not.toHaveBeenCalled();
   });
 
   it('emits toast on light state transition and ignores unsupported transitions', () => {

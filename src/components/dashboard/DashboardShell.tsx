@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 
+import { Icon } from '@iconify/react';
 import { TYPES } from '../../core/types';
 import { useService } from '../../hooks/useService';
 import type { IFloorplanDataSource } from '../../interfaces/IFloorplanDataSource';
@@ -16,6 +17,8 @@ const LazyDashboardControllers = lazy(() =>
 export function DashboardShell() {
   const [reloadNonce, setReloadNonce] = useState(0);
   const [shouldMountControllers, setShouldMountControllers] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarRevealActive, setIsSidebarRevealActive] = useState(false);
 
   const floorplanSource = useService<IFloorplanDataSource>(TYPES.IFloorplanDataSource);
 
@@ -92,8 +95,44 @@ export function DashboardShell() {
     };
   }, [shouldMountControllers]);
 
+  useEffect(() => {
+    if (!isSidebarCollapsed) {
+      setIsSidebarRevealActive(false);
+      return;
+    }
+
+    const REVEAL_EDGE_PX = 14;
+
+    const onMouseMove = (event: MouseEvent) => {
+      const isNearScreenEdge = event.clientX <= REVEAL_EDGE_PX;
+      const isOverRevealUi =
+        event.target instanceof Element &&
+        Boolean(event.target.closest('.sidebar, .sidebar-toggle'));
+      const nextRevealState = isNearScreenEdge || isOverRevealUi;
+      setIsSidebarRevealActive((current) =>
+        current === nextRevealState ? current : nextRevealState
+      );
+    };
+
+    const clearRevealState = () => {
+      setIsSidebarRevealActive(false);
+    };
+
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    window.addEventListener('blur', clearRevealState);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('blur', clearRevealState);
+    };
+  }, [isSidebarCollapsed]);
+
   const retryFloorplan = () => {
     setReloadNonce((n) => n + 1);
+  };
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((value) => !value);
   };
 
   const virtualPanelEnv = import.meta.env.VITE_FEATURE_SHOW_VIRTUAL_PANEL;
@@ -105,14 +144,36 @@ export function DashboardShell() {
   }
 
   const viewportClassName = `viewport${virtualPanelEnabled ? '' : ' no-virtual-panel'}`;
+  const appClassName = `app relative${isSidebarCollapsed ? ' sidebar-collapsed' : ''}${
+    isSidebarCollapsed && isSidebarRevealActive ? ' sidebar-reveal-active' : ''
+  }`;
+  const sidebarToggleClassName = `sidebar-toggle${isSidebarCollapsed ? ' is-collapsed' : ''}${
+    isSidebarRevealActive ? ' is-edge-revealed' : ''
+  }`;
 
   return (
     <div className={viewportClassName}>
       <Suspense fallback={null}>{shouldMountControllers && <LazyDashboardControllers />}</Suspense>
       <div className="frame" role="application" aria-label="Floorplan dashboard">
-        <div className="app relative">
+        <div className={appClassName}>
           <NotificationToasts />
           <DashboardSidebar />
+          <button
+            type="button"
+            className={sidebarToggleClassName}
+            aria-label={isSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+            aria-expanded={!isSidebarCollapsed}
+            onClick={toggleSidebar}
+          >
+            <span className="sidebar-toggle__bars" aria-hidden="true">
+              <Icon
+                icon="stash:pause-solid"
+                aria-hidden="true"
+                data-testid="sidebar-toggle-icon"
+                className="sidebar-toggle-icon"
+              />
+            </span>
+          </button>
           <DashboardStage onRetryFloorplan={retryFloorplan} />
           {selectedCameraEntityId && (
             <PictureInPictureModal
